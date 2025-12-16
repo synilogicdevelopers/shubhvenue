@@ -1,0 +1,65 @@
+2025-11-21T10:11:18: API server listening on port 8030
+2025-11-21T10:11:18: Local: http://localhost:8030
+2025-11-21T10:11:18: Network: http://192.168.29.20:8030
+2025-11-21T10:11:18: Access from other devices on your network using: http://192.168.29.20:8030
+2025-11-21T10:11:19: ✅ Connected to MongoDB
+2025-11-21T10:11:19: Database connection established.
+2025-11-21T11:45:33: [0mPOST /api/auth/login [32m200[0m 283.584 ms - 412[0m
+2025-11-21T11:45:33: [0mGET /api/vendor/dashboard?month=11&year=2025 [32m200[0m 163.651 ms - 393[0m
+2025-11-21T11:45:33: [0mGET /api/vendor/dashboard?month=11&year=2025 [36m304[0m 123.082 ms - -[0m
+2025-11-21T11:45:33: [0mGET /api/vendor/ledger [32m200[0m 198.354 ms - -[0m
+2025-11-21T11:45:33: [0mGET /api/vendor/ledger [36m304[0m 171.814 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/vendor/venues [32m200[0m 218.798 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/categories [32m200[0m 391.664 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/vendor/venues [36m304[0m 186.958 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/reviews/vendor/all [32m200[0m 129.749 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/reviews/vendor/all [36m304[0m 117.124 ms - -[0m
+2025-11-21T11:45:36: [0mGET /api/categories [36m304[0m 372.097 ms - -[0m
+2025-11-21T11:47:07: [0mGET /api/reviews/vendor/all [36m304[0m 131.028 ms - -[0m
+2025-11-21T11:47:07: [0mGET /api/reviews/vendor/all [36m304[0m 136.625 ms - -[0m
+2025-11-21T11:47:07: [0mGET /api/vendor/venues [36m304[0m 165.860 ms - -[0m
+2025-11-21T11:47:07: [0mGET /api/vendor/venues [36m304[0m 158.585 ms - -[0m
+2025-11-21T11:47:14: [0mGET /api/vendor/bookings [32m200[0m 131.821 ms - -[0m
+2025-11-21T11:47:14: [0mGET /api/vendor/venues [36m304[0m 165.674 ms - -[0m
+2025-11-21T11:47:14: [0mGET /api/vendor/bookings [36m304[0m 134.257 ms - -[0m
+2025-11-21T11:47:14: [0mGET /api/vendor/venues [36m304[0m 153.930 ms - -[0m
+2025-11-21T11:47:15: [0mGET /api/categories [36m304[0m 112.401 ms - -[0m
+2025-11-21T11:47:15: [0mGET /api/vendor/venues [36m304[0m 166.894 ms - -[0m
+2025-11-21T11:47:15: [0mGET /api/categories [36m304[0m 102.805 ms - -[0m
+2025-11-21T11:47:15: [0mGET /api/reviews/vendor/all [36m304[0m 135.060 ms - -[0m
+2025-11-21T11:47:15: [0mGET /api/vendor/venues [36m304[0m 187.412 ms - -[0m
+2025-11-21T11:47:16: [0mGET /api/reviews/vendor/all [36m304[0m 124.099 ms - -[0m
+2025-11-21T11:47:17: [0mGET /api/reviews/vendor/all [36m304[0m 121.877 ms - -[0m
+2025-11-21T11:47:17: [0mGET /api/reviews/vendor/all [36m304[0m 134.762 ms - -[0m
+2025-11-21T11:47:17: [0mGET /api/vendor/venues [36m304[0m 156.869 ms - -[0m
+2025-11-21T11:47:18: [0mGET /api/vendor/venues [36m304[0m 175.734 ms - -[0m
+2025-11-21T11:48:32: [0mGET /api/auth/profile [32m200[0m 43.985 ms - 217[0m
+2025-11-21T11:48:32: [0mGET /api/auth/profile [36m304[0m 42.950 ms - -[0m
+2025-11-21T11:48:33: [0mGET /api/reviews/vendor/all [36m304[0m 131.353 ms - -[0m
+2025-11-21T11:48:33: [0mGET /api/reviews/vendor/all [36m304[0m 138.966 ms - -[0m
+2025-11-21T11:48:33: [0mGET /api/vendor/venues [36m304[0m 152.014 ms - -[0m
+2025-11-21T11:48:33: [0mGET /api/vendor/venues [36m304[0m 159.699 ms - -[0m
+2025-11-21T11:49:25: [0mGET /api/vendor/bookings [36m304[0m 124.313 ms - -[0m
+2025-11-21T11:49:25: [0mGET /api/vendor/venues [36m304[0m 153.139 ms - -[0m
+2025-11-21T11:49:25: [0mGET /api/vendor/bookings [36m304[0m 129.423 ms - -[0m
+2025-11-21T11:49:25: [0mGET /api/vendor/venues [36m304[0m 151.867 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/categories [36m304[0m 109.208 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/vendor/venues [36m304[0m 163.584 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/categories [36m304[0m 102.217 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/reviews/vendor/all [36m304[0m 118.230 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/vendor/venues [36m304[0m 174.008 ms - -[0m
+2025-11-21T11:49:27: [0mGET /api/reviews/vendor/all [36m304[0m 129.059 ms - -[0m
+2025-11-21T15:20:02: [0mGET /api/auth/profile [36m304[0m 71.710 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/auth/profile [36m304[0m 44.088 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/vendor/venues [32m200[0m 515.639 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/categories [36m304[0m 597.655 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/vendor/venues [36m304[0m 226.680 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/reviews/vendor/all [32m200[0m 204.401 ms - -[0m
+2025-11-21T15:20:03: [0mGET /api/reviews/vendor/all [36m304[0m 145.108 ms - -[0m
+2025-11-21T15:20:04: [0mGET /api/categories [36m304[0m 396.370 ms - -[0m
+2025-12-12T10:09:59: API server listening on port 8030
+2025-12-12T10:09:59: Local: http://localhost:8030
+2025-12-12T10:09:59: Network: http://192.168.29.20:8030
+2025-12-12T10:09:59: Access from other devices on your network using: http://192.168.29.20:8030
+2025-12-12T10:10:00: ✅ Connected to MongoDB
+2025-12-12T10:10:00: Database connection established.

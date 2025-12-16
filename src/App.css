@@ -1,0 +1,65 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-purple: #92487A;
+  --primary-purple-dark: #92487A;
+  --white: #FFFFFF;
+  --gray-light: #F3F4F6;
+  --gray-medium: #9CA3AF;
+  --gray-dark: #4B5563;
+  --text-dark: #1F2937;
+  
+  /* Background color variables */
+  --bg-purple-light: rgba(146, 72, 122, 0.1);
+  --bg-purple-medium: rgba(146, 72, 122, 0.15);
+  --bg-purple-hover: rgba(146, 72, 122, 0.02);
+  
+  /* Shadow color variables */
+  --shadow-purple-light: rgba(146, 72, 122, 0.1);
+  --shadow-purple-medium: rgba(146, 72, 122, 0.15);
+  --shadow-purple-strong: rgba(146, 72, 122, 0.2);
+  --shadow-purple-stronger: rgba(146, 72, 122, 0.3);
+  --shadow-purple-strongest: rgba(146, 72, 122, 0.4);
+  
+  /* Toast variables */
+  --toast-bg: #363636;
+  --toast-color: #fff;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App wrapper for sticky footer */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pulse animation for loading logo */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+

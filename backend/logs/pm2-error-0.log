@@ -1,0 +1,78 @@
+2025-11-21T10:11:18: (node:16256) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2025-11-21T10:11:18: (Use `node --trace-warnings ...` to show where the warning was created)
+2025-11-21T11:45:32: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+2025-11-21T11:45:32:     at Object.trustProxy (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+2025-11-21T11:45:32:     at wrappedValidations.<computed> [as trustProxy] (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+2025-11-21T11:45:32:     at Object.keyGenerator (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+2025-11-21T11:45:32:     at file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+2025-11-21T11:45:32:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:45:32:     at async file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+2025-11-21T11:45:32:   code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+2025-11-21T11:45:32:   help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+2025-11-21T11:45:32: }
+2025-11-21T11:45:33: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+2025-11-21T11:45:33:     at Object.trustProxy (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+2025-11-21T11:45:33:     at wrappedValidations.<computed> [as trustProxy] (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+2025-11-21T11:45:33:     at Object.keyGenerator (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+2025-11-21T11:45:33:     at file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+2025-11-21T11:45:33:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:45:33:     at async file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+2025-11-21T11:45:33:   code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+2025-11-21T11:45:33:   help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+2025-11-21T11:45:33: }
+2025-11-21T11:45:36: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:45:36:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:45:36:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:45:36: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:45:36:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:45:36:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:07: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:07:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:07:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:07: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:07:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:07:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:14: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:14:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:14:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:14: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:14:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:14:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:15: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:15:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:15:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:15: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:15:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:15:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:17: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:17:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:17:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:47:17: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:47:17:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:47:17:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:48:33: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:48:33:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:48:33:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:48:33: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:48:33:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:48:33:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:49:25: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:49:25:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:49:25:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:49:25: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:49:25:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:49:25:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:49:27: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:49:27:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:49:27:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T11:49:27: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T11:49:27:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T11:49:27:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T15:20:03: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T15:20:03:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T15:20:03:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-11-21T15:20:03: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+2025-11-21T15:20:03:     at getVenues (file:///C:/Users/Synilogic/OneDrive/Desktop/Wedding%20Venue/WeddingVenue_backend/src/controllers/vendor.venues.controller.js:581:14)
+2025-11-21T15:20:03:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-12T10:09:59: (node:7316) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2025-12-12T10:09:59: (Use `node --trace-warnings ...` to show where the warning was created)

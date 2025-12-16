@@ -1,0 +1,13 @@
+/* How it Works Page - Uses same styles as component but with page wrapper */
+.how-it-works-page {
+  min-height: 100vh;
+  background: var(--bg-light);
+  padding-top: 80px;
+}
+
+.how-it-works-page .how-it-works-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+

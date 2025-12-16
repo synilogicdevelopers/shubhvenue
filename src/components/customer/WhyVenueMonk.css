@@ -1,0 +1,353 @@
+/* Why VenueMonk Section */
+.why-venuemonk {
+  padding: 80px 24px;
+  background: var(--white);
+}
+
+.why-venuemonk-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.why-venuemonk-title {
+  text-align: center;
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  letter-spacing: -0.5px;
+}
+
+.why-venuemonk-title::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-purple), #EC4899);
+  border-radius: 2px;
+}
+
+.why-venuemonk-title::after {
+  content: 'Why Choose Us';
+  display: block;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--gray-dark);
+  margin-top: 12px;
+  letter-spacing: 0;
+}
+
+.features-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 32px;
+  margin-top: 80px;
+}
+
+.feature {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 32px;
+  background: var(--white);
+  border-radius: 24px;
+  border: 2px solid #E5E7EB;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.feature::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-purple), #EC4899);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+
+
+.feature:hover {
+
+  border-color: var(--primary-purple);
+ 
+}
+
+.feature-icon-wrapper {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.feature-icon {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-purple-light) 0%, var(--bg-purple-medium) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-purple);
+  position: relative;
+  transition: all 0.4s ease;
+  box-shadow: 0 8px 16px var(--bg-purple-light);
+}
+
+.feature:hover .feature-icon {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 12px 24px var(--bg-purple-medium);
+  background: linear-gradient(135deg, var(--primary-purple), #EC4899);
+  color: var(--white);
+}
+
+.feature-icon::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-purple), #EC4899);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+.feature:hover .feature-icon::after {
+  opacity: 0.15;
+}
+
+.feature-icon svg {
+  width: 64px;
+  height: 64px;
+  transition: transform 0.4s ease;
+}
+
+.feature:hover .feature-icon svg {
+  transform: scale(1.1);
+}
+
+.feature-icon-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+  z-index: 2;
+  transition: transform 0.4s ease;
+  color: #92400E;
+}
+
+.feature-icon-badge svg {
+  width: 20px;
+  height: 20px;
+}
+
+.feature:hover .feature-icon-badge {
+  transform: scale(1.2) rotate(15deg);
+}
+
+.feature-content {
+  width: 100%;
+}
+
+.feature-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+  transition: color 0.3s ease;
+}
+
+.feature:hover .feature-title {
+  color: var(--primary-purple);
+}
+
+.feature-subtitle {
+  font-size: 16px;
+  color: var(--gray-dark);
+  line-height: 1.7;
+  max-width: 100%;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .why-venuemonk {
+    padding: 60px 24px;
+  }
+
+  .why-venuemonk-title {
+    font-size: 36px;
+    margin-bottom: 50px;
+  }
+
+  .why-venuemonk-title::after {
+    font-size: 16px;
+  }
+
+  .features-container {
+    gap: 24px;
+    margin-top: 60px;
+  }
+
+  .feature {
+    padding: 40px 24px;
+  }
+
+  .feature-icon {
+    width: 120px;
+    height: 120px;
+  }
+
+  .feature-icon svg {
+    width: 56px;
+    height: 56px;
+  }
+
+  .feature-icon-badge {
+    width: 40px;
+    height: 40px;
+  }
+
+  .feature-icon-badge svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .feature-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 768px) {
+  .why-venuemonk {
+    padding: 50px 20px;
+  }
+
+  .why-venuemonk-title {
+    font-size: 32px;
+    margin-bottom: 40px;
+  }
+
+  .why-venuemonk-title::after {
+    font-size: 15px;
+  }
+
+  .features-container {
+    flex-direction: column;
+    gap: 32px;
+    align-items: stretch;
+    margin-top: 60px;
+  }
+
+  .feature {
+    max-width: 100%;
+    padding: 40px 28px;
+  }
+
+  .feature-icon {
+    width: 130px;
+    height: 130px;
+    margin-bottom: 28px;
+  }
+
+  .feature-icon svg {
+    width: 60px;
+    height: 60px;
+  }
+
+  .feature-icon-badge {
+    width: 42px;
+    height: 42px;
+  }
+
+  .feature-icon-badge svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .feature-title {
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+
+  .feature-subtitle {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .why-venuemonk {
+    padding: 40px 16px;
+  }
+
+  .why-venuemonk-title {
+    font-size: 28px;
+    margin-bottom: 32px;
+  }
+
+  .why-venuemonk-title::after {
+    font-size: 14px;
+  }
+
+  .features-container {
+    gap: 28px;
+    margin-top: 50px;
+  }
+
+  .feature {
+    padding: 36px 24px;
+  }
+
+  .feature-icon {
+    width: 110px;
+    height: 110px;
+    margin-bottom: 24px;
+  }
+
+  .feature-icon svg {
+    width: 52px;
+    height: 52px;
+  }
+
+  .feature-icon-badge {
+    width: 38px;
+    height: 38px;
+    top: -6px;
+    right: -6px;
+  }
+
+  .feature-icon-badge svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .feature-title {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .feature-subtitle {
+    font-size: 15px;
+  }
+}
+
