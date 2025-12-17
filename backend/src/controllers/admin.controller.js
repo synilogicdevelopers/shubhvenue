@@ -1,6 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Venue from '../models/Venue.js';
 import Booking from '../models/Booking.js';
@@ -15,6 +18,952 @@ import FAQ from '../models/FAQ.js';
 import Company from '../models/Company.js';
 import LegalPage from '../models/LegalPage.js';
 import Contact from '../models/Contact.js';
+
+// ==================== ADMIN CREATE (VENDORS / VENUES) ====================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const uploadsRootDir = path.join(__dirname, '../../uploads');
+const uploadsVenuesDir = path.join(uploadsRootDir, 'venues');
+const uploadsVideosDir = path.join(uploadsRootDir, 'videos');
+
+const isValidEmail = (email) => {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const parseMaybeJson = (value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const parseStringArray = (value) => {
+  if (value === undefined || value === null) return undefined;
+  if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
+  if (typeof value === 'string') {
+    // Support comma-separated strings and single strings
+    const parts = value.split(',').map(s => s.trim()).filter(Boolean);
+    return parts.length > 0 ? parts : [];
+  }
+  return [String(value).trim()].filter(Boolean);
+};
+
+const isHttpUrl = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const normalizeUploadPath = (p) => {
+  if (!p || typeof p !== 'string') return null;
+  // Stored paths are usually "/uploads/...". Some callers might pass "/api/uploads/..."
+  if (p.startsWith('/api/uploads/')) return p.replace('/api', '');
+  return p;
+};
+
+const getLocalFilePathFromUploadPath = (uploadPath) => {
+  const p = normalizeUploadPath(uploadPath);
+  if (!p || typeof p !== 'string') return null;
+  if (p.startsWith('http://') || p.startsWith('https://')) return null;
+  if (!p.startsWith('/uploads/')) return null;
+
+  if (p.startsWith('/uploads/venues/')) {
+    return path.join(uploadsVenuesDir, p.replace('/uploads/venues/', ''));
+  }
+  if (p.startsWith('/uploads/videos/')) {
+    return path.join(uploadsVideosDir, p.replace('/uploads/videos/', ''));
+  }
+  return null;
+};
+
+const safeUnlink = (filePath) => {
+  try {
+    if (!filePath) return;
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {
+    // Non-fatal
+    console.error('Failed to delete file:', filePath, e?.message || e);
+  }
+};
+
+const collectVenueMediaPaths = (venueObj) => {
+  const v = venueObj?.toObject ? venueObj.toObject() : venueObj;
+  if (!v) return [];
+
+  const candidates = [];
+  if (v.image) candidates.push(v.image);
+  if (v.coverImage) candidates.push(v.coverImage);
+  if (Array.isArray(v.images)) candidates.push(...v.images);
+  if (Array.isArray(v.videos)) candidates.push(...v.videos);
+
+  // Legacy gallery can be array or object
+  if (Array.isArray(v.gallery)) candidates.push(...v.gallery);
+  if (v.gallery && typeof v.gallery === 'object' && Array.isArray(v.gallery.photos)) candidates.push(...v.gallery.photos);
+  if (v.gallery && typeof v.gallery === 'object' && Array.isArray(v.gallery.videos)) candidates.push(...v.gallery.videos);
+
+  if (v.galleryInfo && typeof v.galleryInfo === 'object') {
+    if (Array.isArray(v.galleryInfo.photos)) candidates.push(...v.galleryInfo.photos);
+    if (Array.isArray(v.galleryInfo.videos)) candidates.push(...v.galleryInfo.videos);
+  }
+
+  const localUploadPaths = candidates
+    .map(normalizeUploadPath)
+    .filter(p => typeof p === 'string' && p.startsWith('/uploads/'))
+    .filter(p => !p.includes('http'));
+
+  return [...new Set(localUploadPaths)];
+};
+
+export const createVendorByAdmin = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      phone,
+      vendorStatus,
+      verified
+    } = req.body || {};
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server',
+        });
+      }
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(409).json({ message: 'User with this email already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const allowedVendorStatuses = ['pending', 'approved', 'rejected'];
+    const finalVendorStatus = allowedVendorStatuses.includes(vendorStatus) ? vendorStatus : 'approved';
+
+    const vendor = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      phone: phone ? String(phone).trim() : undefined,
+      password: hashedPassword,
+      role: 'vendor',
+      vendorStatus: finalVendorStatus,
+      verified: verified !== undefined ? !!verified : true,
+      isDeleted: false,
+      isBlocked: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Vendor created successfully',
+      vendor: {
+        _id: vendor._id,
+        name: vendor.name,
+        email: vendor.email,
+        phone: vendor.phone,
+        role: vendor.role,
+        vendorStatus: vendor.vendorStatus,
+        verified: vendor.verified,
+        createdAt: vendor.createdAt,
+      }
+    });
+  } catch (error) {
+    console.error('Create vendor by admin error:', error);
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: 'User with this email already exists' });
+    }
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const createVenueByAdmin = async (req, res) => {
+  try {
+    // Body can come from JSON or multipart/form-data
+    const body = req.body || {};
+
+    const vendorId = body.vendorId;
+    const name = body.name;
+    const slug = body.slug;
+    const description = body.description;
+    const about = body.about;
+    const venueType = body.venueType;
+    const status = body.status;
+
+    // NOTE: These can arrive as strings (including JSON strings) via FormData.
+    let location = parseMaybeJson(body.location);
+    let capacity = parseMaybeJson(body.capacity);
+    const pricingInfo = parseMaybeJson(body.pricingInfo);
+    const pricePerPlate = parseMaybeJson(body.pricePerPlate);
+    let menuId = body.menuId;
+    let subMenuId = body.subMenuId;
+    const categoryId = body.categoryId;
+
+    if (!vendorId) {
+      return res.status(400).json({ message: 'vendorId is required (assign venue to a vendor)' });
+    }
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ message: 'Venue name is required' });
+    }
+    if (!location || (typeof location === 'string' && !location.trim())) {
+      return res.status(400).json({ message: 'Location is required' });
+    }
+    if (capacity === undefined || capacity === null || (typeof capacity === 'string' && !capacity.trim())) {
+      return res.status(400).json({ message: 'Capacity is required' });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server',
+        });
+      }
+    }
+
+    // Validate vendor
+    const vendor = await User.findById(vendorId).select('_id role isDeleted vendorStatus');
+    if (!vendor) {
+      return res.status(400).json({ message: 'Invalid vendorId (vendor not found)' });
+    }
+    if (vendor.role !== 'vendor') {
+      return res.status(400).json({ message: 'vendorId must belong to a vendor user' });
+    }
+    if (vendor.isDeleted) {
+      return res.status(400).json({ message: 'Cannot assign venue to a deleted vendor' });
+    }
+    if (vendor.vendorStatus === 'rejected') {
+      return res.status(400).json({ message: 'Cannot assign venue to a rejected vendor' });
+    }
+
+    // Normalize menuId/subMenuId
+    if (menuId === '' || menuId === null || menuId === undefined) menuId = null;
+    if (subMenuId === '' || subMenuId === null || subMenuId === undefined) subMenuId = null;
+
+    // Optional validation of category/menu if provided
+    if (categoryId) {
+      const Category = (await import('../models/Category.js')).default;
+      const category = await Category.findById(categoryId);
+      if (!category) return res.status(400).json({ message: 'Invalid categoryId' });
+      if (category.isActive === false) return res.status(400).json({ message: 'Category is not active' });
+    }
+    if (menuId) {
+      const Menu = (await import('../models/Menu.js')).default;
+      const menu = await Menu.findById(menuId);
+      if (!menu) return res.status(400).json({ message: 'Invalid menuId' });
+      if (menu.isActive === false) return res.status(400).json({ message: 'Menu is not active' });
+      if (menu.parentMenuId) return res.status(400).json({ message: 'menuId must be a main menu' });
+    }
+    if (subMenuId) {
+      const Menu = (await import('../models/Menu.js')).default;
+      const sub = await Menu.findById(subMenuId);
+      if (!sub) return res.status(400).json({ message: 'Invalid subMenuId' });
+      if (sub.isActive === false) return res.status(400).json({ message: 'Submenu is not active' });
+      if (!sub.parentMenuId) return res.status(400).json({ message: 'subMenuId must be a submenu' });
+      if (menuId && sub.parentMenuId.toString() !== String(menuId)) {
+        return res.status(400).json({ message: 'subMenuId must belong to the specified menuId' });
+      }
+      if (!menuId) menuId = sub.parentMenuId;
+    }
+
+    // Capacity normalization (number or object)
+    let capacityValue = capacity;
+    if (typeof capacityValue === 'string') {
+      const asNum = Number(capacityValue);
+      if (!Number.isNaN(asNum)) capacityValue = asNum;
+    }
+    if (typeof capacityValue === 'number') {
+      if (capacityValue <= 0) return res.status(400).json({ message: 'Capacity must be greater than 0' });
+    } else if (capacityValue && typeof capacityValue === 'object') {
+      const minGuests = capacityValue.minGuests ?? capacityValue.min;
+      const maxGuests = capacityValue.maxGuests ?? capacityValue.max;
+      if (!minGuests && !maxGuests) {
+        return res.status(400).json({ message: 'Capacity must have minGuests or maxGuests' });
+      }
+      if (minGuests && Number(minGuests) <= 0) return res.status(400).json({ message: 'minGuests must be greater than 0' });
+      if (maxGuests && Number(maxGuests) <= 0) return res.status(400).json({ message: 'maxGuests must be greater than 0' });
+      if (minGuests && maxGuests && Number(minGuests) > Number(maxGuests)) {
+        return res.status(400).json({ message: 'minGuests cannot be greater than maxGuests' });
+      }
+      capacityValue = {
+        ...(capacityValue || {}),
+        minGuests: minGuests ? Number(minGuests) : undefined,
+        maxGuests: maxGuests ? Number(maxGuests) : undefined,
+      };
+    } else {
+      return res.status(400).json({ message: 'Invalid capacity' });
+    }
+
+    // Location normalization (object or string)
+    if (typeof location === 'string') {
+      location = location.trim();
+    }
+
+    // Media: files + optional URL fields
+    const imageFile = req.files?.image?.[0];
+    const galleryFiles = Array.isArray(req.files?.gallery) ? req.files.gallery : [];
+    const videoFiles = Array.isArray(req.files?.videos) ? req.files.videos : [];
+
+    const imagePath = imageFile ? `/uploads/venues/${imageFile.filename}` : null;
+    const galleryPaths = galleryFiles.map(f => `/uploads/venues/${f.filename}`);
+    const uploadedVideoPaths = videoFiles
+      .filter(f => f.mimetype && f.mimetype.startsWith('video/'))
+      .map(f => `/uploads/videos/${f.filename}`);
+
+    // Optional URL-based media from body
+    const coverImageUrl = isHttpUrl(body.coverImage) ? body.coverImage : null;
+    const imagesFromBody = parseMaybeJson(body.images);
+    const galleryFromBody = parseMaybeJson(body.gallery);
+    const videosFromBody = parseMaybeJson(body.videos);
+
+    const urlImages = [];
+    if (Array.isArray(imagesFromBody)) {
+      imagesFromBody.forEach(u => { if (isHttpUrl(u) || (typeof u === 'string' && u.startsWith('/uploads/'))) urlImages.push(u); });
+    } else if (typeof imagesFromBody === 'string' && (isHttpUrl(imagesFromBody) || imagesFromBody.startsWith('/uploads/'))) {
+      urlImages.push(imagesFromBody);
+    }
+
+    const urlGallery = [];
+    if (Array.isArray(galleryFromBody)) {
+      galleryFromBody.forEach(u => { if (isHttpUrl(u) || (typeof u === 'string' && u.startsWith('/uploads/'))) urlGallery.push(u); });
+    } else if (typeof galleryFromBody === 'string' && (isHttpUrl(galleryFromBody) || galleryFromBody.startsWith('/uploads/'))) {
+      urlGallery.push(galleryFromBody);
+    }
+
+    const urlVideos = [];
+    if (Array.isArray(videosFromBody)) {
+      videosFromBody.forEach(u => { if (isHttpUrl(u) || (typeof u === 'string' && u.startsWith('/uploads/'))) urlVideos.push(u); });
+    } else if (typeof videosFromBody === 'string' && (isHttpUrl(videosFromBody) || videosFromBody.startsWith('/uploads/'))) {
+      urlVideos.push(videosFromBody);
+    }
+
+    // Slug generation
+    let finalSlug = slug ? String(slug).trim() : '';
+    if (!finalSlug) {
+      finalSlug = String(name)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      const existing = await Venue.findOne({ slug: finalSlug });
+      if (existing) finalSlug = `${finalSlug}-${Date.now()}`;
+    } else {
+      const existing = await Venue.findOne({ slug: finalSlug });
+      if (existing) {
+        return res.status(409).json({ message: 'A venue with this slug already exists' });
+      }
+    }
+
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'active'];
+    const finalStatus = allowedStatuses.includes(status) ? status : 'approved';
+
+    const venueData = {
+      vendorId: vendor._id,
+      name: String(name).trim(),
+      slug: finalSlug,
+      description: description ? String(description) : undefined,
+      about: about ? String(about) : undefined,
+      venueType: venueType ? String(venueType) : undefined,
+      location,
+      capacity: capacityValue,
+      status: finalStatus,
+      vendorActive: body.vendorActive !== undefined ? (body.vendorActive === 'true' || body.vendorActive === true) : true,
+      bookingButtonEnabled: body.bookingButtonEnabled !== undefined ? (body.bookingButtonEnabled === 'true' || body.bookingButtonEnabled === true) : true,
+      leadsButtonEnabled: body.leadsButtonEnabled !== undefined ? (body.leadsButtonEnabled === 'true' || body.leadsButtonEnabled === true) : true,
+      menuId: menuId || null,
+      subMenuId: subMenuId || null,
+      categoryId: categoryId || null,
+    };
+
+    const price = body.price !== undefined && body.price !== null && body.price !== '' ? Number(body.price) : undefined;
+    if (price !== undefined && !Number.isNaN(price)) venueData.price = price;
+
+    // pricingInfo / pricePerPlate (optional)
+    if (pricingInfo && typeof pricingInfo === 'object') {
+      venueData.pricingInfo = {
+        vegPerPlate: pricingInfo.vegPerPlate ? Number(pricingInfo.vegPerPlate) : 0,
+        nonVegPerPlate: pricingInfo.nonVegPerPlate ? Number(pricingInfo.nonVegPerPlate) : 0,
+        rentalPrice: pricingInfo.rentalPrice ? Number(pricingInfo.rentalPrice) : (venueData.price || 0),
+        taxIncluded: !!pricingInfo.taxIncluded,
+        decorationCost: pricingInfo.decorationCost || '',
+        djCost: pricingInfo.djCost || '',
+      };
+    }
+    if (pricePerPlate && typeof pricePerPlate === 'object') {
+      venueData.pricePerPlate = {
+        veg: pricePerPlate.veg ? Number(pricePerPlate.veg) : 0,
+        nonVeg: pricePerPlate.nonVeg ? Number(pricePerPlate.nonVeg) : 0,
+      };
+      if (!venueData.pricingInfo) {
+        venueData.pricingInfo = {
+          vegPerPlate: venueData.pricePerPlate.veg || 0,
+          nonVegPerPlate: venueData.pricePerPlate.nonVeg || 0,
+          rentalPrice: venueData.price || 0,
+          taxIncluded: false,
+          decorationCost: '',
+          djCost: '',
+        };
+      }
+    }
+
+    // Arrays (optional)
+    const amenities = parseStringArray(body.amenities);
+    const facilities = parseStringArray(body.facilities);
+    const highlights = parseStringArray(body.highlights);
+    const tags = parseStringArray(body.tags);
+    if (amenities) venueData.amenities = amenities;
+    if (facilities) venueData.facilities = facilities;
+    if (highlights) venueData.highlights = highlights;
+    if (tags) venueData.tags = tags.map(t => String(t).toLowerCase());
+
+    const rooms = body.rooms !== undefined && body.rooms !== null && body.rooms !== '' ? Number(body.rooms) : undefined;
+    if (rooms !== undefined && !Number.isNaN(rooms)) venueData.rooms = rooms;
+
+    if (body.isFeatured !== undefined) {
+      venueData.isFeatured = body.isFeatured === 'true' || body.isFeatured === true;
+    }
+
+    // Contact (optional)
+    const contact = parseMaybeJson(body.contact);
+    if (contact && typeof contact === 'object') {
+      venueData.contact = {
+        name: contact.name ? String(contact.name).trim() : undefined,
+        phone: contact.phone ? String(contact.phone).trim() : undefined,
+        email: contact.email ? String(contact.email).trim().toLowerCase() : undefined,
+      };
+    }
+
+    // Availability (optional)
+    const availability = parseMaybeJson(body.availability);
+    if (availability && typeof availability === 'object') {
+      venueData.availability = {
+        status: availability.status || 'Open',
+        availableDates: Array.isArray(availability.availableDates) ? availability.availableDates : [],
+        openDays: Array.isArray(availability.openDays) ? availability.openDays : [],
+        openTime: availability.openTime || '',
+        closeTime: availability.closeTime || '',
+      };
+    }
+
+    // Booking info (optional)
+    const bookingInfo = parseMaybeJson(body.bookingInfo);
+    if (bookingInfo && typeof bookingInfo === 'object') {
+      venueData.bookingInfo = {
+        advanceRequired: bookingInfo.advanceRequired || '',
+        cancellationPolicy: bookingInfo.cancellationPolicy || '',
+        bookingContact: bookingInfo.bookingContact || venueData.contact || {},
+      };
+    }
+
+    // Media fields
+    const coverImage = imagePath || coverImageUrl || null;
+    if (coverImage) venueData.coverImage = coverImage;
+    if (imagePath) venueData.image = imagePath; // legacy single image
+
+    const combinedImages = [
+      ...(coverImage ? [coverImage] : []),
+      ...galleryPaths,
+      ...urlImages,
+      ...urlGallery,
+    ].filter(Boolean);
+    if (combinedImages.length > 0) venueData.images = [...new Set(combinedImages)];
+
+    const combinedVideos = [...uploadedVideoPaths, ...urlVideos].filter(Boolean);
+    if (combinedVideos.length > 0) venueData.videos = [...new Set(combinedVideos)];
+
+    // Legacy gallery + galleryInfo
+    const combinedGalleryPhotos = [...galleryPaths, ...urlGallery, ...urlImages].filter(Boolean);
+    if (combinedGalleryPhotos.length > 0) {
+      venueData.gallery = [...new Set(combinedGalleryPhotos)];
+      venueData.galleryInfo = {
+        photos: [...new Set(combinedGalleryPhotos)],
+        videos: combinedVideos.length > 0 ? [...new Set(combinedVideos)] : [],
+      };
+    } else if (combinedVideos.length > 0) {
+      venueData.galleryInfo = { photos: [], videos: [...new Set(combinedVideos)] };
+    }
+
+    const venue = await Venue.create(venueData);
+    await venue.populate('vendorId', 'name email phone');
+
+    res.status(201).json({
+      success: true,
+      message: 'Venue created successfully',
+      venue: venue.toObject(),
+    });
+  } catch (error) {
+    console.error('Create venue by admin error:', error);
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: 'Duplicate key error (slug or unique field already exists)' });
+    }
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getVenueByIdAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const venue = await Venue.findById(id)
+      .populate('vendorId', 'name email phone')
+      .populate('categoryId', 'name description icon image')
+      .populate('menuId', 'name parentMenuId')
+      .populate('subMenuId', 'name parentMenuId');
+
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    res.json({
+      success: true,
+      venue: venue.toObject(),
+    });
+  } catch (error) {
+    console.error('Get venue by admin error:', error);
+    if (error?.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid venue ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const updateVenueByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const venue = await Venue.findById(id);
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    const oldLocalUploadPaths = collectVenueMediaPaths(venue);
+
+    const body = req.body || {};
+
+    // Allow changing vendor assignment
+    if (body.vendorId !== undefined && body.vendorId !== null && String(body.vendorId).trim() !== '') {
+      const vendor = await User.findById(body.vendorId).select('_id role isDeleted vendorStatus');
+      if (!vendor) return res.status(400).json({ message: 'Invalid vendorId (vendor not found)' });
+      if (vendor.role !== 'vendor') return res.status(400).json({ message: 'vendorId must belong to a vendor user' });
+      if (vendor.isDeleted) return res.status(400).json({ message: 'Cannot assign venue to a deleted vendor' });
+      if (vendor.vendorStatus === 'rejected') return res.status(400).json({ message: 'Cannot assign venue to a rejected vendor' });
+      venue.vendorId = vendor._id;
+    }
+
+    // Basic fields
+    if (body.name !== undefined) {
+      if (!body.name || !String(body.name).trim()) return res.status(400).json({ message: 'Venue name cannot be empty' });
+      venue.name = String(body.name).trim();
+    }
+    if (body.description !== undefined) venue.description = body.description ? String(body.description) : '';
+    if (body.about !== undefined) venue.about = body.about ? String(body.about) : '';
+    if (body.venueType !== undefined) venue.venueType = body.venueType ? String(body.venueType) : '';
+
+    // Status
+    if (body.status !== undefined) {
+      const allowedStatuses = ['pending', 'approved', 'rejected', 'active'];
+      if (body.status && !allowedStatuses.includes(body.status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+      if (body.status) venue.status = body.status;
+    }
+
+    // Vendor-controlled visibility + buttons
+    if (body.vendorActive !== undefined) venue.vendorActive = body.vendorActive === 'true' || body.vendorActive === true;
+    if (body.bookingButtonEnabled !== undefined) venue.bookingButtonEnabled = body.bookingButtonEnabled === 'true' || body.bookingButtonEnabled === true;
+    if (body.leadsButtonEnabled !== undefined) venue.leadsButtonEnabled = body.leadsButtonEnabled === 'true' || body.leadsButtonEnabled === true;
+    if (body.isFeatured !== undefined) venue.isFeatured = body.isFeatured === 'true' || body.isFeatured === true;
+
+    // Price
+    if (body.price !== undefined && body.price !== null && body.price !== '') {
+      const price = Number(body.price);
+      if (!Number.isNaN(price)) venue.price = price;
+    }
+
+    // Pricing info & price per plate (accept JSON strings from FormData)
+    const pricingInfo = parseMaybeJson(body.pricingInfo);
+    if (pricingInfo !== undefined) {
+      if (pricingInfo && typeof pricingInfo === 'object') {
+        venue.pricingInfo = {
+          vegPerPlate: pricingInfo.vegPerPlate ? Number(pricingInfo.vegPerPlate) : 0,
+          nonVegPerPlate: pricingInfo.nonVegPerPlate ? Number(pricingInfo.nonVegPerPlate) : 0,
+          rentalPrice: pricingInfo.rentalPrice ? Number(pricingInfo.rentalPrice) : (venue.price || 0),
+          taxIncluded: !!pricingInfo.taxIncluded,
+          decorationCost: pricingInfo.decorationCost || '',
+          djCost: pricingInfo.djCost || '',
+        };
+      } else if (pricingInfo === null || pricingInfo === '') {
+        venue.pricingInfo = undefined;
+      }
+    }
+
+    const pricePerPlate = parseMaybeJson(body.pricePerPlate);
+    if (pricePerPlate !== undefined) {
+      if (pricePerPlate && typeof pricePerPlate === 'object') {
+        venue.pricePerPlate = {
+          veg: pricePerPlate.veg ? Number(pricePerPlate.veg) : 0,
+          nonVeg: pricePerPlate.nonVeg ? Number(pricePerPlate.nonVeg) : 0,
+        };
+      } else if (pricePerPlate === null || pricePerPlate === '') {
+        venue.pricePerPlate = undefined;
+      }
+    }
+
+    // Capacity (number or object)
+    const capacity = parseMaybeJson(body.capacity);
+    if (capacity !== undefined) {
+      let capacityValue = capacity;
+      if (typeof capacityValue === 'string') {
+        const asNum = Number(capacityValue);
+        if (!Number.isNaN(asNum)) capacityValue = asNum;
+      }
+      if (typeof capacityValue === 'number') {
+        if (capacityValue <= 0) return res.status(400).json({ message: 'Capacity must be greater than 0' });
+        venue.capacity = capacityValue;
+      } else if (capacityValue && typeof capacityValue === 'object') {
+        const minGuests = capacityValue.minGuests ?? capacityValue.min;
+        const maxGuests = capacityValue.maxGuests ?? capacityValue.max;
+        if (!minGuests && !maxGuests) return res.status(400).json({ message: 'Capacity must have minGuests or maxGuests' });
+        if (minGuests && Number(minGuests) <= 0) return res.status(400).json({ message: 'minGuests must be greater than 0' });
+        if (maxGuests && Number(maxGuests) <= 0) return res.status(400).json({ message: 'maxGuests must be greater than 0' });
+        if (minGuests && maxGuests && Number(minGuests) > Number(maxGuests)) {
+          return res.status(400).json({ message: 'minGuests cannot be greater than maxGuests' });
+        }
+        venue.capacity = {
+          ...(capacityValue || {}),
+          minGuests: minGuests ? Number(minGuests) : undefined,
+          maxGuests: maxGuests ? Number(maxGuests) : undefined,
+        };
+      } else {
+        return res.status(400).json({ message: 'Invalid capacity' });
+      }
+    }
+
+    // Location (string or object)
+    const location = parseMaybeJson(body.location);
+    if (location !== undefined) {
+      if (!location || (typeof location === 'string' && !location.trim())) {
+        return res.status(400).json({ message: 'Location cannot be empty' });
+      }
+      venue.location = typeof location === 'string' ? location.trim() : location;
+    }
+
+    // Category/menu
+    if (body.categoryId !== undefined) {
+      if (!body.categoryId) {
+        venue.categoryId = null;
+      } else {
+        const Category = (await import('../models/Category.js')).default;
+        const category = await Category.findById(body.categoryId);
+        if (!category) return res.status(400).json({ message: 'Invalid categoryId' });
+        if (category.isActive === false) return res.status(400).json({ message: 'Category is not active' });
+        venue.categoryId = body.categoryId;
+      }
+    }
+
+    let menuId = body.menuId;
+    let subMenuId = body.subMenuId;
+    if (menuId === '' || menuId === null || menuId === undefined) menuId = undefined;
+    if (subMenuId === '' || subMenuId === null || subMenuId === undefined) subMenuId = undefined;
+
+    if (menuId !== undefined) {
+      if (!menuId) {
+        venue.menuId = null;
+        venue.subMenuId = null;
+      } else {
+        const Menu = (await import('../models/Menu.js')).default;
+        const menu = await Menu.findById(menuId);
+        if (!menu) return res.status(400).json({ message: 'Invalid menuId' });
+        if (menu.isActive === false) return res.status(400).json({ message: 'Menu is not active' });
+        if (menu.parentMenuId) return res.status(400).json({ message: 'menuId must be a main menu' });
+        venue.menuId = menuId;
+      }
+    }
+
+    if (subMenuId !== undefined) {
+      if (!subMenuId) {
+        venue.subMenuId = null;
+      } else {
+        const Menu = (await import('../models/Menu.js')).default;
+        const sub = await Menu.findById(subMenuId);
+        if (!sub) return res.status(400).json({ message: 'Invalid subMenuId' });
+        if (sub.isActive === false) return res.status(400).json({ message: 'Submenu is not active' });
+        if (!sub.parentMenuId) return res.status(400).json({ message: 'subMenuId must be a submenu' });
+        if (venue.menuId && sub.parentMenuId.toString() !== venue.menuId.toString()) {
+          return res.status(400).json({ message: 'subMenuId must belong to the specified menuId' });
+        }
+        if (!venue.menuId) {
+          venue.menuId = sub.parentMenuId;
+        }
+        venue.subMenuId = subMenuId;
+      }
+    }
+
+    // Slug update (unique)
+    if (body.slug !== undefined) {
+      const nextSlug = body.slug ? String(body.slug).trim() : '';
+      if (nextSlug) {
+        const existing = await Venue.findOne({ slug: nextSlug, _id: { $ne: venue._id } });
+        if (existing) return res.status(409).json({ message: 'A venue with this slug already exists' });
+        venue.slug = nextSlug;
+      } else {
+        venue.slug = undefined;
+      }
+    }
+
+    // Arrays
+    const amenities = parseStringArray(body.amenities);
+    const facilities = parseStringArray(body.facilities);
+    const highlights = parseStringArray(body.highlights);
+    const tags = parseStringArray(body.tags);
+    if (amenities !== undefined) venue.amenities = amenities;
+    if (facilities !== undefined) venue.facilities = facilities;
+    if (highlights !== undefined) venue.highlights = highlights;
+    if (tags !== undefined) venue.tags = tags.map(t => String(t).toLowerCase());
+
+    if (body.rooms !== undefined && body.rooms !== null && body.rooms !== '') {
+      const rooms = Number(body.rooms);
+      if (!Number.isNaN(rooms)) venue.rooms = rooms;
+    }
+
+    // Contact / availability / bookingInfo (accept JSON string)
+    const contact = parseMaybeJson(body.contact);
+    if (contact !== undefined) {
+      if (contact && typeof contact === 'object') {
+        venue.contact = {
+          name: contact.name ? String(contact.name).trim() : undefined,
+          phone: contact.phone ? String(contact.phone).trim() : undefined,
+          email: contact.email ? String(contact.email).trim().toLowerCase() : undefined,
+        };
+      } else if (!contact) {
+        venue.contact = undefined;
+      }
+    }
+
+    const availability = parseMaybeJson(body.availability);
+    if (availability !== undefined) {
+      if (availability && typeof availability === 'object') {
+        venue.availability = {
+          status: availability.status || venue.availability?.status || 'Open',
+          availableDates: Array.isArray(availability.availableDates) ? availability.availableDates : (venue.availability?.availableDates || []),
+          openDays: Array.isArray(availability.openDays) ? availability.openDays : (venue.availability?.openDays || []),
+          openTime: availability.openTime || venue.availability?.openTime || '',
+          closeTime: availability.closeTime || venue.availability?.closeTime || '',
+        };
+      } else if (!availability) {
+        venue.availability = undefined;
+      }
+    }
+
+    const bookingInfo = parseMaybeJson(body.bookingInfo);
+    if (bookingInfo !== undefined) {
+      if (bookingInfo && typeof bookingInfo === 'object') {
+        venue.bookingInfo = {
+          advanceRequired: bookingInfo.advanceRequired || '',
+          cancellationPolicy: bookingInfo.cancellationPolicy || '',
+          bookingContact: bookingInfo.bookingContact || venue.contact || {},
+        };
+      } else if (!bookingInfo) {
+        venue.bookingInfo = undefined;
+      }
+    }
+
+    // Media uploads + optional URL media
+    const imageFile = req.files?.image?.[0];
+    const galleryFiles = Array.isArray(req.files?.gallery) ? req.files.gallery : [];
+    const videoFiles = Array.isArray(req.files?.videos) ? req.files.videos : [];
+
+    const newImagePath = imageFile ? `/uploads/venues/${imageFile.filename}` : null;
+    const newGalleryPaths = galleryFiles.map(f => `/uploads/venues/${f.filename}`);
+    const newVideoPaths = videoFiles
+      .filter(f => f.mimetype && f.mimetype.startsWith('video/'))
+      .map(f => `/uploads/videos/${f.filename}`);
+
+    // If admin uploads a new main image, use it as cover + legacy image
+    if (newImagePath) {
+      venue.image = newImagePath;
+      venue.coverImage = newImagePath;
+    }
+
+    // Images/videos from body (optional)
+    const imagesFromBody = parseMaybeJson(body.images);
+    const galleryFromBody = parseMaybeJson(body.gallery);
+    const videosFromBody = parseMaybeJson(body.videos);
+
+    const normalizeMediaList = (raw) => {
+      const out = [];
+      if (Array.isArray(raw)) {
+        raw.forEach(u => {
+          if (typeof u === 'string' && (isHttpUrl(u) || u.startsWith('/uploads/'))) out.push(normalizeUploadPath(u));
+        });
+      } else if (typeof raw === 'string' && (isHttpUrl(raw) || raw.startsWith('/uploads/'))) {
+        out.push(normalizeUploadPath(raw));
+      }
+      return out.filter(Boolean);
+    };
+
+    const bodyImages = normalizeMediaList(imagesFromBody);
+    const bodyGallery = normalizeMediaList(galleryFromBody);
+    const bodyVideos = normalizeMediaList(videosFromBody);
+
+    const replaceGallery = body.replaceGallery === 'true' || body.replaceGallery === true;
+    const replaceVideos = body.replaceVideos === 'true' || body.replaceVideos === true;
+    const clearVideos = body.clearVideos === 'true' || body.clearVideos === true;
+
+    // Update images array
+    if (bodyImages.length > 0) {
+      const merged = [...(venue.images || []), ...bodyImages, ...newGalleryPaths, ...(newImagePath ? [newImagePath] : [])].filter(Boolean);
+      venue.images = [...new Set(merged)];
+    } else if (newGalleryPaths.length > 0 || newImagePath) {
+      const merged = [...(venue.images || []), ...(newImagePath ? [newImagePath] : []), ...newGalleryPaths].filter(Boolean);
+      venue.images = [...new Set(merged)];
+    }
+
+    // Update legacy gallery/photos
+    const existingGalleryPhotos = Array.isArray(venue.gallery) ? venue.gallery : (venue.galleryInfo?.photos || []);
+    const nextGalleryPhotos = replaceGallery
+      ? [...bodyGallery, ...newGalleryPaths].filter(Boolean)
+      : [...existingGalleryPhotos, ...bodyGallery, ...newGalleryPaths].filter(Boolean);
+    if (replaceGallery && nextGalleryPhotos.length === 0) {
+      // Explicitly clear gallery when replaceGallery requested and no items provided
+      venue.gallery = [];
+      venue.galleryInfo = venue.galleryInfo || {};
+      venue.galleryInfo.photos = [];
+    } else if (bodyGallery.length > 0 || newGalleryPaths.length > 0) {
+      venue.gallery = [...new Set(nextGalleryPhotos)];
+      venue.galleryInfo = venue.galleryInfo || {};
+      venue.galleryInfo.photos = [...new Set(nextGalleryPhotos)];
+    }
+
+    // Update videos
+    const existingVideos = Array.isArray(venue.videos) ? venue.videos : [];
+    const nextVideos = replaceVideos
+      ? [...bodyVideos, ...newVideoPaths].filter(Boolean)
+      : [...existingVideos, ...bodyVideos, ...newVideoPaths].filter(Boolean);
+    if ((replaceVideos || clearVideos) && nextVideos.length === 0) {
+      // Explicitly clear videos when replaceVideos/clearVideos requested and no items provided
+      venue.videos = [];
+      venue.galleryInfo = venue.galleryInfo || {};
+      venue.galleryInfo.videos = [];
+    } else if (bodyVideos.length > 0 || newVideoPaths.length > 0) {
+      venue.videos = [...new Set(nextVideos)];
+      venue.galleryInfo = venue.galleryInfo || {};
+      venue.galleryInfo.videos = [...new Set(nextVideos)];
+    }
+
+    // Cover image from body
+    if (body.coverImage !== undefined) {
+      const cover = body.coverImage;
+      if (!cover) {
+        venue.coverImage = undefined;
+      } else if (typeof cover === 'string' && (isHttpUrl(cover) || cover.startsWith('/uploads/'))) {
+        venue.coverImage = normalizeUploadPath(cover);
+      }
+    }
+
+    await venue.save();
+    await venue.populate('vendorId', 'name email phone');
+
+    // Cleanup removed local files (best-effort)
+    const newLocalUploadPaths = collectVenueMediaPaths(venue);
+    const toDelete = oldLocalUploadPaths.filter(p => !newLocalUploadPaths.includes(p));
+    toDelete.forEach((p) => {
+      const filePath = getLocalFilePathFromUploadPath(p);
+      safeUnlink(filePath);
+    });
+
+    res.json({
+      success: true,
+      message: 'Venue updated successfully',
+      venue: venue.toObject(),
+    });
+  } catch (error) {
+    console.error('Update venue by admin error:', error);
+    if (error?.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid venue ID' });
+    }
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: 'Duplicate key error (slug or unique field already exists)' });
+    }
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const deleteVenueByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const venue = await Venue.findById(id);
+    if (!venue) {
+      return res.status(404).json({ message: 'Venue not found' });
+    }
+
+    const localUploadPaths = collectVenueMediaPaths(venue);
+
+    await Venue.findByIdAndDelete(id);
+
+    // Cleanup local files (best-effort)
+    localUploadPaths.forEach((p) => {
+      const filePath = getLocalFilePathFromUploadPath(p);
+      safeUnlink(filePath);
+    });
+
+    res.json({
+      success: true,
+      message: 'Venue deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete venue by admin error:', error);
+    if (error?.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid venue ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 // Admin Login
 export const adminLogin = async (req, res) => {

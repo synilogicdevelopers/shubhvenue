@@ -4,9 +4,10 @@ import { Card } from '../../../components/admin/ui/Card';
 import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Input } from '../../../components/admin/ui/Input';
 import { vendorsAPI } from '../../../services/admin/api';
 import toast from 'react-hot-toast';
-import { Check, X, Eye, Trash2 } from 'lucide-react';
+import { Check, X, Eye, Trash2, Plus } from 'lucide-react';
 
 export const Vendors = () => {
   const [vendors, setVendors] = useState([]);
@@ -16,6 +17,14 @@ export const Vendors = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [vendorDetail, setVendorDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+  });
 
   useEffect(() => {
     fetchVendors();
@@ -115,9 +124,15 @@ export const Vendors = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all vendors</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all vendors</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add Vendor
+        </Button>
       </div>
 
       <Card>
@@ -224,6 +239,79 @@ export const Vendors = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Create Vendor Modal */}
+      <Modal
+        isOpen={createOpen}
+        onClose={() => {
+          if (!createLoading) setCreateOpen(false);
+        }}
+        title="Add Vendor"
+        size="md"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setCreateLoading(true);
+            try {
+              await vendorsAPI.create(createForm);
+              toast.success('Vendor created successfully');
+              setCreateOpen(false);
+              setCreateForm({ name: '', email: '', phone: '', password: '' });
+              fetchVendors();
+            } catch (error) {
+              toast.error(error.response?.data?.message || 'Failed to create vendor');
+            } finally {
+              setCreateLoading(false);
+            }
+          }}
+        >
+          <Input
+            label="Name"
+            value={createForm.name}
+            onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
+            disabled={createLoading}
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={createForm.email}
+            onChange={(e) => setCreateForm((p) => ({ ...p, email: e.target.value }))}
+            disabled={createLoading}
+            required
+          />
+          <Input
+            label="Phone"
+            value={createForm.phone}
+            onChange={(e) => setCreateForm((p) => ({ ...p, phone: e.target.value }))}
+            disabled={createLoading}
+          />
+          <Input
+            label="Password"
+            type="password"
+            value={createForm.password}
+            onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
+            disabled={createLoading}
+            required
+          />
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={createLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createLoading}>
+              {createLoading ? 'Creating...' : 'Create Vendor'}
+            </Button>
+          </div>
+        </form>
       </Modal>
 
       {/* Vendor Detail Modal */}
