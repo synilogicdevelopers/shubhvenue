@@ -58,7 +58,6 @@ export const Leads = () => {
         type: 'convert',
         id: lead._id,
         name: lead.name || lead.customerId?.name,
-        amount: lead.totalAmount || 0,
       });
       setPaymentIdInput('');
       return;
@@ -151,7 +150,6 @@ export const Leads = () => {
                   <TableHead className="min-w-[150px]">Venue</TableHead>
                   <TableHead className="min-w-[140px] max-w-[160px]">Date</TableHead>
                   <TableHead className="w-20 text-center">Guests</TableHead>
-                  <TableHead className="min-w-[100px] text-right">Amount</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
                   <TableHead className="min-w-[90px]">Source</TableHead>
                   <TableHead className="min-w-[120px]">Actions</TableHead>
@@ -215,7 +213,6 @@ export const Leads = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">{lead.guests || 0}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">₹{lead.totalAmount?.toLocaleString() || 0}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(lead.status)}>
                         {lead.status}
@@ -277,7 +274,7 @@ export const Leads = () => {
       >
         <div className="space-y-4">
           <p className="text-gray-700 dark:text-gray-200">
-            Convert lead {confirmAction?.name ? `"${confirmAction.name}"` : ''} to booking? This will create a booking for ₹{(confirmAction?.amount || 0).toLocaleString()}.
+            Convert lead {confirmAction?.name ? `"${confirmAction.name}"` : ''} to booking?
           </p>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -378,10 +375,6 @@ export const Leads = () => {
               <div>
                 <label className="text-sm font-medium text-gray-500">Guests</label>
                 <p className="text-gray-900 dark:text-gray-100">{selectedLead.guests || 0}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Amount</label>
-                <p className="text-gray-900 dark:text-gray-100">₹{selectedLead.totalAmount?.toLocaleString() || 0}</p>
               </div>
               {selectedLead.marriageFor && (
                 <div>
