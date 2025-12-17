@@ -2160,7 +2160,7 @@ function VenueDetail() {
               {(venue.leadsButtonEnabled === true || venue.leadsButtonEnabled === undefined) && (
                 <button 
                   className="contact-btn"
-                  onClick={() => setShowContactModal(true)}
+                  onClick={() => navigate('/contact-venue', { state: { venue } })}
                   disabled={processingBooking}
                 >
                   {processingBooking ? 'Submitting...' : 'Contact Venue'}

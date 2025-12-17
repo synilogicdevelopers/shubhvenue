@@ -9,7 +9,7 @@ function HeroSection() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [videoUrl, setVideoUrl] = useState(null)
   const videoRef = useRef(null)
-  const [selectedCity, setSelectedCity] = useState('Kota')
+  const [selectedCity, setSelectedCity] = useState('')
   const [selectedOccasion, setSelectedOccasion] = useState('')
   const [cities, setCities] = useState([])
   const [categories, setCategories] = useState([])
@@ -28,12 +28,6 @@ function HeroSection() {
       const response = await publicVenuesAPI.getCities('Rajasthan')
       if (response.data?.success && response.data?.cities) {
         setCities(response.data.cities)
-        // Set default to Kota if available
-        if (response.data.cities.includes('Kota')) {
-          setSelectedCity('Kota')
-        } else if (response.data.cities.length > 0) {
-          setSelectedCity(response.data.cities[0])
-        }
       }
     } catch (error) {
       console.error('Error loading cities:', error)
@@ -204,17 +198,13 @@ function HeroSection() {
             onChange={(e) => setSelectedCity(e.target.value)}
             disabled={loadingCities}
           >
+            <option value="">Select City</option>
             {loadingCities ? (
               <option>Loading cities...</option>
-            ) : cities.length > 0 ? (
+            ) : (
               cities.map(city => (
                 <option key={city} value={city}>{city}</option>
               ))
-            ) : (
-              <>
-                <option value="Kota">Kota</option>
-                <option>Select City</option>
-              </>
             )}
           </select>
           <select 

@@ -12,6 +12,7 @@ import Venue from './pages/customer/Venue'
 import Profile from './pages/customer/Profile'
 import Booking from './pages/customer/Booking'
 import BookingHistory from './pages/customer/BookingHistory'
+import ContactVenue from './pages/customer/ContactVenue'
 import AboutUs from './pages/customer/AboutUs'
 import HowItWorks from './pages/customer/HowItWorks'
 import Blog from './pages/customer/Blog'
@@ -123,6 +124,7 @@ function CustomerRoutes() {
           <Route path="/venues" element={<Venue />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/booking" element={<Booking />} />
+          <Route path="/contact-venue" element={<ContactVenue />} />
           <Route path="/booking-history" element={<BookingHistory />} />
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/how-it-works" element={<HowItWorks />} />

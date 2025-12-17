@@ -82,6 +82,7 @@ export const vendorsAPI = {
   update: (id, data) => api.put(`/admin/vendors/${id}`, data),
   approve: (id) => api.put(`/admin/vendors/${id}/approve`),
   reject: (id) => api.put(`/admin/vendors/${id}/reject`),
+  delete: (id) => api.delete(`/admin/vendors/${id}`),
 };
 
 // Venues APIs

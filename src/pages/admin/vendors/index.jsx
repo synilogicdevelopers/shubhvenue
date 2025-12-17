@@ -6,13 +6,16 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { vendorsAPI } from '../../../services/admin/api';
 import toast from 'react-hot-toast';
-import { Check, X, Eye } from 'lucide-react';
+import { Check, X, Eye, Trash2 } from 'lucide-react';
 
 export const Vendors = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [vendorDetail, setVendorDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -67,6 +70,41 @@ export const Vendors = () => {
     }
   };
 
+  const handleDelete = async (id, skipConfirm = false) => {
+    if (!skipConfirm) {
+      const vendor = vendors.find((v) => v._id === id);
+      setConfirmAction({ id, name: vendor?.name, type: 'delete' });
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const response = await vendorsAPI.delete(id);
+      toast.success(response.data?.message || 'Vendor deleted successfully');
+      fetchVendors();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete vendor');
+    } finally {
+      setActionLoading(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const handleViewVendor = async (id) => {
+    setSelectedVendor(id);
+    setLoadingDetail(true);
+    try {
+      const response = await vendorsAPI.getById(id);
+      // Handle different response formats
+      const vendorData = response.data?.vendor || response.data?.data || response.data;
+      setVendorDetail(vendorData);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load vendor details');
+      setSelectedVendor(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -118,7 +156,7 @@ export const Vendors = () => {
                     <TableCell>₹{vendor.totalRevenue || 0}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleViewVendor(vendor._id)} title="View Details">
                           <Eye className="w-4 h-4" />
                         </Button>
                         {vendor.status !== 'approved' && (
@@ -131,6 +169,9 @@ export const Vendors = () => {
                             <X className="w-4 h-4 text-red-500" />
                           </Button>
                         )}
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(vendor._id)}>
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -147,14 +188,16 @@ export const Vendors = () => {
         onClose={() => {
           if (!actionLoading) setConfirmAction(null);
         }}
-        title={confirmAction?.type === 'approve' ? 'Approve Vendor' : 'Reject Vendor'}
+        title={confirmAction?.type === 'approve' ? 'Approve Vendor' : confirmAction?.type === 'reject' ? 'Reject Vendor' : 'Delete Vendor'}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-gray-700 dark:text-gray-200">
             {confirmAction?.type === 'approve'
               ? `Approve ${confirmAction?.name || 'this vendor'}?`
-              : `Reject ${confirmAction?.name || 'this vendor'}?`}
+              : confirmAction?.type === 'reject'
+              ? `Reject ${confirmAction?.name || 'this vendor'}? This will also reject all their venues.`
+              : `Delete ${confirmAction?.name || 'this vendor'}? This action cannot be undone. All their venues will be rejected.`}
           </p>
           <div className="flex justify-end gap-3">
             <Button
@@ -166,17 +209,189 @@ export const Vendors = () => {
             </Button>
             <Button
               variant={confirmAction?.type === 'approve' ? 'secondary' : 'danger'}
-              onClick={() =>
-                confirmAction?.type === 'approve'
-                  ? handleApprove(confirmAction.id, true)
-                  : handleReject(confirmAction.id, true)
-              }
+              onClick={() => {
+                if (confirmAction?.type === 'approve') {
+                  handleApprove(confirmAction.id, true)
+                } else if (confirmAction?.type === 'reject') {
+                  handleReject(confirmAction.id, true)
+                } else if (confirmAction?.type === 'delete') {
+                  handleDelete(confirmAction.id, true)
+                }
+              }}
               disabled={actionLoading}
             >
-              {actionLoading ? 'Please wait...' : confirmAction?.type === 'approve' ? 'Approve' : 'Reject'}
+              {actionLoading ? 'Please wait...' : confirmAction?.type === 'approve' ? 'Approve' : confirmAction?.type === 'reject' ? 'Reject' : 'Delete'}
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Vendor Detail Modal */}
+      <Modal
+        isOpen={!!selectedVendor}
+        onClose={() => {
+          setSelectedVendor(null);
+          setVendorDetail(null);
+        }}
+        title="Vendor Details"
+        size="lg"
+      >
+        {loadingDetail ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : vendorDetail ? (
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Name</label>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">{vendorDetail.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Email</label>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">{vendorDetail.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Phone</label>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">{vendorDetail.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</label>
+                  <div className="mt-1">
+                    <Badge variant={vendorDetail.vendorStatus === 'approved' ? 'success' : vendorDetail.vendorStatus === 'pending' ? 'warning' : 'danger'}>
+                      {vendorDetail.vendorStatus || vendorDetail.status || 'pending'}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Role</label>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">{vendorDetail.role || 'vendor'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Verified</label>
+                  <p className="text-gray-900 dark:text-gray-100 mt-1">{vendorDetail.verified ? 'Yes' : 'No'}</p>
+                </div>
+                {vendorDetail.createdAt && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created At</label>
+                    <p className="text-gray-900 dark:text-gray-100 mt-1">
+                      {new Date(vendorDetail.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+                {vendorDetail.updatedAt && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Updated</label>
+                    <p className="text-gray-900 dark:text-gray-100 mt-1">
+                      {new Date(vendorDetail.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Revenue & Venues Information */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Revenue</h3>
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    ₹{vendorDetail.totalRevenue || 0}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Total Revenue</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Venues</h3>
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {vendorDetail.venueCount || (Array.isArray(vendorDetail.venues) ? vendorDetail.venues.length : 0)}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Total Venues</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Venue Status Breakdown */}
+            {vendorDetail.venueStatusCounts && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Venue Status Breakdown</h3>
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {vendorDetail.venueStatusCounts.pending || 0}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending</p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {vendorDetail.venueStatusCounts.approved || 0}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Approved</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {vendorDetail.venueStatusCounts.rejected || 0}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Rejected</p>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {vendorDetail.venueStatusCounts.active || 0}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Active</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Venues List */}
+            {vendorDetail.venues && Array.isArray(vendorDetail.venues) && vendorDetail.venues.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Venues List</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {vendorDetail.venues.map((venue) => (
+                    <div key={venue._id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{venue.name}</p>
+                          {venue.location && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {typeof venue.location === 'string' 
+                                ? venue.location 
+                                : `${venue.location.city || ''}${venue.location.state ? `, ${venue.location.state}` : ''}`}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant={venue.status === 'approved' ? 'success' : venue.status === 'pending' ? 'warning' : 'danger'}>
+                          {venue.status}
+                        </Badge>
+                      </div>
+                      {venue.price && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">₹{venue.price}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Raw Data (for debugging) */}
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+                View Raw Data
+              </summary>
+              <pre className="mt-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg overflow-auto text-xs">
+                {JSON.stringify(vendorDetail, null, 2)}
+              </pre>
+            </details>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">No vendor details available</div>
+        )}
       </Modal>
     </div>
   );

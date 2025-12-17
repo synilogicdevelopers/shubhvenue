@@ -340,7 +340,8 @@ export const blockUser = async (req, res) => {
 // Get All Vendors
 export const getVendors = async (req, res) => {
   try {
-    const vendors = await User.find({ role: 'vendor' })
+    // Get all vendors (exclude deleted ones - they are hard deleted now)
+    const vendors = await User.find({ role: 'vendor', isDeleted: { $ne: true } })
       .select('-password')
       .sort({ createdAt: -1 });
 
@@ -366,6 +367,65 @@ export const getVendors = async (req, res) => {
   }
 };
 
+// Get Vendor By ID
+export const getVendorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const vendor = await User.findById(id)
+      .select('-password');
+    
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    
+    if (vendor.role !== 'vendor') {
+      return res.status(400).json({ message: 'User is not a vendor' });
+    }
+    
+    // Get all venues for this vendor
+    const venues = await Venue.find({ vendorId: vendor._id });
+    const venueIds = venues.map(v => v._id);
+    
+    // Get all bookings for these venues
+    const bookings = await Booking.find({ venueId: { $in: venueIds } });
+    const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    
+    // Get venue status counts
+    const venueStatusCounts = {
+      pending: venues.filter(v => v.status === 'pending').length,
+      approved: venues.filter(v => v.status === 'approved').length,
+      rejected: venues.filter(v => v.status === 'rejected').length,
+      active: venues.filter(v => v.status === 'active').length,
+    };
+    
+    res.json({
+      success: true,
+      vendor: {
+        ...vendor.toObject(),
+        totalRevenue,
+        venueCount: venues.length,
+        venues: venues.map(v => ({
+          _id: v._id,
+          name: v.name,
+          status: v.status,
+          location: v.location,
+          price: v.price,
+          createdAt: v.createdAt
+        })),
+        venueStatusCounts,
+        status: vendor.vendorStatus || 'pending',
+      }
+    });
+  } catch (error) {
+    console.error('Get vendor by ID error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid vendor ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // Approve Vendor
 export const approveVendor = async (req, res) => {
   try {
@@ -384,15 +444,22 @@ export const approveVendor = async (req, res) => {
     vendor.verified = true; // Also mark as verified
     await vendor.save();
     
+    // Approve all venues of this vendor
+    const updateResult = await Venue.updateMany(
+      { vendorId: vendor._id },
+      { status: 'approved' }
+    );
+    
     res.json({
       success: true,
-      message: 'Vendor approved successfully',
+      message: `Vendor approved successfully. ${updateResult.modifiedCount} venue(s) have been approved.`,
       vendor: {
         _id: vendor._id,
         name: vendor.name,
         email: vendor.email,
         vendorStatus: vendor.vendorStatus
-      }
+      },
+      venuesApproved: updateResult.modifiedCount
     });
   } catch (error) {
     console.error('Approve vendor error:', error);
@@ -420,9 +487,15 @@ export const rejectVendor = async (req, res) => {
     vendor.vendorStatus = 'rejected';
     await vendor.save();
     
+    // Reject all venues of this vendor
+    await Venue.updateMany(
+      { vendorId: vendor._id },
+      { status: 'rejected' }
+    );
+    
     res.json({
       success: true,
-      message: 'Vendor rejected successfully',
+      message: 'Vendor rejected successfully. All venues have been rejected.',
       vendor: {
         _id: vendor._id,
         name: vendor.name,
@@ -432,6 +505,50 @@ export const rejectVendor = async (req, res) => {
     });
   } catch (error) {
     console.error('Reject vendor error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid vendor ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete Vendor
+export const deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const vendor = await User.findById(id);
+    
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+    
+    if (vendor.role !== 'vendor') {
+      return res.status(400).json({ message: 'User is not a vendor' });
+    }
+    
+    // Store vendor info before deletion
+    const vendorInfo = {
+      _id: vendor._id,
+      name: vendor.name,
+      email: vendor.email
+    };
+    
+    // Reject all venues of this vendor before deleting
+    await Venue.updateMany(
+      { vendorId: vendor._id },
+      { status: 'rejected' }
+    );
+    
+    // Hard delete: Completely remove vendor from database
+    await User.findByIdAndDelete(id);
+    
+    res.json({
+      success: true,
+      message: 'Vendor deleted successfully. All venues have been rejected.',
+      vendor: vendorInfo
+    });
+  } catch (error) {
+    console.error('Delete vendor error:', error);
     if (error.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid vendor ID' });
     }
