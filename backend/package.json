@@ -24,7 +24,8 @@
     "seed-faqs": "node src/scripts/seedFAQs.js",
     "seed-legal-pages": "node src/scripts/seedLegalPages.js",
     "create-menus": "node src/scripts/createMenus.js",
-    "test-bookings": "node test_booking_apis.js"
+    "test-bookings": "node test_booking_apis.js",
+    "test-vendor": "node test_vendor_delete_reject.js"
   },
   "engines": {
     "node": ">=18.0.0"

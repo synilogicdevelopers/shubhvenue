@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['customer', 'vendor', 'affiliate', 'admin'], default: 'customer' },
     verified: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false }, // Soft delete flag
     vendorStatus: { 
       type: String, 
       enum: ['pending', 'approved', 'rejected'], 

@@ -12,10 +12,10 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCity, setSelectedCity] = useState('Kota')
+  const [selectedCity, setSelectedCity] = useState('')
   const [states, setStates] = useState([])
   const [cities, setCities] = useState([])
-  const [selectedState, setSelectedState] = useState('Rajasthan')
+  const [selectedState, setSelectedState] = useState('')
   const [loadingStates, setLoadingStates] = useState(false)
   const [loadingCities, setLoadingCities] = useState(false)
   const [menus, setMenus] = useState([])
@@ -208,7 +208,14 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     }
   }, [showDropdown, activeMenuId])
 
-  // Load states on component mount and set default to Rajasthan/Kota
+  // Reset state and city on component mount to ensure clean initial state
+  useEffect(() => {
+    setSelectedState('')
+    setSelectedCity('')
+    setCities([])
+  }, [])
+
+  // Load states on component mount
   useEffect(() => {
     const loadStates = async () => {
       try {
@@ -216,21 +223,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
         const response = await publicVenuesAPI.getStates()
         if (response.data?.success && response.data?.states) {
           setStates(response.data.states)
-          // If Rajasthan is in the list, load its cities and set Kota as default
-          if (response.data.states.includes('Rajasthan')) {
-            setSelectedState('Rajasthan')
-            try {
-              const citiesResponse = await publicVenuesAPI.getCities('Rajasthan')
-              if (citiesResponse.data?.success && citiesResponse.data?.cities) {
-                setCities(citiesResponse.data.cities)
-                if (citiesResponse.data.cities.includes('Kota')) {
-                  setSelectedCity('Kota')
-                }
-              }
-            } catch (cityError) {
-              console.error('Error loading cities for Rajasthan:', cityError)
-            }
-          }
         }
       } catch (error) {
         console.error('Error loading states:', error)
@@ -247,6 +239,7 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
       if (!selectedState || !selectedState.trim()) {
         setCities([])
         setSelectedCity('')
+        setLoadingCities(false)
         return
       }
       try {
@@ -254,13 +247,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
         const response = await publicVenuesAPI.getCities(selectedState)
         if (response.data?.success && response.data?.cities) {
           setCities(response.data.cities)
-          // Set default city to Kota if Rajasthan is selected and Kota is available
-          if (selectedState === 'Rajasthan' && response.data.cities.includes('Kota')) {
-            setSelectedCity('Kota')
-          } else if (!response.data.cities.includes(selectedCity)) {
-            // If current selected city is not in the list, reset it
-            setSelectedCity('')
-          }
+          // Always reset city when state changes
+          setSelectedCity('')
         } else {
           setCities([])
           setSelectedCity('')
@@ -432,8 +420,11 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             <form className="global-search" onSubmit={handleSearch}>
               <select 
                 className="state-dropdown"
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
+                value={selectedState || ''}
+                onChange={(e) => {
+                  setSelectedState(e.target.value)
+                  setSelectedCity('') // Reset city when state changes
+                }}
               >
                 <option value="">Select State</option>
                 {loadingStates ? (
@@ -448,9 +439,9 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               </select>
               <select 
                 className="city-dropdown"
-                value={selectedCity}
+                value={selectedCity || ''}
                 onChange={(e) => setSelectedCity(e.target.value)}
-                disabled={!selectedState || loadingCities}
+                disabled={!selectedState || !selectedState.trim() || loadingCities}
               >
                 <option value="">Select City</option>
                 {loadingCities ? (
@@ -648,8 +639,11 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             <div className="mobile-search-row">
               <select 
                 className="state-dropdown"
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
+                value={selectedState || ''}
+                onChange={(e) => {
+                  setSelectedState(e.target.value)
+                  setSelectedCity('') // Reset city when state changes
+                }}
               >
                 <option value="">Select State</option>
                 {loadingStates ? (
@@ -664,9 +658,9 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               </select>
               <select 
                 className="city-dropdown"
-                value={selectedCity}
+                value={selectedCity || ''}
                 onChange={(e) => setSelectedCity(e.target.value)}
-                disabled={!selectedState || loadingCities}
+                disabled={!selectedState || !selectedState.trim() || loadingCities}
               >
                 <option value="">Select City</option>
                 {loadingCities ? (
@@ -785,8 +779,11 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
           <div className="sidebar-search">
             <select 
               className="state-dropdown"
-              value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value)}
+              value={selectedState || ''}
+              onChange={(e) => {
+                setSelectedState(e.target.value)
+                setSelectedCity('') // Reset city when state changes
+              }}
             >
               <option value="">Select State</option>
               {loadingStates ? (
@@ -801,9 +798,9 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             </select>
             <select 
               className="city-dropdown"
-              value={selectedCity}
+              value={selectedCity || ''}
               onChange={(e) => setSelectedCity(e.target.value)}
-              disabled={!selectedState || loadingCities}
+              disabled={!selectedState || !selectedState.trim() || loadingCities}
             >
               <option value="">Select City</option>
               {loadingCities ? (

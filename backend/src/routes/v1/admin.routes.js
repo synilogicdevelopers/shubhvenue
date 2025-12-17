@@ -8,8 +8,10 @@ import {
   deleteUser,
   blockUser,
   getVendors,
+  getVendorById,
   approveVendor,
   rejectVendor,
+  deleteVendor,
   getVenues,
   approveVenue,
   rejectVenue,
@@ -83,8 +85,10 @@ router.get('/users/:id', getUserById);
 router.delete('/users/:id', deleteUser);
 router.put('/users/:id/block', blockUser);
 router.get('/vendors', getVendors);
+router.get('/vendors/:id', getVendorById);
 router.put('/vendors/:id/approve', approveVendor);
 router.put('/vendors/:id/reject', rejectVendor);
+router.delete('/vendors/:id', deleteVendor);
 router.get('/venues', getVenues);
 router.put('/venues/approve/:id', approveVenue);
 router.put('/venues/reject/:id', rejectVenue);

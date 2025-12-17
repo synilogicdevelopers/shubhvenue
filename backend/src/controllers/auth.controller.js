@@ -138,6 +138,18 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check if vendor is deleted (for backward compatibility with soft-deleted accounts)
+    if (user.isDeleted) {
+      console.log(`Login attempt failed: Vendor account deleted for email: ${normalizedEmail}`);
+      return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+    }
+
+    // Check if vendor is rejected
+    if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
+      console.log(`Login attempt failed: Vendor account rejected for email: ${normalizedEmail}`);
+      return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -197,6 +209,16 @@ export const getProfile = async (req, res) => {
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if vendor is deleted (for backward compatibility with soft-deleted accounts)
+    if (user.isDeleted) {
+      return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+    }
+
+    // Check if vendor is rejected
+    if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
+      return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
     }
 
     res.json({
@@ -605,6 +627,18 @@ export const googleLogin = async (req, res) => {
         await user.save();
       }
       isNewUser = false; // Existing user
+    }
+
+    // Check if vendor is deleted (for backward compatibility with soft-deleted accounts)
+    if (user.isDeleted) {
+      console.log(`Google login attempt failed: Vendor account deleted for email: ${user.email}`);
+      return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+    }
+
+    // Check if vendor is rejected
+    if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
+      console.log(`Google login attempt failed: Vendor account rejected for email: ${user.email}`);
+      return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
     }
 
     // Generate JWT token
