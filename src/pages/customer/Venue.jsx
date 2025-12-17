@@ -830,24 +830,28 @@ const Venue = () => {
           </div>
         ) : allVenues.length === 0 ? (
           <div className="no-results">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <h3>No venues available</h3>
-            <p>Please check back later or contact support</p>
+            <div className="no-results-content">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <h3>No venues available</h3>
+              <p>Please check back later or contact support</p>
+            </div>
           </div>
         ) : (
           <div className="no-results">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <h3>No venues found</h3>
-            <p>Try adjusting your filters or search query</p>
-            <button className="clear-filters-btn" onClick={clearFilters}>
-              Clear All Filters
-            </button>
+            <div className="no-results-content">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <h3>No venues found</h3>
+              <p>Try adjusting your filters or search query</p>
+              <button className="clear-filters-btn" onClick={clearFilters}>
+                Clear All Filters
+              </button>
+            </div>
           </div>
         )}
       </div>
