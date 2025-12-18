@@ -110,6 +110,8 @@ export const venuesAPI = {
   approve: (id) => api.put(`/admin/venues/approve/${id}`),
   reject: (id) => api.put(`/admin/venues/reject/${id}`),
   updateButtonSettings: (id, data) => api.put(`/admin/venues/${id}/button-settings`, data),
+  getStates: () => api.get('/vendor/venues/states'),
+  getCities: (state) => api.get('/vendor/venues/cities', { params: { state } }),
 };
 
 // Bookings APIs
