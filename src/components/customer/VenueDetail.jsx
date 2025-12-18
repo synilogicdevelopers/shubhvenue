@@ -7,7 +7,7 @@ import SEO from '../SEO'
 import { createSlug } from '../../utils/customer/slug'
 import './VenueDetail.css'
 
-function VenueDetail() {
+    function VenueDetail() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const [venue, setVenue] = useState(null)
