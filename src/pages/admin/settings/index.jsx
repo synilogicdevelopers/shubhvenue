@@ -140,19 +140,7 @@ const handleConfirmAction = async () => {
     
     // Validation
     if (!paymentConfig.razorpayKeyId || !paymentConfig.razorpayKeySecret) {
-      toast.error('Both Razorpay Key ID and Key Secret are required');
-      return;
-    }
-    
-    // Validate Key ID format
-    if (!paymentConfig.razorpayKeyId.trim().startsWith('rzp_')) {
-      toast.error('Invalid Razorpay Key ID format. Key ID should start with "rzp_"');
-      return;
-    }
-    
-    // Validate Key Secret length
-    if (paymentConfig.razorpayKeySecret.trim().length < 20) {
-      toast.error('Invalid Razorpay Key Secret. Secret key seems too short.');
+    toast.error('Project Code and Secret are required');
       return;
     }
     
