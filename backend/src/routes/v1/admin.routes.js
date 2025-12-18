@@ -7,11 +7,16 @@ import {
   getUserById,
   deleteUser,
   blockUser,
+  createVendorByAdmin,
   getVendors,
   getVendorById,
   approveVendor,
   rejectVendor,
   deleteVendor,
+  createVenueByAdmin,
+  getVenueByIdAdmin,
+  updateVenueByAdmin,
+  deleteVenueByAdmin,
   getVenues,
   approveVenue,
   rejectVenue,
@@ -68,7 +73,7 @@ import {
   deleteContact,
 } from '../../controllers/admin.controller.js';
 import Payout from '../../models/Payout.js';
-import { uploadBannerImage, uploadVideo, handleUploadError } from '../../middlewares/upload.js';
+import { uploadBannerImage, uploadVideo, uploadVenueMedia, handleUploadError } from '../../middlewares/upload.js';
 
 const router = Router();
 
@@ -85,14 +90,19 @@ router.get('/users/:id', getUserById);
 router.delete('/users/:id', deleteUser);
 router.put('/users/:id/block', blockUser);
 router.get('/vendors', getVendors);
+router.post('/vendors', createVendorByAdmin);
 router.get('/vendors/:id', getVendorById);
 router.put('/vendors/:id/approve', approveVendor);
 router.put('/vendors/:id/reject', rejectVendor);
 router.delete('/vendors/:id', deleteVendor);
 router.get('/venues', getVenues);
+router.post('/venues', uploadVenueMedia, handleUploadError, createVenueByAdmin);
 router.put('/venues/approve/:id', approveVenue);
 router.put('/venues/reject/:id', rejectVenue);
 router.put('/venues/:id/button-settings', updateVenueButtonSettings);
+router.get('/venues/:id', getVenueByIdAdmin);
+router.put('/venues/:id', uploadVenueMedia, handleUploadError, updateVenueByAdmin);
+router.delete('/venues/:id', deleteVenueByAdmin);
 router.get('/bookings', getBookings);
 router.put('/bookings/:id/status', updateBookingStatus);
 router.put('/bookings/:id/approve', approveBooking);

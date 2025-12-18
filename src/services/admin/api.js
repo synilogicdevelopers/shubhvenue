@@ -78,6 +78,7 @@ export const usersAPI = {
 // Vendors APIs
 export const vendorsAPI = {
   getAll: (params) => api.get('/admin/vendors', { params }),
+  create: (data) => api.post('/admin/vendors', data),
   getById: (id) => api.get(`/admin/vendors/${id}`),
   update: (id, data) => api.put(`/admin/vendors/${id}`, data),
   approve: (id) => api.put(`/admin/vendors/${id}/approve`),
@@ -88,10 +89,29 @@ export const vendorsAPI = {
 // Venues APIs
 export const venuesAPI = {
   getAll: (params) => api.get('/admin/venues', { params }),
+  create: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/admin/venues', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/admin/venues', data);
+  },
   getById: (id) => api.get(`/admin/venues/${id}`),
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.put(`/admin/venues/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/admin/venues/${id}`, data);
+  },
+  delete: (id) => api.delete(`/admin/venues/${id}`),
   approve: (id) => api.put(`/admin/venues/approve/${id}`),
   reject: (id) => api.put(`/admin/venues/reject/${id}`),
   updateButtonSettings: (id, data) => api.put(`/admin/venues/${id}/button-settings`, data),
+  getStates: () => api.get('/vendor/venues/states'),
+  getCities: (state) => api.get('/vendor/venues/cities', { params: { state } }),
 };
 
 // Bookings APIs

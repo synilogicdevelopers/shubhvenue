@@ -34,6 +34,14 @@ const deleteGalleryFiles = (galleryPaths) => {
   galleryPaths.forEach(path => deleteImageFile(path));
 };
 
+// Helper: normalize venue.gallery into an array of photo paths (legacy compat)
+const normalizeGalleryPhotos = (gallery) => {
+  if (!gallery) return [];
+  if (Array.isArray(gallery)) return gallery;
+  if (typeof gallery === 'object' && Array.isArray(gallery.photos)) return gallery.photos;
+  return [];
+};
+
 // Helper function to validate image URL
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -1626,46 +1634,47 @@ export const updateVenue = async (req, res) => {
     }
 
     // Handle gallery updates
-    if (req.files && req.files.gallery && req.files.gallery.length > 0) {
-      const newGalleryPaths = req.files.gallery.map(file => `/uploads/venues/${file.filename}`);
-      
-      if (req.body.replaceGallery === 'true') {
-        // Replace entire gallery - delete old files
-        if (venue.gallery && venue.gallery.length > 0) {
-          deleteGalleryFiles(venue.gallery);
-        }
-        venue.gallery = newGalleryPaths;
-      } else {
-        // Merge with existing gallery
-        venue.gallery = [...(venue.gallery || []), ...newGalleryPaths];
+    const existingGalleryPhotos = normalizeGalleryPhotos(venue.gallery);
+    const uploadedGalleryPaths =
+      (req.files && req.files.gallery && req.files.gallery.length > 0)
+        ? req.files.gallery.map(file => `/uploads/venues/${file.filename}`)
+        : [];
+
+    // Support gallery update via body (URLs or local /uploads paths)
+    // NOTE: Frontend vendor editor sends existing gallery URLs in body while editing.
+    // We must NOT delete files that are still referenced in the new gallery list.
+    if (req.body.gallery !== undefined) {
+      const bodyGalleryRaw = Array.isArray(req.body.gallery)
+        ? req.body.gallery
+        : (typeof req.body.gallery === 'string' && req.body.gallery.trim()
+            ? [req.body.gallery]
+            : []);
+
+      const validatedBodyUrls = validateAndProcessGalleryUrls(bodyGalleryRaw);
+      const nextGallery = [...validatedBodyUrls, ...uploadedGalleryPaths];
+
+      // Delete only removed local files (diff-based), not everything.
+      const toDelete = existingGalleryPhotos
+        .filter(p => typeof p === 'string' && p.startsWith('/uploads/venues/'))
+        .filter(p => !nextGallery.includes(p));
+      if (toDelete.length > 0) {
+        deleteGalleryFiles(toDelete);
       }
-    }
-    // Support gallery update via body (network URLs)
-    else if (req.body.gallery !== undefined) {
-      if (Array.isArray(req.body.gallery)) {
-        // Validate and process network image URLs
-        const validatedUrls = validateAndProcessGalleryUrls(req.body.gallery);
-        
-        // Replace gallery - delete old local files
-        if (venue.gallery && venue.gallery.length > 0) {
-          const oldLocalFiles = venue.gallery.filter(p => !p.includes('http'));
-          deleteGalleryFiles(oldLocalFiles);
+
+      venue.gallery = nextGallery;
+    } else if (uploadedGalleryPaths.length > 0) {
+      if (req.body.replaceGallery === 'true') {
+        // Replace entire gallery - delete old local files (safe even if gallery had remote URLs)
+        const toDelete = existingGalleryPhotos
+          .filter(p => typeof p === 'string' && p.startsWith('/uploads/venues/'))
+          .filter(p => !uploadedGalleryPaths.includes(p));
+        if (toDelete.length > 0) {
+          deleteGalleryFiles(toDelete);
         }
-        venue.gallery = validatedUrls;
-      } else if (typeof req.body.gallery === 'string') {
-        // Single URL as string
-        const validatedUrl = validateAndProcessImageUrl(req.body.gallery);
-        if (validatedUrl) {
-          if (venue.gallery && venue.gallery.length > 0) {
-            const oldLocalFiles = venue.gallery.filter(p => !p.includes('http'));
-            deleteGalleryFiles(oldLocalFiles);
-          }
-          venue.gallery = [validatedUrl];
-        } else {
-          return res.status(400).json({ 
-            error: 'Invalid gallery image URL. Please provide valid image URLs (http/https).' 
-          });
-        }
+        venue.gallery = uploadedGalleryPaths;
+      } else {
+        // Merge with existing gallery (legacy behavior)
+        venue.gallery = [...existingGalleryPhotos, ...uploadedGalleryPaths];
       }
     }
 

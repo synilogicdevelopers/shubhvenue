@@ -27,6 +27,7 @@ function VenueDetail() {
   const [isSliderPaused, setIsSliderPaused] = useState(false)
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
   const [touchStartX, setTouchStartX] = useState(null)
+  const [videoDurations, setVideoDurations] = useState({}) // Store video durations by video ID
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     comment: ''
@@ -46,6 +47,25 @@ function VenueDetail() {
 
   const handleVideoClick = (video) => {
     setPlayingVideo(video)
+  }
+
+  // Helper function to format video duration
+  const formatDuration = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Handle video metadata loaded to extract duration
+  const handleVideoMetadataLoaded = (videoId, videoElement) => {
+    const duration = videoElement.duration
+    if (duration && !isNaN(duration)) {
+      setVideoDurations(prev => ({
+        ...prev,
+        [videoId]: formatDuration(duration)
+      }))
+    }
   }
 
   // Helper function to convert 24-hour time to 12-hour format with AM/PM
@@ -792,13 +812,17 @@ function VenueDetail() {
               // Get videos from multiple possible sources
               const videos = venueData.galleryInfo?.videos || venueData.gallery?.videos || venueData.videos || []
               if (Array.isArray(videos) && videos.length > 0) {
-                return videos.map((video, idx) => ({
-                  id: idx + 1,
-                  title: `Video ${idx + 1}`,
-                  thumbnail: getImageUrl(venueData.coverImage),
-                  videoUrl: getImageUrl(video),
-                  duration: '0:00'
-                }))
+                return videos.map((video, idx) => {
+                  // Use video URL as thumbnail - browser will show first frame
+                  const videoUrl = getImageUrl(video)
+                  return {
+                    id: idx + 1,
+                    title: `Video ${idx + 1}`,
+                    thumbnail: videoUrl, // Use video URL itself as thumbnail
+                    videoUrl: videoUrl,
+                    duration: '0:00' // Will be updated when video metadata loads
+                  }
+                })
               }
               return []
             })(),
@@ -2117,14 +2141,34 @@ function VenueDetail() {
                 {venue.videos?.map((video) => (
                   <div key={video.id} className="video-card" onClick={() => handleVideoClick(video)}>
                     <div className="video-thumbnail-wrapper">
-                      <img src={video.thumbnail} alt={video.title} />
+                      <video
+                        src={video.videoUrl}
+                        preload="metadata"
+                        muted
+                        playsInline
+                        className="video-thumbnail"
+                        onLoadedMetadata={(e) => {
+                          // Extract and store video duration
+                          handleVideoMetadataLoaded(video.id, e.target)
+                        }}
+                        onError={(e) => {
+                          // Fallback to placeholder if video fails to load
+                          e.target.style.display = 'none'
+                          const placeholder = document.createElement('div')
+                          placeholder.className = 'video-thumbnail-placeholder'
+                          placeholder.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+                          e.target.parentNode.appendChild(placeholder)
+                        }}
+                      />
                       <div className="video-play-overlay">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
                           <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.5)"></circle>
                           <polygon points="10 8 16 12 10 16" fill="white"></polygon>
                         </svg>
                       </div>
-                      <div className="video-duration">{video.duration}</div>
+                      <div className="video-duration">
+                        {videoDurations[video.id] || video.duration || '0:00'}
+                      </div>
                     </div>
                     <h3 className="video-title">{video.title}</h3>
                   </div>

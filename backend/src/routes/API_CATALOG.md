@@ -32,7 +32,12 @@
   - GET `/api/admin/dashboard`: KPIs overview.
   - GET `/api/admin/users`: Manage users.
   - GET `/api/admin/vendors`: Manage vendors.
+  - POST `/api/admin/vendors`: Create vendor (admin).
+  - GET `/api/admin/venues/:id`: Get venue detail (admin).
+  - PUT `/api/admin/venues/:id`: Update venue (admin).
+  - DELETE `/api/admin/venues/:id`: Delete venue (admin).
   - PUT `/api/admin/venues/approve/:id`: Approve/Reject venue.
+  - POST `/api/admin/venues`: Create venue (admin, assign to vendor via `vendorId`).
   - GET `/api/admin/payouts`: View payouts.
 
 - Payments (Razorpay)

@@ -173,12 +173,12 @@ const videoUpload = multer({
 export const uploadSingle = upload.single('image');
 
 // Middleware for multiple images upload
-export const uploadMultiple = upload.array('gallery', 10); // Max 10 images
+export const uploadMultiple = upload.array('gallery', 50); // Max 50 images
 
 // Middleware for both single image and gallery
 export const uploadVenueImages = upload.fields([
   { name: 'image', maxCount: 1 },
-  { name: 'gallery', maxCount: 10 }
+  { name: 'gallery', maxCount: 50 }
 ]);
 
 // Middleware for venue images and videos
@@ -226,7 +226,7 @@ export const uploadVenueMedia = multer({
   }
 }).fields([
   { name: 'image', maxCount: 1 },
-  { name: 'gallery', maxCount: 10 },
+  { name: 'gallery', maxCount: 50 },
   { name: 'videos', maxCount: 5 } // Max 5 videos
 ]);
 
@@ -249,7 +249,7 @@ export const handleUploadError = (err, req, res, next) => {
       return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Too many files. Maximum 10 gallery images allowed.' });
+      return res.status(400).json({ error: 'Too many files. Maximum 50 gallery images allowed.' });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       return res.status(400).json({ error: 'Unexpected file field.' });
