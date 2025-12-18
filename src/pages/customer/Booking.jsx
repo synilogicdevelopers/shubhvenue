@@ -51,7 +51,6 @@ function Booking() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
-  const [razorpayKey, setRazorpayKey] = useState(null)
 
   // Check authentication on mount
   useEffect(() => {
@@ -62,28 +61,8 @@ function Booking() {
     }
   }, [])
 
-  // Load Razorpay script and get payment config
-  useEffect(() => {
-    const loadRazorpay = async () => {
-      try {
-        // Load Razorpay script
-        const script = document.createElement('script')
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-        script.async = true
-        document.body.appendChild(script)
-
-        // Get payment config
-        const configResponse = await paymentAPI.getConfig()
-        if (configResponse.data?.success && configResponse.data?.razorpayKeyId) {
-          setRazorpayKey(configResponse.data.razorpayKeyId)
-        }
-      } catch (error) {
-        console.error('Error loading Razorpay:', error)
-      }
-    }
-
-    loadRazorpay()
-  }, [])
+  // No need to load Razorpay script in frontend anymore.
+  // Payments are handled via hosted checkout on payments.synilogic.in
 
   // Generate device ID for tracking
   const getDeviceId = () => {
@@ -273,20 +252,11 @@ function Booking() {
         }
       }
       
-      // If still 0, check priceDisplay
+      // If still 0, check priceDisplay (treat value as direct rupees, no Lakh conversion)
       if (venuePrice <= 0 && venue.priceDisplay) {
-        // Extract price from "16.00 Lakh" format
-        const priceStr = venue.priceDisplay.toString().replace(' Lakh', '').replace(/[^0-9.]/g, '')
+        const priceStr = venue.priceDisplay.toString().replace(/[^0-9.]/g, '')
         venuePrice = parseFloat(priceStr) || 0
-        console.log('✅ Using venue.priceDisplay:', venuePrice)
-      }
-      
-      // Only convert to rupees if priceDisplay explicitly mentions "Lakh"
-      // Don't auto-convert small numbers as they might already be in rupees
-      if (venuePrice > 0 && venuePrice < 1000 && venue.priceDisplay && venue.priceDisplay.toString().toLowerCase().includes('lakh')) {
-        const originalPrice = venuePrice
-        venuePrice = venuePrice * 100000 // Convert Lakh to rupees
-        console.log(`✅ Converted from Lakh: ${originalPrice} Lakh = ₹${venuePrice}`)
+        console.log('✅ Using venue.priceDisplay (treated as rupees):', venuePrice)
       }
       
       // If price is still 0, use default
@@ -343,7 +313,7 @@ function Booking() {
       
       console.log('📤 Sending Booking Data:', bookingData)
 
-      // Create payment order
+      // Create payment order via central payments microservice
       let orderResponse;
       try {
         orderResponse = await paymentAPI.createOrder({
@@ -380,83 +350,13 @@ function Booking() {
       if (orderResponse.data?.success && orderResponse.data?.order) {
         const order = orderResponse.data.order
 
-        // Initialize Razorpay
-        if (window.Razorpay && razorpayKey) {
-          const options = {
-            key: razorpayKey,
-            amount: order.amount,
-            currency: order.currency,
-            name: 'Wedding Venue Booking',
-            description: `Booking for ${venue.name}`,
-            order_id: order.id,
-            prefill: {
-              name: formData.fullName,
-              email: formData.email,
-              contact: formData.phone
-            },
-            handler: async function (response) {
-              try {
-                // Verify payment with booking data
-                const verifyResponse = await paymentAPI.verify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  bookingData: bookingData // Include booking data in verification
-                })
+        // Redirect to hosted checkout on microservice domain
+        const returnUrl = `${window.location.origin}/booking-history`
+        const checkoutUrl = `https://payments.synilogic.in/pay/${order.id}?return_url=${encodeURIComponent(returnUrl)}`
 
-                if (verifyResponse.data?.success) {
-                  toast.success('Payment successful! Booking confirmed.')
-                  setProcessingPayment(false)
-                  navigate('/booking-history')
-                } else {
-                  // Check if it's a date conflict error
-                  const errorMsg = verifyResponse.data?.error || verifyResponse.data?.message || 'Payment verification failed';
-                  if (errorMsg.includes('already booked') || 
-                      errorMsg.includes('not available') || 
-                      errorMsg.includes('blocked')) {
-                    toast.error(errorMsg + ' Please choose different dates.', { duration: 6000 });
-                  } else {
-                    toast.error(errorMsg);
-                  }
-                  setProcessingPayment(false);
-                }
-              } catch (error) {
-                console.error('Payment verification error:', error);
-                // Check if it's a date conflict error
-                const errorMsg = error.data?.error || error.data?.message || error.message || 'Payment verification failed';
-                if (errorMsg.includes('already booked') || 
-                    errorMsg.includes('not available') || 
-                    errorMsg.includes('blocked') ||
-                    error.status === 409) {
-                  toast.error(errorMsg + ' Please choose different dates.', { 
-                    duration: 6000,
-                    style: {
-                      background: '#ef4444',
-                      color: '#fff',
-                      fontSize: '16px',
-                      padding: '16px'
-                    }
-                  });
-                } else {
-                  toast.error(errorMsg);
-                }
-                setProcessingPayment(false);
-              }
-            },
-            modal: {
-              ondismiss: function() {
-                setProcessingPayment(false)
-                toast.error('Payment cancelled')
-              }
-            }
-          }
-
-          const razorpay = new window.Razorpay(options)
-          razorpay.open()
-        } else {
-          toast.error('Payment gateway not loaded. Please refresh the page.')
-          setProcessingPayment(false)
-        }
+        console.log('🔁 Redirecting to hosted checkout:', checkoutUrl)
+        window.location.href = checkoutUrl
+        return
       } else {
         const errorMessage = orderResponse.data?.error || orderResponse.data?.message || 'Failed to create payment order'
         if (errorMessage.includes('already booked') || 

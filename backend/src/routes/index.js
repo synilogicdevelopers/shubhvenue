@@ -18,6 +18,7 @@ import legalPageRoutes from './v1/legalPage.routes.js';
 import contactRoutes from './v1/contact.routes.js';
 import googleMapsRoutes from './v1/googlemaps.routes.js';
 import reviewRoutes from './v1/review.routes.js';
+import microserviceRoutes from './v1/microservice.routes.js';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/bookings', bookingRoutes);
 router.use('/affiliate', affiliateRoutes);
 router.use('/admin', adminRoutes);
 router.use('/payment', paymentRoutes);
+router.use('/microservice', microserviceRoutes);
 router.use('/ai', aiRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/menus', menuRoutes);
