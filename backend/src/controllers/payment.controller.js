@@ -1,57 +1,10 @@
-import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import PaymentConfig from '../models/PaymentConfig.js';
 import Booking from '../models/Booking.js';
 import Venue from '../models/Venue.js';
 import Lead from '../models/Lead.js';
-
-// Get Razorpay instance with config from database
-const getRazorpayInstance = async () => {
-  try {
-    const config = await PaymentConfig.getConfig();
-    
-    console.log('🔑 Getting Razorpay instance...');
-    console.log('   Config exists:', !!config);
-    console.log('   Key ID present:', !!config?.razorpayKeyId);
-    console.log('   Key Secret present:', !!config?.razorpayKeySecret);
-    console.log('   Key ID length:', config?.razorpayKeyId?.length || 0);
-    console.log('   Key Secret length:', config?.razorpayKeySecret?.length || 0);
-    console.log('   Key ID starts with rzp_:', config?.razorpayKeyId?.startsWith('rzp_'));
-    
-    // Check if keys are configured and not empty
-    if (!config.razorpayKeyId || !config.razorpayKeySecret || 
-        config.razorpayKeyId.trim() === '' || config.razorpayKeySecret.trim() === '' ||
-        config.razorpayKeyId === 'YOUR_RAZORPAY_KEY_ID' || config.razorpayKeySecret === 'YOUR_RAZORPAY_KEY_SECRET') {
-      console.error('❌ Razorpay keys not configured properly');
-      throw new Error('Razorpay keys not configured. Please configure in admin panel.');
-    }
-
-    // Validate key format (Razorpay key IDs start with 'rzp_' for live and 'rzp_test_' for test)
-    if (!config.razorpayKeyId.startsWith('rzp_')) {
-      console.error('❌ Invalid Razorpay Key ID format');
-      throw new Error('Invalid Razorpay Key ID format. Key ID should start with "rzp_"');
-    }
-
-    const razorpayInstance = new Razorpay({
-      key_id: config.razorpayKeyId.trim(),
-      key_secret: config.razorpayKeySecret.trim(),
-    });
-    
-    console.log('✅ Razorpay instance created successfully');
-    return razorpayInstance;
-  } catch (error) {
-    console.error('❌ Error getting Razorpay instance:', error);
-    console.error('Config check:', {
-      hasKeyId: !!config?.razorpayKeyId,
-      hasKeySecret: !!config?.razorpayKeySecret,
-      keyIdLength: config?.razorpayKeyId?.length || 0,
-      keySecretLength: config?.razorpayKeySecret?.length || 0,
-      keyIdPrefix: config?.razorpayKeyId?.substring(0, 10) || 'N/A'
-    });
-    throw error;
-  }
-};
+import { callMicroservice } from '../utils/microserviceClient.js';
 
 // Create Payment Order
 export const createPaymentOrder = async (req, res) => {
@@ -67,106 +20,103 @@ export const createPaymentOrder = async (req, res) => {
     if (bookingData && bookingData.venueId) {
       const Booking = (await import('../models/Booking.js')).default;
       const Venue = (await import('../models/Venue.js')).default;
-      
-      // Check if venue exists
-      const venue = await Venue.findById(bookingData.venueId);
-      if (!venue) {
-        return res.status(404).json({ error: 'Venue not found' });
-      }
+      const venueId = bookingData.venueId;
 
-      // Parse dates
-      const bookingDate = bookingData.date ? new Date(bookingData.date) : new Date(bookingData.dateFrom || bookingData.date);
-      const parsedDateFrom = bookingData.dateFrom ? new Date(bookingData.dateFrom) : null;
-      const parsedDateTo = bookingData.dateTo ? new Date(bookingData.dateTo) : null;
+      // If venueId is not a valid ObjectId (e.g. local demo uses numeric IDs like 1),
+      // skip the DB-based venue/availability checks to avoid CastError.
+      if (!mongoose.Types.ObjectId.isValid(String(venueId))) {
+        console.warn('⚠️ Skipping venue availability check due to non-ObjectId venueId:', venueId);
+      } else {
+        // Check if venue exists
+        const venue = await Venue.findById(venueId);
+        if (!venue) {
+          return res.status(404).json({ error: 'Venue not found' });
+        }
 
-      // Normalize dates
-      const startOfDay = new Date(bookingDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(bookingDate);
-      endOfDay.setHours(23, 59, 59, 999);
+        // Parse dates
+        const bookingDate = bookingData.date ? new Date(bookingData.date) : new Date(bookingData.dateFrom || bookingData.date);
+        const parsedDateFrom = bookingData.dateFrom ? new Date(bookingData.dateFrom) : null;
+        const parsedDateTo = bookingData.dateTo ? new Date(bookingData.dateTo) : null;
 
-      // Use dateFrom and dateTo if provided, otherwise use bookingDate
-      const checkStart = parsedDateFrom ? new Date(parsedDateFrom) : startOfDay;
-      checkStart.setHours(0, 0, 0, 0);
-      const checkEnd = parsedDateTo ? new Date(parsedDateTo) : endOfDay;
-      checkEnd.setHours(23, 59, 59, 999);
+        // Normalize dates
+        const startOfDay = new Date(bookingDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(bookingDate);
+        endOfDay.setHours(23, 59, 59, 999);
 
-      // Check for existing bookings - check ALL pending/confirmed bookings
-      const existingBooking = await Booking.findOne({
-        venueId: bookingData.venueId,
-        $or: [
-          // Single date booking - check if booking date falls within requested range
-          {
-            date: {
-              $gte: checkStart,
-              $lte: checkEnd
+        // Use dateFrom and dateTo if provided, otherwise use bookingDate
+        const checkStart = parsedDateFrom ? new Date(parsedDateFrom) : startOfDay;
+        checkStart.setHours(0, 0, 0, 0);
+        const checkEnd = parsedDateTo ? new Date(parsedDateTo) : endOfDay;
+        checkEnd.setHours(23, 59, 59, 999);
+
+        // Check for existing bookings - check ALL pending/confirmed bookings
+        const existingBooking = await Booking.findOne({
+          venueId: venueId,
+          $or: [
+            // Single date booking - check if booking date falls within requested range
+            {
+              date: {
+                $gte: checkStart,
+                $lte: checkEnd
+              }
+            },
+            // Date range booking - check if booking range overlaps with requested range
+            {
+              dateFrom: { $lte: checkEnd },
+              dateTo: { $gte: checkStart }
             }
-          },
-          // Date range booking - check if booking range overlaps with requested range
-          {
-            dateFrom: { $lte: checkEnd },
-            dateTo: { $gte: checkStart }
-          }
-        ],
-        status: { $in: ['pending', 'confirmed'] } // Check all pending and confirmed bookings
-      });
-
-      if (existingBooking) {
-        return res.status(409).json({ 
-          error: 'Venue is already booked for the selected dates. Please choose different dates.',
-          conflictingBooking: existingBooking._id
+          ],
+          status: { $in: ['pending', 'confirmed'] } // Check all pending and confirmed bookings
         });
-      }
 
-      // Check blocked dates
-      const bookingDateStr = bookingDate.toISOString().split('T')[0];
-      const blockedDates = (venue.blockedDates || []).map(d => 
-        new Date(d).toISOString().split('T')[0]
-      );
-      
-      if (blockedDates.includes(bookingDateStr)) {
-        return res.status(409).json({ 
-          error: 'This date is blocked and not available for booking',
-          blockedDate: bookingDateStr
-        });
-      }
-
-      // Check if date range overlaps with blocked dates
-      if (parsedDateFrom && parsedDateTo) {
-        const dateFromStr = parsedDateFrom.toISOString().split('T')[0];
-        const dateToStr = parsedDateTo.toISOString().split('T')[0];
-        
-        const hasBlockedDate = blockedDates.some(blockedDate => {
-          return blockedDate >= dateFromStr && blockedDate <= dateToStr;
-        });
-        
-        if (hasBlockedDate) {
+        if (existingBooking) {
           return res.status(409).json({ 
-            error: 'Some dates in the selected range are blocked and not available for booking',
-            dateFrom: dateFromStr,
-            dateTo: dateToStr
+            error: 'Venue is already booked for the selected dates. Please choose different dates.',
+            conflictingBooking: existingBooking._id
           });
+        }
+
+        // Check blocked dates
+        const bookingDateStr = bookingDate.toISOString().split('T')[0];
+        const blockedDates = (venue.blockedDates || []).map(d => 
+          new Date(d).toISOString().split('T')[0]
+        );
+        
+        if (blockedDates.includes(bookingDateStr)) {
+          return res.status(409).json({ 
+            error: 'This date is blocked and not available for booking',
+            blockedDate: bookingDateStr
+          });
+        }
+
+        // Check if date range overlaps with blocked dates
+        if (parsedDateFrom && parsedDateTo) {
+          const dateFromStr = parsedDateFrom.toISOString().split('T')[0];
+          const dateToStr = parsedDateTo.toISOString().split('T')[0];
+          
+          const hasBlockedDate = blockedDates.some(blockedDate => {
+            return blockedDate >= dateFromStr && blockedDate <= dateToStr;
+          });
+          
+          if (hasBlockedDate) {
+            return res.status(409).json({ 
+              error: 'Some dates in the selected range are blocked and not available for booking',
+              dateFrom: dateFromStr,
+              dateTo: dateToStr
+            });
+          }
         }
       }
     }
 
-    // Razorpay amount limits (in paise)
-    // Test mode: Max ₹1,00,000 (10,000,000 paise)
-    // Live mode: Max ₹10,00,000 (100,000,000 paise) - can be higher based on account
-    const MAX_AMOUNT_PAISE = 100000000; // ₹10,00,000 (100 million paise)
+    // Minimum amount (in paise)
     const MIN_AMOUNT_PAISE = 100; // ₹1 (minimum 1 rupee)
 
     if (amount < MIN_AMOUNT_PAISE) {
       return res.status(400).json({ 
         error: 'Amount too low',
         message: `Minimum amount is ₹${MIN_AMOUNT_PAISE / 100}. You entered ₹${amount / 100}`
-      });
-    }
-
-    if (amount > MAX_AMOUNT_PAISE) {
-      return res.status(400).json({ 
-        error: 'Amount exceeds maximum limit',
-        message: `Maximum amount allowed is ₹${MAX_AMOUNT_PAISE / 100}. Your amount is ₹${amount / 100}. Please contact support for larger payments.`
       });
     }
 
@@ -183,124 +133,61 @@ export const createPaymentOrder = async (req, res) => {
       }
     }
 
-    // Get Razorpay instance
-    console.log('📦 Creating payment order...');
-    console.log('   Amount:', amount, 'paise');
+    // At this point, dates are valid and available.
+    // Instead of creating a Razorpay order directly, delegate to the
+    // central payments microservice.
+
+    console.log('📦 Creating microservice payment order...');
+    console.log('   Amount (paise):', amount);
     console.log('   Currency:', currency);
     console.log('   Booking ID:', bookingId);
     
-    const razorpay = await getRazorpayInstance();
-
-    // Create order
-    const options = {
-      amount: amount, // Amount in paise
-      currency: currency,
-      receipt: `booking_${bookingId || Date.now()}`,
-      notes: {
-        bookingId: bookingId || 'pending',
-      },
+    // Build customer + notes payload for microservice
+    const customer = {
+      name: bookingData?.name || bookingData?.fullName || 'Guest User',
+      email: bookingData?.email || 'no-email@example.com',
+      contact: bookingData?.phone || '',
     };
 
-    console.log('📤 Calling Razorpay API to create order...');
-    console.log('   Order options:', {
-      amount: options.amount,
-      currency: options.currency,
-      receipt: options.receipt
-    });
-    
-    try {
-      const order = await razorpay.orders.create(options);
-      console.log('✅ Razorpay order created successfully:', order.id);
+    const notes = {
+      source: 'Shubhvenue',
+      venue_id: bookingData?.venueId || null,
+      booking_id: bookingId || null,
+      booking_data: bookingData || null,
+    };
 
-      res.json({
-        success: true,
-        order: {
-          id: order.id,
-          amount: order.amount,
-          currency: order.currency,
-          receipt: order.receipt,
-          status: order.status,
-        },
+    const payload = {
+      amount: Math.round(Number(amount)), // already in paise
+      currency,
+      customer,
+      notes,
+    };
+
+    const microserviceResponse = await callMicroservice('/api/payment/order', 'POST', payload);
+    const orderData = microserviceResponse?.data || {};
+
+    if (!orderData.order_id || !orderData.key_id) {
+      return res.status(500).json({
+        error: 'Payment configuration error',
+        message: 'Microservice did not return a valid order. Please contact support.',
       });
-    } catch (razorpayError) {
-      console.error('❌ Razorpay API call failed:', razorpayError);
-      throw razorpayError; // Re-throw to be caught by outer catch block
     }
+    
+    // Return order in the same shape the frontend expects
+    return res.json({
+      success: true,
+      order: {
+        id: orderData.order_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+      },
+      });
   } catch (error) {
-    console.error('Create payment order error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      response: error.response?.data || error.response,
-      error: error.error,
-      statusCode: error.statusCode,
-      code: error.code,
-      description: error.description,
-      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
-    });
-    
-    // Check for Razorpay keys not configured error
-    if (error.message && error.message.includes('Razorpay keys not configured')) {
-      return res.status(400).json({ 
-        error: 'Payment gateway not configured',
-        message: 'Please configure Razorpay keys in admin panel'
-      });
-    }
-    
-    // Check for invalid key format error
-    if (error.message && error.message.includes('Invalid Razorpay Key ID format')) {
-      return res.status(400).json({ 
-        error: 'Invalid Razorpay Key ID format',
-        message: error.message
-      });
-    }
-    
-    // Check if it's a Razorpay API error (Razorpay SDK format)
-    if (error.error) {
-      const razorpayError = error.error;
-      const errorCode = razorpayError.code;
-      const errorDescription = razorpayError.description || razorpayError.message || razorpayError.reason || 'Failed to create payment order';
-      
-      // Handle authentication errors specifically
-      if (errorCode === 'BAD_REQUEST_ERROR' && errorDescription.includes('Authentication failed')) {
-        return res.status(401).json({ 
-          error: 'Razorpay Authentication Failed',
-          message: 'Invalid Razorpay keys. Please verify your Key ID and Key Secret in admin panel.',
-          code: errorCode,
-          hint: 'Make sure you are using the correct Key ID and Key Secret from your Razorpay dashboard. Test keys and Live keys cannot be mixed.'
-        });
-      }
-      
-      return res.status(400).json({ 
-        error: 'Razorpay API error',
-        message: errorDescription,
-        code: errorCode,
-        details: process.env.NODE_ENV === 'development' ? razorpayError : undefined
-      });
-    }
-    
-    // Check if it's an HTTP error response
-    if (error.response && error.response.data) {
-      const responseData = error.response.data;
-      return res.status(error.response.status || 400).json({ 
-        error: 'Razorpay API error',
-        message: responseData.error?.description || responseData.error?.message || responseData.message || 'Failed to create payment order',
-        details: process.env.NODE_ENV === 'development' ? responseData : undefined
-      });
-    }
-    
-    // Generic error handling
-    const errorMessage = error.message || error.description || error.reason || 'Unknown error occurred';
-    res.status(500).json({ 
+    console.error('Create payment order error (microservice):', error);
+    const message = error.message || 'Failed to create payment order via microservice';
+    return res.status(500).json({
       error: 'Failed to create payment order',
-      message: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? {
-        name: error.name,
-        code: error.code,
-        statusCode: error.statusCode,
-        stack: error.stack
-      } : undefined
+      message,
     });
   }
 };
