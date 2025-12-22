@@ -35,7 +35,18 @@ export const getBookings = async (req, res) => {
     if (userRole === 'customer') {
       // Customers see only their own bookings (regardless of adminApproved status)
       // Customers should see their bookings whether approved or not
-      filter.customerId = userId;
+      // Check both customerId (if logged in when booking created) and deviceId (if not logged in)
+      const deviceIdFromQuery = deviceId || (req.headers['x-device-id']); // Also check header
+      if (deviceIdFromQuery) {
+        // Use $or to match either customerId OR deviceId
+        filter.$or = [
+          { customerId: userId },
+          { deviceId: deviceIdFromQuery }
+        ];
+      } else {
+        // If no deviceId provided, just filter by customerId
+        filter.customerId = userId;
+      }
       // Don't filter by adminApproved for customers - they see all their bookings
     } else if (userRole === 'vendor') {
       // Vendors see ONLY admin-approved bookings for their venues
@@ -96,7 +107,16 @@ export const getBookings = async (req, res) => {
       // Customers can see their own leads
       const leadFilter = {};
       if (userRole === 'customer' && userId) {
-        leadFilter.customerId = userId;
+        // Check both customerId and deviceId for logged-in customers
+        const deviceIdFromQuery = deviceId || (req.headers['x-device-id']);
+        if (deviceIdFromQuery) {
+          leadFilter.$or = [
+            { customerId: userId },
+            { deviceId: deviceIdFromQuery }
+          ];
+        } else {
+          leadFilter.customerId = userId;
+        }
       } else if (deviceId) {
         leadFilter.deviceId = deviceId;
       }

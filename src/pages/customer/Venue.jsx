@@ -17,8 +17,11 @@ const Venue = () => {
   const [priceRange, setPriceRange] = useState('all')
   const [sortBy, setSortBy] = useState('default')
   const [showFilters, setShowFilters] = useState(false)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [allVenues, setAllVenues] = useState([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(9) // 9 venues per page
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
@@ -423,6 +426,30 @@ const Venue = () => {
     return filtered
   }, [allVenues, searchQuery, selectedLocation, selectedType, selectedRating, priceRange, sortBy])
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredVenues.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedVenues = filteredVenues.slice(startIndex, endIndex)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedLocation, selectedType, selectedRating, priceRange, sortBy])
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showSortDropdown && !event.target.closest('.sort-dropdown-wrapper')) {
+        setShowSortDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSortDropdown])
+
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedLocation('all')
@@ -489,18 +516,9 @@ const Venue = () => {
           <p className="venues-page-subtitle">
             Explore our curated collection of premium venues for your special occasions
           </p>
-        </div>
-        <div className="hero-decoration">
-          <div className="decoration-circle circle-1"></div>
-          <div className="decoration-circle circle-2"></div>
-          <div className="decoration-circle circle-3"></div>
-        </div>
-      </div>
-
-      <div className="venues-page-container">
-
-        {/* Search and Filter Bar */}
-        <div className="venues-toolbar">
+          
+          {/* Search and Filter Bar inside Hero */}
+          <div className="venues-toolbar">
           <div className="search-bar-wrapper">
             <div className="search-bar">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -542,19 +560,83 @@ const Venue = () => {
               )}
             </button>
 
-            <select 
-              className="sort-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="default">Sort by: Default</option>
-              <option value="rating">Sort by: Rating</option>
-              <option value="reviews">Sort by: Reviews</option>
-              <option value="price-low">Sort by: Price (Low to High)</option>
-              <option value="price-high">Sort by: Price (High to Low)</option>
-            </select>
+            <div className={`sort-dropdown-wrapper ${showSortDropdown ? 'show' : ''}`}>
+              <button
+                className="sort-select"
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+              >
+                <span>
+                  {sortBy === 'default' && 'Sort by: Default'}
+                  {sortBy === 'rating' && 'Sort by: Rating'}
+                  {sortBy === 'reviews' && 'Sort by: Reviews'}
+                  {sortBy === 'price-low' && 'Sort by: Price (Low to High)'}
+                  {sortBy === 'price-high' && 'Sort by: Price (High to Low)'}
+                </span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              {showSortDropdown && (
+                <div className="sort-dropdown-menu">
+                  <button
+                    className={`sort-dropdown-item ${sortBy === 'default' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSortBy('default')
+                      setShowSortDropdown(false)
+                    }}
+                  >
+                    Sort by: Default
+                  </button>
+                  <button
+                    className={`sort-dropdown-item ${sortBy === 'rating' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSortBy('rating')
+                      setShowSortDropdown(false)
+                    }}
+                  >
+                    Sort by: Rating
+                  </button>
+                  <button
+                    className={`sort-dropdown-item ${sortBy === 'reviews' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSortBy('reviews')
+                      setShowSortDropdown(false)
+                    }}
+                  >
+                    Sort by: Reviews
+                  </button>
+                  <button
+                    className={`sort-dropdown-item ${sortBy === 'price-low' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSortBy('price-low')
+                      setShowSortDropdown(false)
+                    }}
+                  >
+                    Sort by: Price (Low to High)
+                  </button>
+                  <button
+                    className={`sort-dropdown-item ${sortBy === 'price-high' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSortBy('price-high')
+                      setShowSortDropdown(false)
+                    }}
+                  >
+                    Sort by: Price (High to Low)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
           </div>
         </div>
+        <div className="hero-decoration">
+          <div className="decoration-circle circle-1"></div>
+          <div className="decoration-circle circle-2"></div>
+          <div className="decoration-circle circle-3"></div>
+        </div>
+      </div>
+
+      <div className="venues-page-container">
 
         {/* Active Filters Tags */}
         {activeFiltersCount > 0 && (
@@ -701,24 +783,6 @@ const Venue = () => {
           </div>
         )}
 
-        {/* Results Count */}
-        <div className="results-info">
-          <div className="results-count-wrapper">
-            {loading ? (
-              <span className="results-count">Loading venues...</span>
-            ) : (
-              <>
-                <span className="results-count">
-                  <strong>{filteredVenues.length}</strong> {filteredVenues.length === 1 ? 'venue' : 'venues'} found
-                </span>
-                {filteredVenues.length !== allVenues.length && (
-                  <span className="results-total">out of {allVenues.length} total</span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
         {/* Venues Grid */}
         {loading ? (
           <div className="venues-loading">
@@ -771,8 +835,9 @@ const Venue = () => {
             ))}
           </div>
         ) : filteredVenues.length > 0 ? (
+          <>
           <div className="venues-grid">
-            {filteredVenues.map((venue) => (
+            {paginatedVenues.map((venue) => (
               <div
                 key={venue.id}
                 className="venue-card"
@@ -828,6 +893,64 @@ const Venue = () => {
               </div>
             ))}
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <div className="pagination-info">
+                <span className="pagination-text">
+                  Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                </span>
+              </div>
+              
+              <button
+                className="pagination-btn"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Previous
+              </button>
+              
+              <div className="pagination-numbers">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                  // Show first page, last page, current page, and pages around current
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        className={`pagination-number ${currentPage === page ? 'active' : ''}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="pagination-ellipsis">...</span>
+                  }
+                  return null
+                })}
+              </div>
+              
+              <button
+                className="pagination-btn"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
+          )}
+          </>
         ) : allVenues.length === 0 ? (
           <div className="no-results">
             <div className="no-results-content">

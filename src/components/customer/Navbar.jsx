@@ -208,13 +208,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     }
   }, [showDropdown, activeMenuId])
 
-  // Reset state and city on component mount to ensure clean initial state
-  useEffect(() => {
-    setSelectedState('')
-    setSelectedCity('')
-    setCities([])
-  }, [])
-
   // Load states on component mount
   useEffect(() => {
     const loadStates = async () => {
@@ -223,6 +216,13 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
         const response = await publicVenuesAPI.getStates()
         if (response.data?.success && response.data?.states) {
           setStates(response.data.states)
+          // Set Rajasthan as default state
+          const rajasthanState = response.data.states.find(state => 
+            state.toLowerCase() === 'rajasthan'
+          )
+          if (rajasthanState) {
+            setSelectedState(rajasthanState)
+          }
         }
       } catch (error) {
         console.error('Error loading states:', error)
@@ -247,8 +247,20 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
         const response = await publicVenuesAPI.getCities(selectedState)
         if (response.data?.success && response.data?.cities) {
           setCities(response.data.cities)
-          // Always reset city when state changes
-          setSelectedCity('')
+          // Set Tonk as default city if state is Rajasthan
+          if (selectedState.toLowerCase() === 'rajasthan') {
+            const tonkCity = response.data.cities.find(city => 
+              city.toLowerCase() === 'tonk'
+            )
+            if (tonkCity) {
+              setSelectedCity(tonkCity)
+            } else {
+              setSelectedCity('')
+            }
+          } else {
+            // Reset city when state changes to non-Rajasthan
+            setSelectedCity('')
+          }
         } else {
           setCities([])
           setSelectedCity('')
@@ -484,14 +496,21 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             </button>
 
             {user ? (
-              <div className="user-info-container">
+              <div 
+                className="user-info-container"
+                onClick={() => navigate('/profile')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="user-avatar">
                   {user.name ? user.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <span className="user-name">{user.name || user.email?.split('@')[0]}</span>
                 <button 
                   className="btn-dropdown" 
-                  onClick={() => setShowDropdown(!showDropdown)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowDropdown(!showDropdown)
+                  }}
                   title="Menu"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -499,8 +518,25 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
                   </svg>
                 </button>
                 {showDropdown && (
-                  <div className="user-dropdown">
-                    <button className="dropdown-item" onClick={handleLogout}>
+                  <div className="user-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      className="dropdown-item" 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowDropdown(false)
+                        navigate('/profile')
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                      Profile
+                    </button>
+                    <button className="dropdown-item" onClick={(e) => {
+                      e.stopPropagation()
+                      handleLogout()
+                    }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                         <polyline points="16 17 21 12 16 7"></polyline>
@@ -534,9 +570,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               {/* <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg> */}
-            </NavLink>
-            <NavLink to="/venues" className="nav-link">
-              Venues
             </NavLink>
             {loadingMenus ? (
               <span className="nav-link nav-link-muted">Loading categories...</span>
@@ -608,12 +641,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               </svg> */}
             </NavLink>
             {/* <a href="#" className="nav-link">Destination Wedding</a> */}
-            <NavLink to="/profile" className="nav-link">
-              Profile
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </NavLink>
             {/* <a href="#" className="nav-link">Win Prizes</a>
             <a href="#" className="nav-link">Real Events</a>
             <a href="#" className="nav-link">Q&A</a>
@@ -717,16 +744,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
           <span>Home</span>
         </NavLink>
         <NavLink 
-          to="/venues" 
-          className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 21s-6-5.1-6-10a6 6 0 0 1 12 0c0 4.9-6 10-6 10z"></path>
-            <circle cx="12" cy="11" r="2.5"></circle>
-          </svg>
-          <span>Venues</span>
-        </NavLink>
-        <NavLink 
           to="/booking-history" 
           className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
         >
@@ -737,16 +754,6 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             <path d="M3 10h18"></path>
           </svg>
           <span>Bookings</span>
-        </NavLink>
-        <NavLink 
-          to="/profile" 
-          className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="8" r="4"></circle>
-            <path d="M4 20a8 8 0 0 1 16 0"></path>
-          </svg>
-          <span>Profile</span>
         </NavLink>
       </div>
 
@@ -869,17 +876,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             <NavLink to="/" className="sidebar-link" onClick={toggleSidebar}>
               Home
             </NavLink>
-            <NavLink to="/venues" className="sidebar-link" onClick={toggleSidebar}>
-              Venues
-            </NavLink>
             <NavLink to="/booking-history" className="sidebar-link" onClick={toggleSidebar}>
               Bookings
-            </NavLink>
-            <NavLink to="/profile" className="sidebar-link" onClick={toggleSidebar}>
-              Profile
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
             </NavLink>
             {/* <a href="#" className="sidebar-link">Win Prizes</a>
             <a href="#" className="sidebar-link">Real Events</a>

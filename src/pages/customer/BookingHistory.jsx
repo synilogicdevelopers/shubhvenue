@@ -91,10 +91,13 @@ function BookingHistory() {
           const checkOutDate = booking.dateTo || booking.date
           
           // Extract status - ensure we use the exact value from API
+          // If booking type is 'lead', set status to 'lead' to show "Lead" badge
           let bookingStatus = booking.status
-          if (!bookingStatus || bookingStatus === '') {
+          if (booking.type === 'lead') {
+            bookingStatus = 'lead'
+          } else if (!bookingStatus || bookingStatus === '') {
             // Only use fallback if status is truly missing
-            bookingStatus = booking.type === 'lead' ? 'new' : 'pending'
+            bookingStatus = 'pending'
           }
           
           // Extract payment status
@@ -133,6 +136,7 @@ function BookingHistory() {
             totalAmount: booking.totalAmount || 0, // Amount in rupees
             status: bookingStatus, // Use extracted status (exact value from API)
             paymentStatus: paymentStatus, // Use extracted payment status
+            type: booking.type || null, // Store booking type to check if it's a lead
             bookingDate: booking.createdAt || booking.bookingDate || new Date().toISOString()
           }
         })
@@ -248,6 +252,7 @@ function BookingHistory() {
       canceled: { label: 'Cancelled', class: 'status-cancelled' }, // Handle alternate spelling
       failed: { label: 'Failed', class: 'status-cancelled' },
       new: { label: 'New', class: 'status-pending' },
+      lead: { label: 'Lead', class: 'status-pending' }, // Lead status badge
       contacted: { label: 'Contacted', class: 'status-pending' },
       qualified: { label: 'Qualified', class: 'status-confirmed' },
       converted: { label: 'Converted', class: 'status-confirmed' },
@@ -350,6 +355,7 @@ function BookingHistory() {
                 <option value="all">All Status</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="pending">Pending</option>
+                <option value="lead">Lead</option>
                 <option value="new">New</option>
                 <option value="qualified">Qualified</option>
                 <option value="completed">Completed</option>
@@ -393,9 +399,12 @@ function BookingHistory() {
                       <div className={`status-badge ${statusConfig.class}`}>
                         {statusConfig.label}
                         </div>
-                        <div className={`status-badge payment-badge ${paymentStatusConfig.class}`}>
-                          {paymentStatusConfig.label}
-                        </div>
+                        {/* Hide payment status badge for leads */}
+                        {booking.type !== 'lead' && (
+                          <div className={`status-badge payment-badge ${paymentStatusConfig.class}`}>
+                            {paymentStatusConfig.label}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -412,7 +421,9 @@ function BookingHistory() {
                           </p>
                         </div>
                         <div className="booking-id">
-                          <span className="booking-id-label">Booking ID</span>
+                          <span className="booking-id-label">
+                            {booking.type === 'lead' ? 'Lead Booking ID' : 'Booking ID'}
+                          </span>
                           <span className="booking-id-value">{booking.bookingId}</span>
                         </div>
                       </div>
@@ -491,10 +502,13 @@ function BookingHistory() {
                       </div>
 
                       <div className="booking-card-footer">
-                        <div className="booking-amount">
-                          <span className="amount-label">Total Amount</span>
-                          <span className="amount-value">₹ {typeof booking.totalAmount === 'number' ? booking.totalAmount.toLocaleString('en-IN') : booking.totalAmount}</span>
-                        </div>
+                        {/* Hide Total Amount for leads */}
+                        {booking.type !== 'lead' && (
+                          <div className="booking-amount">
+                            <span className="amount-label">Total Amount</span>
+                            <span className="amount-value">₹ {typeof booking.totalAmount === 'number' ? booking.totalAmount.toLocaleString('en-IN') : booking.totalAmount}</span>
+                          </div>
+                        )}
                         <div className="booking-actions">
                           <button 
                             className="action-btn view-btn"

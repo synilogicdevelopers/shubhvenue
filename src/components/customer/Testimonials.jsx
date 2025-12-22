@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { publicTestimonialsAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import './Testimonials.css'
 
-function Testimonials() {
+function Testimonials({ onLoadComplete }) {
   const [testimonials, setTestimonials] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [testimonialsPerPage, setTestimonialsPerPage] = useState(2)
+  const hasFetched = useRef(false)
+  const hasNotified = useRef(false)
+  const onLoadCompleteRef = useRef(onLoadComplete)
+
+  useEffect(() => {
+    onLoadCompleteRef.current = onLoadComplete
+  }, [onLoadComplete])
 
   // Fetch testimonials from API
   useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    
     const fetchTestimonials = async () => {
       try {
         setLoading(true)
@@ -26,10 +36,15 @@ function Testimonials() {
         setTestimonials([])
       } finally {
         setLoading(false)
+        if (onLoadCompleteRef.current && !hasNotified.current) {
+          hasNotified.current = true
+          onLoadCompleteRef.current(true)
+        }
       }
     }
 
     fetchTestimonials()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

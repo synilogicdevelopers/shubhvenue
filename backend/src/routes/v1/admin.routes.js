@@ -25,6 +25,7 @@ import {
   updateBookingStatus,
   approveBooking,
   rejectBooking,
+  createLedgerForExistingBookings,
   getPayouts,
   getAnalytics,
   getProfile,
@@ -107,6 +108,7 @@ router.get('/bookings', getBookings);
 router.put('/bookings/:id/status', updateBookingStatus);
 router.put('/bookings/:id/approve', approveBooking);
 router.put('/bookings/:id/reject', rejectBooking);
+router.post('/bookings/create-ledger-entries', createLedgerForExistingBookings);
 router.get('/leads', getLeads);
 router.get('/leads/:id', getLeadById);
 router.put('/leads/:id/status', updateLeadStatus);

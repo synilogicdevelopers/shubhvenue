@@ -1,15 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { publicFAQsAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import './FAQ.css'
 
-function FAQ() {
+function FAQ({ onLoadComplete }) {
   const [openIndex, setOpenIndex] = useState(0)
   const [faqs, setFaqs] = useState([])
   const [loading, setLoading] = useState(true)
+  const hasFetched = useRef(false)
+  const hasNotified = useRef(false)
+  const onLoadCompleteRef = useRef(onLoadComplete)
+
+  useEffect(() => {
+    onLoadCompleteRef.current = onLoadComplete
+  }, [onLoadComplete])
 
   // Fetch FAQs from API
   useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    
     const fetchFAQs = async () => {
       try {
         setLoading(true)
@@ -25,10 +35,15 @@ function FAQ() {
         setFaqs([])
       } finally {
         setLoading(false)
+        if (onLoadCompleteRef.current && !hasNotified.current) {
+          hasNotified.current = true
+          onLoadCompleteRef.current(true)
+        }
       }
     }
 
     fetchFAQs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const toggleFAQ = (index) => {

@@ -3,11 +3,6 @@ import './HowItWorks.css'
 function HowItWorks() {
   return (
     <section className="how-it-works">
-      <img
-        src="/image/Flowers.webp"
-        alt="Decorative flowers"
-        className="how-it-works-flower"
-      />
       <div className="how-it-works-container">
         <h2 className="how-it-works-title">How it Works?</h2>
         <div className="steps-container">

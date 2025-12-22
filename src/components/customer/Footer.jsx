@@ -196,10 +196,41 @@ function Footer() {
             <p>{companyData.copyright || '© 2024 ShubhVenue. All rights reserved.'}</p>
             <p className="footer-version">Version 1.0.0</p>
           </div>
-          <div className="footer-legal">
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/terms-of-service">Terms of Service</Link>
-            <Link to="/cookie-policy">Cookie Policy</Link>
+          <div className="footer-bottom-right">
+            <div className="footer-vendor-buttons">
+              <a 
+                href="/vendor/login" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="footer-vendor-btn footer-vendor-btn-login"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                  <polyline points="10 17 15 12 10 7"></polyline>
+                  <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+                Vendor Login
+              </a>
+              <a 
+                href="/vendor/register" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="footer-vendor-btn footer-vendor-btn-register"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="8.5" cy="7" r="4"></circle>
+                  <line x1="20" y1="8" x2="20" y2="14"></line>
+                  <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+                Vendor Register
+              </a>
+            </div>
+            <div className="footer-legal">
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/terms-of-service">Terms of Service</Link>
+              <Link to="/cookie-policy">Cookie Policy</Link>
+            </div>
           </div>
         </div>
       </div>

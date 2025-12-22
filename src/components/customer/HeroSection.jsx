@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './HeroSection.css'
 import { publicVideosAPI, publicVenuesAPI, publicCategoriesAPI } from '../../services/customer/api'
 
-function HeroSection() {
+function HeroSection({ onLoadComplete }) {
   const navigate = useNavigate()
   const [videos, setVideos] = useState([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
@@ -14,12 +14,19 @@ function HeroSection() {
   const [cities, setCities] = useState([])
   const [categories, setCategories] = useState([])
   const [loadingCities, setLoadingCities] = useState(false)
+  const hasFetched = useRef(false)
+  const hasNotified = useRef(false)
+  const loadingStates = useRef({
+    videos: true,
+    cities: true,
+    categories: true
+  })
+  const onLoadCompleteRef = useRef(onLoadComplete)
 
+  // Keep ref updated
   useEffect(() => {
-    fetchVideos()
-    loadCities()
-    loadCategories()
-  }, [])
+    onLoadCompleteRef.current = onLoadComplete
+  }, [onLoadComplete])
 
   // Load cities for Rajasthan (default state)
   const loadCities = async () => {
@@ -28,11 +35,20 @@ function HeroSection() {
       const response = await publicVenuesAPI.getCities('Rajasthan')
       if (response.data?.success && response.data?.cities) {
         setCities(response.data.cities)
+        // Set Tonk as default city
+        const tonkCity = response.data.cities.find(city => 
+          city.toLowerCase() === 'tonk'
+        )
+        if (tonkCity) {
+          setSelectedCity(tonkCity)
+        }
       }
     } catch (error) {
       console.error('Error loading cities:', error)
     } finally {
       setLoadingCities(false)
+      loadingStates.current.cities = false
+      checkAndNotify()
     }
   }
 
@@ -45,8 +61,30 @@ function HeroSection() {
       }
     } catch (error) {
       console.error('Error loading categories:', error)
+    } finally {
+      loadingStates.current.categories = false
+      checkAndNotify()
     }
   }
+
+  // Check if all loaded and notify parent
+  const checkAndNotify = () => {
+    const allLoaded = Object.values(loadingStates.current).every(loading => !loading)
+    if (allLoaded && onLoadCompleteRef.current && !hasNotified.current) {
+      hasNotified.current = true
+      onLoadCompleteRef.current(true)
+    }
+  }
+
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    
+    fetchVideos()
+    loadCities()
+    loadCategories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Handle search button click
   const handleSearch = () => {
@@ -84,11 +122,17 @@ function HeroSection() {
         const firstVideo = videosData[0]
         const url = getVideoUrl(firstVideo.video)
         setVideoUrl(url)
+      } else {
+        // Fallback to default video if no videos
+        setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
       // Fallback to default video if API fails
       setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
+    } finally {
+      loadingStates.current.videos = false
+      checkAndNotify()
     }
   }
 
@@ -225,6 +269,7 @@ function HeroSection() {
           </button>
         </div>
       </div>
+      
     </section>
   )
 }

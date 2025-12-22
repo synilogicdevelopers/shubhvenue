@@ -345,13 +345,14 @@ export const Bookings = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {booking.status === 'pending' && !booking.adminApproved && (
+                          {!booking.adminApproved && (
                             <>
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => handleApprove(booking)}
                                 className="text-green-600 hover:text-green-700"
+                                title="Approve Booking"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </Button>
@@ -360,6 +361,7 @@ export const Bookings = () => {
                                 size="sm" 
                                 onClick={() => handleReject(booking)}
                                 className="text-red-600 hover:text-red-700"
+                                title="Reject Booking"
                               >
                                 <XCircle className="w-4 h-4" />
                               </Button>

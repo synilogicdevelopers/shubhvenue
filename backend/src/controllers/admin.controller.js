@@ -9,6 +9,7 @@ import Venue from '../models/Venue.js';
 import Booking from '../models/Booking.js';
 import Payout from '../models/Payout.js';
 import Lead from '../models/Lead.js';
+import Ledger from '../models/Ledger.js';
 import PaymentConfig from '../models/PaymentConfig.js';
 import AppConfig from '../models/AppConfig.js';
 import Banner from '../models/Banner.js';
@@ -1670,6 +1671,54 @@ export const approveBooking = async (req, res) => {
       { new: true }
     );
     
+    // Create ledger entry for approved booking (if payment is done)
+    if (booking.paymentStatus === 'paid' && booking.totalAmount > 0) {
+      try {
+        // Get venue details to get vendorId
+        const venueId = booking.venueId._id || booking.venueId;
+        const venue = await Venue.findById(venueId).populate('vendorId');
+        
+        if (venue && venue.vendorId) {
+          const vendorId = venue.vendorId._id || venue.vendorId;
+          
+          // Check if ledger entry already exists for this booking
+          const bookingRef = `Booking #${booking._id.toString().slice(-6)}`;
+          const existingLedgerEntry = await Ledger.findOne({
+            reference: bookingRef,
+            vendorId: vendorId,
+            venueId: venueId
+          });
+
+          // Only create if it doesn't exist
+          if (!existingLedgerEntry) {
+            const customerName = booking.name || (booking.customerId?.name) || 'Customer';
+            const venueName = venue.name || 'Venue';
+            
+            const ledgerEntry = new Ledger({
+              vendorId: vendorId,
+              type: 'income',
+              category: 'Booking Payment',
+              description: `Booking for ${venueName}`,
+              amount: booking.totalAmount || 0,
+              date: booking.date || new Date(),
+              status: booking.paymentStatus === 'paid' ? 'paid' : 'pending',
+              reference: bookingRef,
+              venueId: venueId,
+              notes: `Booking approved for ${customerName} - ${booking.guests || 0} guests`
+            });
+
+            await ledgerEntry.save();
+            console.log(`✅ Ledger entry created for approved booking ${booking._id} - Amount: ₹${booking.totalAmount || 0}`);
+          } else {
+            console.log(`ℹ️ Ledger entry already exists for booking ${booking._id}`);
+          }
+        }
+      } catch (ledgerError) {
+        // Log error but don't fail the booking approval
+        console.error('❌ Error creating ledger entry for approved booking:', ledgerError);
+      }
+    }
+    
     res.json({ 
       success: true,
       message: 'Booking approved successfully. Vendor can now see this booking.',
@@ -1680,6 +1729,102 @@ export const approveBooking = async (req, res) => {
     if (error.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid booking ID' });
     }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Create Ledger Entries for Existing Approved Bookings (Admin Only)
+export const createLedgerForExistingBookings = async (req, res) => {
+  try {
+    // Find all approved bookings with payment done that don't have ledger entries
+    const approvedBookings = await Booking.find({
+      adminApproved: true,
+      paymentStatus: 'paid',
+      totalAmount: { $gt: 0 }
+    })
+      .populate('customerId', 'name email phone')
+      .populate('venueId', 'name location')
+      .lean();
+
+    let createdCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const booking of approvedBookings) {
+      try {
+        const venueId = booking.venueId?._id || booking.venueId;
+        
+        if (!venueId) {
+          skippedCount++;
+          continue;
+        }
+
+        // Get venue details to get vendorId
+        const venue = await Venue.findById(venueId).populate('vendorId').lean();
+        
+        if (!venue || !venue.vendorId) {
+          skippedCount++;
+          continue;
+        }
+
+        const vendorId = venue.vendorId._id || venue.vendorId;
+
+        // Check if ledger entry already exists
+        const bookingRef = `Booking #${booking._id.toString().slice(-6)}`;
+        const existingLedgerEntry = await Ledger.findOne({
+          reference: bookingRef,
+          vendorId: vendorId,
+          venueId: venueId
+        });
+
+        if (existingLedgerEntry) {
+          skippedCount++;
+          continue;
+        }
+
+        // Create ledger entry
+        const customerName = booking.name || (booking.customerId?.name) || 'Customer';
+        const venueName = venue.name || 'Venue';
+        
+        const ledgerEntry = new Ledger({
+          vendorId: vendorId,
+          type: 'income',
+          category: 'Booking Payment',
+          description: `Booking for ${venueName}`,
+          amount: booking.totalAmount || 0,
+          date: booking.date || booking.createdAt || new Date(),
+          status: booking.paymentStatus === 'paid' ? 'paid' : 'pending',
+          reference: bookingRef,
+          venueId: venueId,
+          notes: `Booking approved for ${customerName} - ${booking.guests || 0} guests`
+        });
+
+        await ledgerEntry.save();
+        createdCount++;
+
+      } catch (error) {
+        errorCount++;
+        errors.push({
+          bookingId: booking._id,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({ 
+      success: true,
+      message: `Ledger entries created for existing approved bookings`,
+      summary: {
+        total: approvedBookings.length,
+        created: createdCount,
+        skipped: skippedCount,
+        errors: errorCount
+      },
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Create ledger for existing bookings error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

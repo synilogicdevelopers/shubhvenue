@@ -113,7 +113,8 @@ export const handleMicroserviceCallback = async (req, res) => {
         totalAmount,
         paymentId: payment_id || null,
         paymentStatus: 'paid',
-        status: 'confirmed',
+        status: 'pending', // Booking starts as pending, admin needs to approve
+        adminApproved: false, // Admin needs to approve before vendor can see
         deviceId: deviceId || undefined,
       });
 

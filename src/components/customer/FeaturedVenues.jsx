@@ -1,14 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './FeaturedVenues.css'
 import { publicVenuesAPI } from '../../services/customer/api'
 import { createSlug } from '../../utils/customer/slug'
 import toast from 'react-hot-toast'
 
-function FeaturedVenues() {
+function FeaturedVenues({ onLoadComplete }) {
   const navigate = useNavigate()
   const [venues, setVenues] = useState([])
   const [loading, setLoading] = useState(true)
+  const hasFetched = useRef(false)
+  const hasNotified = useRef(false)
+  const onLoadCompleteRef = useRef(onLoadComplete)
+
+  useEffect(() => {
+    onLoadCompleteRef.current = onLoadComplete
+  }, [onLoadComplete])
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
@@ -49,6 +56,9 @@ function FeaturedVenues() {
 
   // Fetch featured venues from API
   useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    
     const fetchFeaturedVenues = async () => {
       // Normalize different API response shapes into a simple array
       const extractVenues = (apiResponse) => {
@@ -179,10 +189,15 @@ function FeaturedVenues() {
         setVenues([])
       } finally {
         setLoading(false)
+        if (onLoadCompleteRef.current && !hasNotified.current) {
+          hasNotified.current = true
+          onLoadCompleteRef.current(true)
+        }
       }
     }
 
     fetchFeaturedVenues()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
