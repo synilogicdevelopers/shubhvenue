@@ -43,6 +43,9 @@ import { FAQs } from './pages/admin/faqs'
 import { Company } from './pages/admin/company'
 import { Contacts } from './pages/admin/contacts'
 import { Banners } from './pages/admin/banners'
+import { Staff } from './pages/admin/staff'
+import { Roles } from './pages/admin/roles'
+import { Reviews as AdminReviews } from './pages/admin/reviews'
 
 // Vendor Routes
 import { AuthProvider, useAuth } from './contexts/vendor/AuthContext'
@@ -320,6 +323,36 @@ function AdminRoutes() {
           <AdminPrivateRoute>
             <DashboardLayout>
               <Banners />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="staff"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <Staff />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="roles"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <Roles />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="reviews"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <AdminReviews />
             </DashboardLayout>
           </AdminPrivateRoute>
         }

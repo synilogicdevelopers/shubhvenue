@@ -6,6 +6,7 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
 import { bookingsAPI } from '../../../services/admin/api';
+import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 import { Calendar, Phone, Mail, User, MapPin, Eye, Search, CheckCircle, XCircle } from 'lucide-react';
 
@@ -338,14 +339,16 @@ export const Bookings = () => {
                       </TableCell>
                       <TableCell className="whitespace-nowrap px-2 py-1 text-center">
                         <div className="flex gap-2 flex-wrap">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => openDetailModal(booking)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {!booking.adminApproved && (
+                          {hasPermission('view_bookings') && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => openDetailModal(booking)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {hasPermission('edit_bookings') && !booking.adminApproved && (
                             <>
                               <Button 
                                 variant="ghost" 
@@ -367,13 +370,15 @@ export const Bookings = () => {
                               </Button>
                             </>
                           )}
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => openStatusModal(booking)}
-                          >
-                            Edit
-                          </Button>
+                          {hasPermission('edit_bookings') && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => openStatusModal(booking)}
+                            >
+                              Edit
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

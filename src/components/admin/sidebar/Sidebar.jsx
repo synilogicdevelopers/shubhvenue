@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -20,31 +20,96 @@ import {
   HelpCircle,
   Building2,
   Mail,
+  ChevronDown,
+  ChevronRight,
+  UserCog,
+  Shield,
+  Star,
 } from 'lucide-react';
 import { cn } from '../../../utils/admin/cn';
+import { getUserPermissions, isAdmin, hasPermission as checkPermission } from '../../../utils/admin/permissions';
 
-const menuItems = [
-  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/users', icon: Users, label: 'Users' },
-  { path: '/admin/vendors', icon: Store, label: 'Vendors' },
-  { path: '/admin/venues', icon: MapPin, label: 'Venues' },
-  { path: '/admin/categories', icon: Tag, label: 'Categories' },
-  { path: '/admin/menus', icon: MenuIcon, label: 'Menus' },
-  { path: '/admin/videos', icon: VideoIcon, label: 'Videos' },
-  { path: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials' },
-  { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
-  { path: '/admin/company', icon: Building2, label: 'Company' },
-  { path: '/admin/contacts', icon: Mail, label: 'Contact Us' },
-  { path: '/admin/leads', icon: UserPlus, label: 'Leads' },
-  { path: '/admin/bookings', icon: Calendar, label: 'Bookings' },
-  { path: '/admin/payouts', icon: DollarSign, label: 'Payouts' },
-  { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-  { path: '/admin/settings', icon: Settings, label: 'Settings' },
+// Menu items with required permissions
+const allMenuItems = [
+  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'view_dashboard' },
+  { path: '/admin/users', icon: Users, label: 'Users', permission: 'view_users' },
+  { path: '/admin/vendors', icon: Store, label: 'Vendors', permission: 'view_vendors' },
+  { path: '/admin/venues', icon: MapPin, label: 'Venues', permission: 'view_venues' },
+  { path: '/admin/categories', icon: Tag, label: 'Categories', permission: 'view_categories' },
+  { path: '/admin/menus', icon: MenuIcon, label: 'Menus', permission: 'view_menus' },
+  { path: '/admin/videos', icon: VideoIcon, label: 'Videos', permission: 'view_videos' },
+  { path: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials', permission: 'view_testimonials' },
+  { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs', permission: 'view_faqs' },
+  { path: '/admin/company', icon: Building2, label: 'Company', permission: 'view_company' },
+  { path: '/admin/contacts', icon: Mail, label: 'Contact Us', permission: 'view_contacts' },
+  { path: '/admin/leads', icon: UserPlus, label: 'Leads', permission: 'view_leads' },
+  { path: '/admin/bookings', icon: Calendar, label: 'Bookings', permission: 'view_bookings' },
+  { path: '/admin/payouts', icon: DollarSign, label: 'Payouts', permission: 'view_payouts' },
+  { path: '/admin/reviews', icon: Star, label: 'Reviews', permission: 'view_reviews' },
+  {
+    label: 'Staff',
+    icon: UserCog,
+    permission: 'view_staff',
+    children: [
+      { path: '/admin/staff', label: 'Staff', permission: 'view_staff' },
+      { path: '/admin/roles', label: 'Roles', icon: Shield, permission: 'view_roles' },
+    ],
+  },
+  { path: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'view_analytics' },
+  { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'view_settings' },
 ];
+
+// Helper function to check if user has permission
+const hasPermission = (permission, userPermissions) => {
+  // Dashboard is allowed for all authenticated users
+  if (permission === 'view_dashboard') return true;
+  // Admin has all permissions
+  if (isAdmin()) return true;
+  if (!userPermissions || userPermissions.length === 0) return false;
+  // Check specific permission
+  return userPermissions.includes(permission);
+};
 
 export const Sidebar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [openSubmenus, setOpenSubmenus] = useState({ Staff: true });
   const location = useLocation();
+
+  // Get user permissions from localStorage
+  const userPermissions = useMemo(() => getUserPermissions(), []);
+  const isUserAdmin = useMemo(() => isAdmin(), []);
+
+  // Filter menu items based on permissions
+  const menuItems = useMemo(() => {
+    return allMenuItems
+      .map((item) => {
+        // If no permission required, show it (shouldn't happen, but safety check)
+        if (!item.permission) return item;
+        
+        // Check if user has permission for this item
+        if (!hasPermission(item.permission, userPermissions)) return null;
+        
+        // For items with children, filter children based on permissions
+        if (item.children) {
+          const accessibleChildren = item.children.filter((child) => {
+            if (!child.permission) return true;
+            return hasPermission(child.permission, userPermissions);
+          });
+          
+          // Only show parent if at least one child is accessible
+          if (accessibleChildren.length === 0) return null;
+          
+          // Return item with filtered children
+          return {
+            ...item,
+            children: accessibleChildren,
+          };
+        }
+        
+        return item;
+      })
+      .filter((item) => item !== null);
+  }, [userPermissions]);
 
   const SidebarContent = ({ onClose }) => (
     <div className="h-full flex flex-col overflow-hidden">
@@ -70,8 +135,76 @@ export const Sidebar = () => {
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path || 
-                         (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
+
+          if (item.children) {
+            const isAnyChildActive = item.children.some((child) =>
+              location.pathname.startsWith(child.path)
+            );
+            const isOpen = openSubmenus[item.label] ?? isAnyChildActive;
+
+            return (
+              <div key={item.label} className="space-y-1">
+                <button
+                  onClick={() =>
+                    setOpenSubmenus((prev) => ({
+                      ...prev,
+                      [item.label]: !isOpen,
+                    }))
+                  }
+                  className={cn(
+                    'w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 font-medium',
+                    isAnyChildActive
+                      ? 'gradient-primary text-white shadow-md'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className={cn('w-5 h-5', isAnyChildActive && 'text-white')} />
+                    {item.label}
+                  </span>
+                  {isOpen ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="pl-10 space-y-1">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isActiveChild =
+                        location.pathname === child.path ||
+                        location.pathname.startsWith(child.path);
+                      return (
+                        <Link
+                          key={child.path}
+                          to={child.path}
+                          onClick={onClose}
+                          className={cn(
+                            'flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium',
+                            isActiveChild
+                              ? 'gradient-primary text-white shadow-md'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          )}
+                        >
+                          {ChildIcon ? (
+                            <ChildIcon className={cn('w-4 h-4', isActiveChild && 'text-white')} />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" />
+                          )}
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          const isActive =
+            location.pathname === item.path ||
+            (item.path !== '/admin/dashboard' && location.pathname.startsWith(item.path));
 
           return (
             <Link

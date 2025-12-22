@@ -23,6 +23,11 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
   const [activeMenuId, setActiveMenuId] = useState(null)
   const menuHoverTimeout = useRef(null)
+  const [suggestions, setSuggestions] = useState(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const searchTimeoutRef = useRef(null)
+  const suggestionsRef = useRef(null)
 
   // Cleanup hover timeout on unmount
   useEffect(() => {
@@ -247,13 +252,13 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
         const response = await publicVenuesAPI.getCities(selectedState)
         if (response.data?.success && response.data?.cities) {
           setCities(response.data.cities)
-          // Set Tonk as default city if state is Rajasthan
+          // Set Kota as default city if state is Rajasthan
           if (selectedState.toLowerCase() === 'rajasthan') {
-            const tonkCity = response.data.cities.find(city => 
-              city.toLowerCase() === 'tonk'
+            const kotaCity = response.data.cities.find(city => 
+              city.toLowerCase() === 'kota'
             )
-            if (tonkCity) {
-              setSelectedCity(tonkCity)
+            if (kotaCity) {
+              setSelectedCity(kotaCity)
             } else {
               setSelectedCity('')
             }
@@ -338,9 +343,63 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     loadMenus()
   }, [])
 
+  // Fetch search suggestions
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSuggestions(null)
+      setShowSuggestions(false)
+      return
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true)
+        const response = await publicVenuesAPI.getSearchSuggestions(searchQuery.trim(), 8)
+        if (response.data?.success && response.data?.suggestions) {
+          setSuggestions(response.data.suggestions)
+          setShowSuggestions(true)
+        } else {
+          setSuggestions(null)
+          setShowSuggestions(false)
+        }
+      } catch (error) {
+        // Silently fail - don't show error for suggestions
+        // console.error('Error fetching suggestions:', error)
+        setSuggestions(null)
+        setShowSuggestions(false)
+      } finally {
+        setLoadingSuggestions(false)
+      }
+    }, 300) // Debounce 300ms
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   // Handle search
   const handleSearch = (e) => {
     e.preventDefault()
+    setShowSuggestions(false)
     const params = {}
     if (searchQuery.trim()) {
       params.q = searchQuery.trim()
@@ -356,6 +415,43 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     navigate('/venues', { 
       state: { searchParams: params }
     })
+  }
+
+  // Handle suggestion click
+  const handleSuggestionClick = (type, value) => {
+    if (type === 'venue') {
+      setSearchQuery(value)
+    } else if (type === 'city') {
+      setSearchQuery(value)
+      // Try to find and set the city in dropdown
+      const city = cities.find(c => c.toLowerCase() === value.toLowerCase())
+      if (city) {
+        setSelectedCity(city)
+      }
+    } else if (type === 'state') {
+      setSearchQuery(value)
+      // Try to find and set the state in dropdown
+      const state = states.find(s => s.toLowerCase() === value.toLowerCase())
+      if (state) {
+        setSelectedState(state)
+      }
+    } else if (type === 'tag') {
+      setSearchQuery(value)
+    }
+    setShowSuggestions(false)
+    // Trigger search
+    setTimeout(() => {
+      const params = { q: value }
+      if (selectedCity && selectedCity.trim()) {
+        params.city = selectedCity.trim()
+      }
+      if (selectedState && selectedState.trim()) {
+        params.state = selectedState.trim()
+      }
+      navigate('/venues', { 
+        state: { searchParams: params }
+      })
+    }, 100)
   }
 
   // Handle submenu click - navigate to venues with submenu filter
@@ -466,13 +562,113 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
                   ))
                 )}
               </select>
-              <input 
-                type="text" 
-                placeholder="Search Venues by Name, Sub Area, City"
-                className="search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div className="search-input-wrapper" ref={suggestionsRef}>
+                <input 
+                  type="text" 
+                  placeholder="Search Venues by Name, Sub Area, City"
+                  className="search-input"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setShowSuggestions(true)
+                  }}
+                  onFocus={() => {
+                    if (suggestions && (suggestions.venues?.length > 0 || suggestions.cities?.length > 0 || suggestions.states?.length > 0 || suggestions.tags?.length > 0)) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                />
+                {showSuggestions && suggestions && (
+                  <div className="search-suggestions">
+                    {loadingSuggestions ? (
+                      <div className="suggestion-item loading">Loading suggestions...</div>
+                    ) : (
+                      <>
+                        {suggestions.venues && suggestions.venues.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Venues</div>
+                            {suggestions.venues.map((venue, index) => (
+                              <div 
+                                key={`venue-${index}`}
+                                className="suggestion-item"
+                                onClick={() => handleSuggestionClick('venue', venue)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                  <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>{venue}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.cities && suggestions.cities.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Cities</div>
+                            {suggestions.cities.map((city, index) => (
+                              <div 
+                                key={`city-${index}`}
+                                className="suggestion-item"
+                                onClick={() => handleSuggestionClick('city', city)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                  <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>{city}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.states && suggestions.states.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">States</div>
+                            {suggestions.states.map((state, index) => (
+                              <div 
+                                key={`state-${index}`}
+                                className="suggestion-item"
+                                onClick={() => handleSuggestionClick('state', state)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                <span>{state}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.tags && suggestions.tags.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Tags</div>
+                            {suggestions.tags.map((tag, index) => (
+                              <div 
+                                key={`tag-${index}`}
+                                className="suggestion-item"
+                                onClick={() => handleSuggestionClick('tag', tag)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                  <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                                <span>{tag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(!suggestions.venues || suggestions.venues.length === 0) && 
+                         (!suggestions.cities || suggestions.cities.length === 0) && 
+                         (!suggestions.states || suggestions.states.length === 0) && 
+                         (!suggestions.tags || suggestions.tags.length === 0) && (
+                          <div className="suggestion-item no-results">No suggestions found</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               <button type="submit" className="search-btn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8"></circle>
@@ -702,13 +898,125 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               </select>
             </div>
             <div className="mobile-search-row">
-              <input 
-                type="text" 
-                placeholder="Search Venues by Name, Sub Area, City"
-                className="search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div className="search-input-wrapper">
+                <input 
+                  type="text" 
+                  placeholder="Search Venues by Name, Sub Area, City"
+                  className="search-input"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setShowSuggestions(true)
+                  }}
+                  onFocus={() => {
+                    if (suggestions && (suggestions.venues?.length > 0 || suggestions.cities?.length > 0 || suggestions.states?.length > 0 || suggestions.tags?.length > 0)) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                />
+                {showSuggestions && suggestions && (
+                  <div className="search-suggestions mobile-suggestions">
+                    {loadingSuggestions ? (
+                      <div className="suggestion-item loading">Loading suggestions...</div>
+                    ) : (
+                      <>
+                        {suggestions.venues && suggestions.venues.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Venues</div>
+                            {suggestions.venues.map((venue, index) => (
+                              <div 
+                                key={`venue-${index}`}
+                                className="suggestion-item"
+                                onClick={() => {
+                                  handleSuggestionClick('venue', venue)
+                                  setIsMobileSearchOpen(false)
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                  <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>{venue}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.cities && suggestions.cities.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Cities</div>
+                            {suggestions.cities.map((city, index) => (
+                              <div 
+                                key={`city-${index}`}
+                                className="suggestion-item"
+                                onClick={() => {
+                                  handleSuggestionClick('city', city)
+                                  setIsMobileSearchOpen(false)
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                  <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>{city}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.states && suggestions.states.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">States</div>
+                            {suggestions.states.map((state, index) => (
+                              <div 
+                                key={`state-${index}`}
+                                className="suggestion-item"
+                                onClick={() => {
+                                  handleSuggestionClick('state', state)
+                                  setIsMobileSearchOpen(false)
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                <span>{state}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {suggestions.tags && suggestions.tags.length > 0 && (
+                          <div className="suggestion-group">
+                            <div className="suggestion-group-title">Tags</div>
+                            {suggestions.tags.map((tag, index) => (
+                              <div 
+                                key={`tag-${index}`}
+                                className="suggestion-item"
+                                onClick={() => {
+                                  handleSuggestionClick('tag', tag)
+                                  setIsMobileSearchOpen(false)
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                  <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                </svg>
+                                <span>{tag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(!suggestions.venues || suggestions.venues.length === 0) && 
+                         (!suggestions.cities || suggestions.cities.length === 0) && 
+                         (!suggestions.states || suggestions.states.length === 0) && 
+                         (!suggestions.tags || suggestions.tags.length === 0) && (
+                          <div className="suggestion-item no-results">No suggestions found</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               <button type="submit" className="search-btn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8"></circle>
@@ -718,7 +1026,10 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
               <button
                 type="button"
                 className="mobile-search-close"
-                onClick={() => setIsMobileSearchOpen(false)}
+                onClick={() => {
+                  setIsMobileSearchOpen(false)
+                  setShowSuggestions(false)
+                }}
                 aria-label="Close search"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -221,15 +221,9 @@ export const getCategoryById = async (req, res) => {
   }
 };
 
-// Create category (admin only)
+// Create category (permission-based access via middleware)
 export const createCategory = async (req, res) => {
   try {
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can create categories' });
-    }
-
     const { name, description, icon, image, isActive, sortOrder } = req.body;
 
     // Validation
@@ -309,16 +303,10 @@ export const createCategory = async (req, res) => {
   }
 };
 
-// Update category (admin only)
+// Update category (permission-based access via middleware)
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can update categories' });
-    }
-
     const { name, description, icon, image, isActive, sortOrder } = req.body;
 
     // Check MongoDB connection with timeout
@@ -424,15 +412,10 @@ export const updateCategory = async (req, res) => {
   }
 };
 
-// Delete category (admin only)
+// Delete category (permission-based access via middleware)
 export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can delete categories' });
-    }
 
     // Check MongoDB connection with timeout
     if (mongoose.connection.readyState !== 1) {

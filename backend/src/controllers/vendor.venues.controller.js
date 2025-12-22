@@ -2271,7 +2271,7 @@ export const getSearchSuggestions = async (req, res) => {
         }
       }
     });
-    const citySuggestions = Array.from(citySet).slice(0, limitNum);
+    let citySuggestions = Array.from(citySet).slice(0, limitNum);
 
     // Extract and deduplicate states
     const stateSet = new Set();
@@ -2293,7 +2293,7 @@ export const getSearchSuggestions = async (req, res) => {
         }
       }
     });
-    const stateSuggestions = Array.from(stateSet).slice(0, limitNum);
+    let stateSuggestions = Array.from(stateSet).slice(0, limitNum);
 
     // Extract and deduplicate tags
     const tagSet = new Set();

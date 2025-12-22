@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../../middlewares/auth.js';
+import { requireAuth, requireRole, requirePermission } from '../../middlewares/auth.js';
 import { uploadCategoryImage, handleUploadError } from '../../middlewares/upload.js';
 import {
   getCategories,
@@ -15,10 +15,10 @@ const router = Router();
 router.get('/', getCategories);
 router.get('/:id', getCategoryById);
 
-// Protected routes (admin only) - with image upload support
-router.post('/', requireAuth, uploadCategoryImage, handleUploadError, createCategory);
-router.put('/:id', requireAuth, uploadCategoryImage, handleUploadError, updateCategory);
-router.delete('/:id', requireAuth, deleteCategory);
+// Protected routes (admin/staff with permissions) - with image upload support
+router.post('/', requireAuth, requireRole('admin', 'staff'), requirePermission('create_categories'), uploadCategoryImage, handleUploadError, createCategory);
+router.put('/:id', requireAuth, requireRole('admin', 'staff'), requirePermission('edit_categories'), uploadCategoryImage, handleUploadError, updateCategory);
+router.delete('/:id', requireAuth, requireRole('admin', 'staff'), requirePermission('delete_categories'), deleteCategory);
 
 export default router;
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../../middlewares/auth.js';
+import { requireAuth, requireRole, requirePermission } from '../../middlewares/auth.js';
 import { uploadMenuImage, handleUploadError } from '../../middlewares/upload.js';
 import {
   getMenus,
@@ -15,10 +15,10 @@ const router = Router();
 router.get('/', getMenus);
 router.get('/:id', getMenuById);
 
-// Protected routes (admin only) - with image upload support
-router.post('/', requireAuth, uploadMenuImage, handleUploadError, createMenu);
-router.put('/:id', requireAuth, uploadMenuImage, handleUploadError, updateMenu);
-router.delete('/:id', requireAuth, deleteMenu);
+// Protected routes (admin/staff with permissions) - with image upload support
+router.post('/', requireAuth, requireRole('admin', 'staff'), requirePermission('create_menus'), uploadMenuImage, handleUploadError, createMenu);
+router.put('/:id', requireAuth, requireRole('admin', 'staff'), requirePermission('edit_menus'), uploadMenuImage, handleUploadError, updateMenu);
+router.delete('/:id', requireAuth, requireRole('admin', 'staff'), requirePermission('delete_menus'), deleteMenu);
 
 export default router;
 

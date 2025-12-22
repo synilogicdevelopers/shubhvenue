@@ -19,6 +19,7 @@ import contactRoutes from './v1/contact.routes.js';
 import googleMapsRoutes from './v1/googlemaps.routes.js';
 import reviewRoutes from './v1/review.routes.js';
 import microserviceRoutes from './v1/microservice.routes.js';
+import staffRoutes from './v1/staff.routes.js';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.use('/legal-pages', legalPageRoutes);
 router.use('/contact', contactRoutes);
 router.use('/maps', googleMapsRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/staff', staffRoutes);
 
 export default router;
 

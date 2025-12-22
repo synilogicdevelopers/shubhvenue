@@ -5,6 +5,7 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { venuesAPI, vendorsAPI, categoriesAPI, menusAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
+import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 import { Check, X, MapPin, Users, DollarSign, Calendar, MessageSquare, User, Plus, Play, Video } from 'lucide-react';
 
@@ -546,10 +547,12 @@ export const Venues = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all venues</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Venue
-          </Button>
+          {hasPermission('create_venues') && (
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Venue
+            </Button>
+          )}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -681,12 +684,12 @@ export const Venues = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  {venue.status !== 'approved' && (
+                  {hasPermission('edit_venues') && venue.status !== 'approved' && (
                     <Button size="sm" onClick={() => handleApprove(venue._id)} className="flex-1">
                       Approve
                     </Button>
                   )}
-                  {venue.status !== 'rejected' && (
+                  {hasPermission('edit_venues') && venue.status !== 'rejected' && (
                     <Button size="sm" variant="danger" onClick={() => handleReject(venue._id)} className="flex-1">
                       Reject
                     </Button>

@@ -49,42 +49,37 @@ function Categories() {
     loadCategories()
   }, [])
 
-  // Update max scroll
+  // Update scroll info on mount and when categories change
   useEffect(() => {
-    const updateMaxScroll = () => {
-      if (categoriesRef.current) {
-        const max = categoriesRef.current.scrollWidth - categoriesRef.current.clientWidth
-        setMaxScroll(Math.max(0, max))
-        setScrollPosition(categoriesRef.current.scrollLeft)
+    if (!loading && categories.length > 0 && categoriesRef.current) {
+      const updateScroll = () => {
+        if (categoriesRef.current) {
+          const element = categoriesRef.current
+          const max = element.scrollWidth - element.clientWidth
+          setMaxScroll(Math.max(0, max))
+          setScrollPosition(element.scrollLeft)
+        }
+      }
+
+      // Update immediately and after a delay for images
+      updateScroll()
+      const timeout1 = setTimeout(updateScroll, 100)
+      const timeout2 = setTimeout(updateScroll, 500)
+
+      window.addEventListener('resize', updateScroll)
+      
+      return () => {
+        clearTimeout(timeout1)
+        clearTimeout(timeout2)
+        window.removeEventListener('resize', updateScroll)
       }
     }
-
-    updateMaxScroll()
-    window.addEventListener('resize', updateMaxScroll)
-    
-    const images = categoriesRef.current?.querySelectorAll('img')
-    if (images) {
-      images.forEach(img => {
-        img.addEventListener('load', updateMaxScroll)
-      })
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateMaxScroll)
-      if (images) {
-        images.forEach(img => {
-          img.removeEventListener('load', updateMaxScroll)
-        })
-      }
-    }
-  }, [categories])
+  }, [categories, loading])
 
   const scrollLeft = () => {
     if (categoriesRef.current) {
-      const scrollAmount = 300
-      const newPosition = Math.max(0, categoriesRef.current.scrollLeft - scrollAmount)
-      categoriesRef.current.scrollTo({
-        left: newPosition,
+      categoriesRef.current.scrollBy({
+        left: -300,
         behavior: 'smooth'
       })
     }
@@ -92,10 +87,8 @@ function Categories() {
 
   const scrollRight = () => {
     if (categoriesRef.current) {
-      const scrollAmount = 300
-      const newPosition = Math.min(maxScroll, categoriesRef.current.scrollLeft + scrollAmount)
-      categoriesRef.current.scrollTo({
-        left: newPosition,
+      categoriesRef.current.scrollBy({
+        left: 300,
         behavior: 'smooth'
       })
     }
@@ -103,7 +96,11 @@ function Categories() {
 
   const handleCategoryScroll = () => {
     if (categoriesRef.current) {
-      setScrollPosition(categoriesRef.current.scrollLeft)
+      const element = categoriesRef.current
+      const currentScroll = element.scrollLeft
+      const max = element.scrollWidth - element.clientWidth
+      setScrollPosition(currentScroll)
+      setMaxScroll(Math.max(0, max))
     }
   }
 
@@ -128,7 +125,6 @@ function Categories() {
           <button 
             className="category-arrow category-arrow-left" 
             onClick={scrollLeft}
-            disabled={scrollPosition <= 0}
             aria-label="Scroll left"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -172,7 +168,6 @@ function Categories() {
           <button 
             className="category-arrow category-arrow-right" 
             onClick={scrollRight}
-            disabled={scrollPosition >= maxScroll - 1}
             aria-label="Scroll right"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -52,6 +52,7 @@ api.interceptors.response.use(
 // Auth APIs
 export const authAPI = {
   login: (data) => api.post('/admin/login', data),
+  loginStaff: (data) => api.post('/staff/login', data), // Staff login endpoint
   logout: () => api.post('/admin/logout').catch(() => {
     // Silently fail - logout is handled locally
     return Promise.resolve({ data: { success: true } });
@@ -320,6 +321,47 @@ export const menusAPI = {
     return api.put(`/menus/${id}`, data);
   },
   delete: (id) => api.delete(`/menus/${id}`),
+};
+
+// Staff APIs
+export const staffAPI = {
+  getAll: (params) => api.get('/admin/staff', { params }),
+  getById: (id) => api.get(`/admin/staff/${id}`),
+  create: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/admin/staff', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/admin/staff', data);
+  },
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.put(`/admin/staff/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/admin/staff/${id}`, data);
+  },
+  delete: (id) => api.delete(`/admin/staff/${id}`),
+};
+
+// Roles APIs
+export const rolesAPI = {
+  getAll: (params) => api.get('/admin/roles', { params }),
+  getById: (id) => api.get(`/admin/roles/${id}`),
+  create: (data) => api.post('/admin/roles', data),
+  update: (id, data) => api.put(`/admin/roles/${id}`, data),
+  delete: (id) => api.delete(`/admin/roles/${id}`),
+  getAvailablePermissions: () => api.get('/admin/roles/permissions/available'),
+};
+
+// Reviews APIs
+export const reviewsAPI = {
+  getAll: (params) => api.get('/admin/reviews', { params }),
+  getById: (id) => api.get(`/admin/reviews/${id}`),
+  update: (id, data) => api.put(`/admin/reviews/${id}`, data),
+  delete: (id) => api.delete(`/admin/reviews/${id}`),
 };
 
 export default api;

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Shield, UserCog } from 'lucide-react';
 import { authAPI } from '../../../services/admin/api';
 import { Button } from '../../../components/admin/ui/Button';
 import toast from 'react-hot-toast';
 
 export const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [loginType, setLoginType] = useState('admin'); // 'admin' or 'staff'
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -40,14 +41,32 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(formData);
+      let response;
+      if (loginType === 'admin') {
+        response = await authAPI.login(formData);
+      } else {
+        response = await authAPI.loginStaff(formData);
+      }
+
       if (response.data.token) {
         localStorage.setItem('admin_token', response.data.token);
-        toast.success('Login successful!');
+        localStorage.setItem('admin_role', loginType);
+        
+        // Store permissions if available (for staff)
+        if (response.data.staff?.role?.permissions) {
+          localStorage.setItem('admin_permissions', JSON.stringify(response.data.staff.role.permissions));
+        } else if (loginType === 'admin') {
+          // Admin has all permissions
+          localStorage.setItem('admin_permissions', JSON.stringify(['*']));
+        }
+        
+        const roleLabel = loginType === 'admin' ? 'Admin' : 'Staff';
+        toast.success(`Login successful! Welcome, ${roleLabel}!`);
         navigate('/admin/dashboard');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+      // Get error message from response
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       setErrors({ submit: errorMessage });
     } finally {
@@ -85,7 +104,7 @@ export const Login = () => {
               ShubhVenue
             </h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Admin Portal Login
+              Admin / Staff Portal Login
             </p>
           </motion.div>
 
@@ -97,6 +116,33 @@ export const Login = () => {
             onSubmit={handleSubmit}
             className="space-y-5"
           >
+            {/* Login type toggle */}
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setLoginType('admin')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-full border transition-all ${
+                  loginType === 'admin'
+                    ? 'bg-primary text-white border-primary shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginType('staff')}
+                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-full border transition-all ${
+                  loginType === 'staff'
+                    ? 'bg-primary text-white border-primary shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <UserCog className="w-4 h-4" />
+                <span>Staff</span>
+              </button>
+            </div>
             {/* Email Input */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">

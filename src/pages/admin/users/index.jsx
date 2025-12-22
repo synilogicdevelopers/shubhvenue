@@ -6,6 +6,7 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { usersAPI } from '../../../services/admin/api';
+import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 import { Search, Eye, Ban, Trash2, Mail, Phone, User, Calendar, Shield } from 'lucide-react';
 
@@ -230,32 +231,38 @@ export const Users = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleViewUser(user._id)}
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                  onClick={() => handleBlock(user._id)}
-                          title={user.isBlocked ? "Unblock User" : "Block User"}
-                          disabled={user.role === 'admin'}
-                        >
-                          <Ban className={`w-4 h-4 ${user.isBlocked ? 'text-red-500' : ''}`} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleDelete(user._id, { userMeta: user })}
-                          title="Delete User"
-                          disabled={user.role === 'admin'}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
+                        {hasPermission('view_users') && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleViewUser(user._id)}
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {hasPermission('edit_users') && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleBlock(user._id)}
+                            title={user.isBlocked ? "Unblock User" : "Block User"}
+                            disabled={user.role === 'admin'}
+                          >
+                            <Ban className={`w-4 h-4 ${user.isBlocked ? 'text-red-500' : ''}`} />
+                          </Button>
+                        )}
+                        {hasPermission('delete_users') && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDelete(user._id, { userMeta: user })}
+                            title="Delete User"
+                            disabled={user.role === 'admin'}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -410,36 +417,42 @@ export const Users = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  if (selectedUser.role !== 'admin') {
-                    handleBlock(selectedUser._id);
-                  } else {
-                    toast.error('Cannot block admin user');
-                  }
-                }}
-                disabled={selectedUser.role === 'admin'}
-              >
-                <Ban className="w-4 h-4 mr-2" />
-                {selectedUser.isBlocked ? 'Unblock User' : 'Block User'}
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  if (selectedUser.role !== 'admin') {
-                    handleDelete(selectedUser._id, false);
-                  } else {
-                    toast.error('Cannot delete admin user');
-                  }
-                }}
-                disabled={selectedUser.role === 'admin'}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete User
-              </Button>
-            </div>
+            {(hasPermission('edit_users') || hasPermission('delete_users')) && (
+              <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                {hasPermission('edit_users') && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (selectedUser.role !== 'admin') {
+                        handleBlock(selectedUser._id);
+                      } else {
+                        toast.error('Cannot block admin user');
+                      }
+                    }}
+                    disabled={selectedUser.role === 'admin'}
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    {selectedUser.isBlocked ? 'Unblock User' : 'Block User'}
+                  </Button>
+                )}
+                {hasPermission('delete_users') && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      if (selectedUser.role !== 'admin') {
+                        handleDelete(selectedUser._id, false);
+                      } else {
+                        toast.error('Cannot delete admin user');
+                      }
+                    }}
+                    disabled={selectedUser.role === 'admin'}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete User
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         ) : null}
       </Modal>

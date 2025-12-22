@@ -1,9 +1,7 @@
 import axios from 'axios'
 
-// In development, use relative URL to leverage Vite proxy
-// In production, use full URL
-// Default to local backend for web; override via VITE_API_URL when needed
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://shubhvenue.com/api')
+// Base URL; override via VITE_API_URL. Default to local backend with /api prefix.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,

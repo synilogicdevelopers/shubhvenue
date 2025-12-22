@@ -277,15 +277,9 @@ export const getMenuById = async (req, res) => {
   }
 };
 
-// Create menu (admin only)
+// Create menu (permission-based access via middleware)
 export const createMenu = async (req, res) => {
   try {
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can create menus' });
-    }
-
     const { name, description, icon, image, parentMenuId, isActive, sortOrder } = req.body;
 
     // Validation
@@ -382,15 +376,10 @@ export const createMenu = async (req, res) => {
   }
 };
 
-// Update menu (admin only)
+// Update menu (permission-based access via middleware)
 export const updateMenu = async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can update menus' });
-    }
 
     const { name, description, icon, image, parentMenuId, isActive, sortOrder } = req.body;
 
@@ -524,15 +513,10 @@ export const updateMenu = async (req, res) => {
   }
 };
 
-// Delete menu (admin only)
+// Delete menu (permission-based access via middleware)
 export const deleteMenu = async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can delete menus' });
-    }
 
     // Check MongoDB connection with timeout
     if (mongoose.connection.readyState !== 1) {

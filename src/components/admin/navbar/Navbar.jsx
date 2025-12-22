@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { Bell, Moon, Sun, LogOut, User } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Bell, Moon, Sun, LogOut, User, Shield, UserCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { setTheme, getTheme } from '../../../utils/theme';
 import { authAPI } from '../../../services/admin/api';
+import { getUserRole, isAdmin } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 
 export const Navbar = () => {
   const [theme, setThemeState] = useState(getTheme());
   const navigate = useNavigate();
+  
+  const userRole = useMemo(() => getUserRole(), []);
+  const isUserAdmin = useMemo(() => isAdmin(), []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -26,6 +30,8 @@ export const Navbar = () => {
     } finally {
       // Always clear local storage and redirect
       localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_role');
+      localStorage.removeItem('admin_permissions');
       navigate('/admin/login');
     }
   };
@@ -35,8 +41,26 @@ export const Navbar = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Admin Dashboard
+            {isUserAdmin ? 'Admin' : 'Staff'} Dashboard
           </h2>
+          {/* Role Badge */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+            isUserAdmin 
+              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
+              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+          }`}>
+            {isUserAdmin ? (
+              <>
+                <Shield className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </>
+            ) : (
+              <>
+                <UserCog className="w-3.5 h-3.5" />
+                <span>Staff</span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

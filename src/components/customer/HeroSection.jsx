@@ -35,12 +35,12 @@ function HeroSection({ onLoadComplete }) {
       const response = await publicVenuesAPI.getCities('Rajasthan')
       if (response.data?.success && response.data?.cities) {
         setCities(response.data.cities)
-        // Set Tonk as default city
-        const tonkCity = response.data.cities.find(city => 
-          city.toLowerCase() === 'tonk'
+        // Set Kota as default city
+        const kotaCity = response.data.cities.find(city => 
+          city.toLowerCase() === 'kota'
         )
-        if (tonkCity) {
-          setSelectedCity(tonkCity)
+        if (kotaCity) {
+          setSelectedCity(kotaCity)
         }
       }
     } catch (error) {

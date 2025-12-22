@@ -6,6 +6,7 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
 import { vendorsAPI } from '../../../services/admin/api';
+import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 import { Check, X, Eye, Trash2, Plus } from 'lucide-react';
 
@@ -129,10 +130,12 @@ export const Vendors = () => {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all vendors</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Vendor
-        </Button>
+        {hasPermission('create_vendors') && (
+          <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Vendor
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -171,22 +174,26 @@ export const Vendors = () => {
                     <TableCell>₹{vendor.totalRevenue || 0}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleViewVendor(vendor._id)} title="View Details">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {vendor.status !== 'approved' && (
+                        {hasPermission('view_vendors') && (
+                          <Button variant="ghost" size="sm" onClick={() => handleViewVendor(vendor._id)} title="View Details">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {hasPermission('edit_vendors') && vendor.status !== 'approved' && (
                           <Button variant="ghost" size="sm" onClick={() => handleApprove(vendor._id)}>
                             <Check className="w-4 h-4 text-green-500" />
                           </Button>
                         )}
-                        {vendor.status !== 'rejected' && (
+                        {hasPermission('edit_vendors') && vendor.status !== 'rejected' && (
                           <Button variant="ghost" size="sm" onClick={() => handleReject(vendor._id)}>
                             <X className="w-4 h-4 text-red-500" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(vendor._id)}>
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </Button>
+                        {hasPermission('delete_vendors') && (
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(vendor._id)}>
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
