@@ -140,6 +140,12 @@ export const Staff = () => {
       return;
     }
 
+    // Validate phone number length
+    if (formData.phone.length < 10 || formData.phone.length > 15) {
+      toast.error('Phone number must be between 10 and 15 digits');
+      return;
+    }
+
     setActionLoading(true);
     try {
       const data = new FormData();
@@ -167,6 +173,12 @@ export const Staff = () => {
   const handleUpdate = async () => {
     if (!formData.name || !formData.email || !formData.phone || !formData.role) {
       toast.error('Please fill all required fields');
+      return;
+    }
+
+    // Validate phone number length
+    if (formData.phone.length < 10 || formData.phone.length > 15) {
+      toast.error('Phone number must be between 10 and 15 digits');
       return;
     }
 
@@ -401,14 +413,24 @@ export const Staff = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Enter email"
+                autoComplete="off"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Phone *</label>
               <Input
+                type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Enter phone"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                  if (value.length <= 15) {
+                    setFormData({ ...formData, phone: value });
+                  }
+                }}
+                placeholder="Enter phone (10-15 digits)"
+                minLength={10}
+                maxLength={15}
+                autoComplete="off"
               />
             </div>
             <div>
@@ -531,14 +553,24 @@ export const Staff = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Enter email"
+                autoComplete="off"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Phone *</label>
               <Input
+                type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Enter phone"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+                  if (value.length <= 15) {
+                    setFormData({ ...formData, phone: value });
+                  }
+                }}
+                placeholder="Enter phone (10-15 digits)"
+                minLength={10}
+                maxLength={15}
+                autoComplete="off"
               />
             </div>
             <div>

@@ -51,8 +51,8 @@ const allMenuItems = [
     icon: UserCog,
     permission: 'view_staff',
     children: [
-      { path: '/admin/staff', label: 'Staff', permission: 'view_staff' },
       { path: '/admin/roles', label: 'Roles', icon: Shield, permission: 'view_roles' },
+      { path: '/admin/staff', label: 'Staff', permission: 'view_staff' },
     ],
   },
   { path: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'view_analytics' },

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../../middlewares/auth.js';
+import { requireAuth, requireRole, requirePermission } from '../../middlewares/auth.js';
 import {
   getVendorDashboard,
   getVendorBookings,
@@ -16,33 +16,34 @@ import {
 
 const router = Router();
 
-// All vendor routes require authentication
+// All vendor routes require authentication and vendor role
 router.use(requireAuth);
+router.use(requireRole('vendor', 'vendor_staff'));
 
 // Get vendor dashboard stats
-router.get('/dashboard', getVendorDashboard);
+router.get('/dashboard', requirePermission('vendor_view_dashboard'), getVendorDashboard);
 
 // Get vendor bookings
-router.get('/bookings', getVendorBookings);
+router.get('/bookings', requirePermission('vendor_view_bookings'), getVendorBookings);
 
 // Create booking by vendor (direct, no payment, no admin approval)
-router.post('/bookings', createVendorBooking);
+router.post('/bookings', requirePermission('vendor_create_bookings'), createVendorBooking);
 
 // Get vendor payouts
-router.get('/payouts', getVendorPayouts);
+router.get('/payouts', requirePermission('vendor_view_payouts'), getVendorPayouts);
 
 // Get vendor ledger
-router.get('/ledger', getVendorLedger);
+router.get('/ledger', requirePermission('vendor_view_ledger'), getVendorLedger);
 
 // Ledger entry management
-router.post('/ledger', addLedgerEntry);
-router.put('/ledger/:id', updateLedgerEntry);
-router.delete('/ledger/:id', deleteLedgerEntry);
+router.post('/ledger', requirePermission('vendor_create_ledger'), addLedgerEntry);
+router.put('/ledger/:id', requirePermission('vendor_edit_ledger'), updateLedgerEntry);
+router.delete('/ledger/:id', requirePermission('vendor_delete_ledger'), deleteLedgerEntry);
 
 // Blocked dates management
-router.get('/blocked-dates', getBlockedDates);
-router.post('/blocked-dates', addBlockedDates);
-router.delete('/blocked-dates', removeBlockedDates);
+router.get('/blocked-dates', requirePermission('vendor_view_blocked_dates'), getBlockedDates);
+router.post('/blocked-dates', requirePermission('vendor_create_blocked_dates'), addBlockedDates);
+router.delete('/blocked-dates', requirePermission('vendor_delete_blocked_dates'), removeBlockedDates);
 
 export default router;
 

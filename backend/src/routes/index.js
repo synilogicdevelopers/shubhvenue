@@ -20,6 +20,8 @@ import googleMapsRoutes from './v1/googlemaps.routes.js';
 import reviewRoutes from './v1/review.routes.js';
 import microserviceRoutes from './v1/microservice.routes.js';
 import staffRoutes from './v1/staff.routes.js';
+import vendorRolesRoutes from './v1/vendor-roles.routes.js';
+import vendorStaffRoutes from './v1/vendor-staff.routes.js';
 
 const router = Router();
 
@@ -44,6 +46,8 @@ router.use('/contact', contactRoutes);
 router.use('/maps', googleMapsRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/staff', staffRoutes);
+router.use('/vendor/roles', vendorRolesRoutes);
+router.use('/vendor/staff', vendorStaffRoutes);
 
 export default router;
 

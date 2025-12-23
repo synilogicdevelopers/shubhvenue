@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { hasVendorPermission } from '../../utils/vendor/permissions'
 
 export default function Ledger() {
   const [ledgerData, setLedgerData] = useState({
@@ -280,16 +281,18 @@ export default function Ledger() {
           <p className="text-gray-600 mt-1">Complete financial transaction history</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => {
-              resetForm()
-              setShowAddModal(true)
-            }}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Entry</span>
-          </button>
+          {hasVendorPermission('vendor_create_ledger') && (
+            <button
+              onClick={() => {
+                resetForm()
+                setShowAddModal(true)
+              }}
+              className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Entry</span>
+            </button>
+          )}
           <button
             onClick={loadLedger}
             className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -518,20 +521,24 @@ export default function Ledger() {
                         </div>
                         {transaction.isManual && (
                           <div className="flex items-center space-x-1">
-                            <button
-                              onClick={() => handleEdit(transaction)}
-                              className="text-primary-600 hover:text-primary-800"
-                              title="Edit entry"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(transaction)}
-                              className="text-red-600 hover:text-red-800"
-                              title="Delete entry"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {hasVendorPermission('vendor_edit_ledger') && (
+                              <button
+                                onClick={() => handleEdit(transaction)}
+                                className="text-primary-600 hover:text-primary-800"
+                                title="Edit entry"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasVendorPermission('vendor_delete_ledger') && (
+                              <button
+                                onClick={() => handleDeleteClick(transaction)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete entry"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

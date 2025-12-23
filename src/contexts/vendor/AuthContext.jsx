@@ -17,7 +17,43 @@ export function AuthProvider({ children }) {
         // Verify token is still valid
         authAPI.getProfile()
           .then((response) => {
-            const userData = response.data.user || response.data
+            // Handle both user and staff responses
+            let userData = response.data.user || response.data.staff || response.data
+            
+            // If staff response, extract permissions from role
+            if (response.data.staff) {
+              // Handle both old format (role object) and new format (permissions at top level)
+              const staffData = response.data.staff;
+              const permissions = staffData.permissions || 
+                                 (staffData.role && staffData.role.permissions) || 
+                                 (staffData.roleDetails && staffData.roleDetails.permissions) || 
+                                 [];
+              
+              userData = {
+                ...staffData,
+                permissions: Array.isArray(permissions) ? permissions : [],
+                role: 'vendor_staff'
+              }
+              
+              console.log('Vendor Staff Profile Loaded:', {
+                email: userData.email,
+                role: userData.role,
+                permissionsCount: userData.permissions.length,
+                permissions: userData.permissions
+              });
+            }
+            
+            // Ensure permissions array exists for vendor owners
+            if (userData.role === 'vendor' && !userData.permissions) {
+              // Vendor owners have all permissions - will be handled by permissions utility
+              userData.permissions = []
+            }
+            
+            // Ensure permissions array exists
+            if (!userData.permissions) {
+              userData.permissions = [];
+            }
+            
             setUser(userData)
             localStorage.setItem('vendor_user', JSON.stringify(userData))
           })
@@ -40,12 +76,43 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const response = await authAPI.login(email, password)
-      const { token, user } = response.data
+      const { token, user, staff } = response.data
+      
+      // Handle both vendor owner and vendor staff login
+      let userData = user || staff
+      
+      // Ensure permissions are included in userData
+      if (userData) {
+        // For vendor_staff, extract permissions from response
+        if (staff) {
+          const permissions = staff.permissions || 
+                             (staff.role && staff.role.permissions) || 
+                             (staff.roleDetails && staff.roleDetails.permissions) || 
+                             [];
+          userData.permissions = Array.isArray(permissions) ? permissions : [];
+          userData.role = 'vendor_staff';
+          
+          console.log('Vendor Staff Login:', {
+            email: userData.email,
+            role: userData.role,
+            permissionsCount: userData.permissions.length,
+            permissions: userData.permissions
+          });
+        } else if (userData.role === 'vendor') {
+          // Vendor owners have all permissions - empty array means all permissions
+          userData.permissions = userData.permissions || [];
+        }
+        
+        // Ensure permissions array always exists
+        if (!userData.permissions) {
+          userData.permissions = [];
+        }
+      }
       
       // Use vendor-specific localStorage keys
       localStorage.setItem('vendor_token', token)
-      localStorage.setItem('vendor_user', JSON.stringify(user))
-      setUser(user)
+      localStorage.setItem('vendor_user', JSON.stringify(userData))
+      setUser(userData)
       
       return { success: true }
     } catch (error) {

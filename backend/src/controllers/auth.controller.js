@@ -129,15 +129,89 @@ export const login = async (req, res) => {
       }
     }
 
-    // Find user
+    // Find user (vendor owner or customer)
     const normalizedEmail = email.toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail });
+    let isVendorStaff = false;
+    let vendorStaff = null;
     
+    // If user not found in User model, check VendorStaff model
     if (!user) {
+      const VendorStaff = (await import('../models/VendorStaff.js')).default;
+      vendorStaff = await VendorStaff.findOne({ email: normalizedEmail })
+        .populate('role')
+        .populate('vendorId');
+      
+      if (vendorStaff) {
+        isVendorStaff = true;
+        
+        // Check if staff is deleted
+        if (vendorStaff.isDeleted) {
+          console.log(`Login attempt failed: Vendor staff account deleted for email: ${normalizedEmail}`);
+          return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+        }
+
+        // Check if staff is active
+        if (!vendorStaff.isActive) {
+          console.log(`Login attempt failed: Vendor staff account inactive for email: ${normalizedEmail}`);
+          return res.status(403).json({ error: 'Your account is inactive. Please contact support.' });
+        }
+
+        // Check if role exists and is active
+        if (!vendorStaff.role || !vendorStaff.role.isActive) {
+          console.log(`Login attempt failed: Vendor staff role inactive for email: ${normalizedEmail}`);
+          return res.status(403).json({ error: 'Your role is inactive. Please contact support.' });
+        }
+
+        // Check password
+        const isPasswordValid = await bcrypt.compare(password, vendorStaff.password);
+        if (!isPasswordValid) {
+          console.log(`Login attempt failed: Invalid password for vendor staff email: ${normalizedEmail}`);
+          return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Generate JWT token for vendor staff
+        const permissions = vendorStaff.role.permissions || [];
+        console.log('Vendor staff login - Permissions:', {
+          staffEmail: vendorStaff.email,
+          roleName: vendorStaff.role.name,
+          vendorId: vendorStaff.vendorId._id,
+          permissionsCount: permissions.length
+        });
+        
+        const token = jwt.sign(
+          { 
+            userId: vendorStaff._id, 
+            email: vendorStaff.email, 
+            role: 'vendor_staff',
+            vendorId: vendorStaff.vendorId._id,
+            roleId: vendorStaff.role._id,
+            permissions: permissions
+          },
+          process.env.JWT_SECRET || 'change_me',
+          { expiresIn: '7d' }
+        );
+
+        return res.json({
+          message: 'Login successful',
+          token,
+          user: {
+            id: vendorStaff._id,
+            name: vendorStaff.name,
+            email: vendorStaff.email,
+            phone: vendorStaff.phone,
+            role: 'vendor_staff',
+            vendorId: vendorStaff.vendorId._id,
+            permissions: permissions
+          }
+        });
+      } else {
       console.log(`Login attempt failed: User not found for email: ${normalizedEmail}`);
       return res.status(401).json({ error: 'Invalid credentials' });
+      }
     }
 
+    // Regular user (vendor owner or customer) login
     // Check if vendor is deleted (for backward compatibility with soft-deleted accounts)
     if (user.isDeleted) {
       console.log(`Login attempt failed: Vendor account deleted for email: ${normalizedEmail}`);
@@ -157,14 +231,36 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // For vendors, include all vendor permissions in token
+    let permissions = [];
+    if (user.role === 'vendor') {
+      const { VENDOR_ALL_PERMISSIONS } = await import('../data/vendor-permissions.js');
+      permissions = VENDOR_ALL_PERMISSIONS; // Vendor owners have all permissions
+      console.log('Vendor login - Permissions:', {
+        vendorEmail: user.email,
+        permissionsCount: permissions.length
+      });
+    }
+
     // Generate JWT token
+    const tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      role: user.role
+    };
+
+    // Add permissions if vendor
+    if (permissions.length > 0) {
+      tokenPayload.permissions = permissions;
+    }
+
     const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
+      tokenPayload,
       process.env.JWT_SECRET || 'change_me',
       { expiresIn: '7d' }
     );
 
-    res.json({
+    const responseData = {
       message: 'Login successful',
       token,
       user: {
@@ -175,7 +271,14 @@ export const login = async (req, res) => {
         role: user.role,
         verified: user.verified
       }
-    });
+    };
+
+    // Include permissions in response for vendors
+    if (permissions.length > 0) {
+      responseData.user.permissions = permissions;
+    }
+
+    res.json(responseData);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -187,6 +290,7 @@ export const getProfile = async (req, res) => {
   try {
     // This will be called with requireAuth middleware
     const userId = req.user?.userId;
+    const userRole = req.user?.role;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -205,6 +309,47 @@ export const getProfile = async (req, res) => {
       }
     }
 
+    // Handle vendor staff profile
+    if (userRole === 'vendor_staff') {
+      const VendorStaff = (await import('../models/VendorStaff.js')).default;
+      const staff = await VendorStaff.findById(userId)
+        .populate('role')
+        .populate('vendorId')
+        .select('-password');
+      
+      if (!staff) {
+        return res.status(404).json({ error: 'Staff not found' });
+      }
+
+      if (staff.isDeleted) {
+        return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+      }
+
+      const permissions = staff.role.permissions || [];
+      
+      return res.json({
+        staff: {
+          id: staff._id,
+          name: staff.name,
+          email: staff.email,
+          phone: staff.phone,
+          location: staff.location,
+          gender: staff.gender,
+          img: staff.img,
+          vendorId: staff.vendorId._id,
+          role: 'vendor_staff',
+          permissions: permissions, // Include permissions at top level for easier access
+          roleDetails: {
+            id: staff.role._id,
+            name: staff.role.name,
+            permissions: permissions
+          },
+          isActive: staff.isActive
+        }
+      });
+    }
+
+    // Handle regular user (vendor owner or customer) profile
     const user = await User.findById(userId).select('-password');
     
     if (!user) {
@@ -221,7 +366,14 @@ export const getProfile = async (req, res) => {
       return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
     }
 
-    res.json({
+    // For vendors, include permissions (empty array means all permissions)
+    let permissions = [];
+    if (user.role === 'vendor') {
+      const { VENDOR_ALL_PERMISSIONS } = await import('../data/vendor-permissions.js');
+      permissions = VENDOR_ALL_PERMISSIONS; // Vendor owners have all permissions
+    }
+    
+    const responseData = {
       user: {
         id: user._id,
         name: user.name,
@@ -232,7 +384,14 @@ export const getProfile = async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
-    });
+    };
+    
+    // Include permissions in response for vendors
+    if (permissions.length > 0) {
+      responseData.user.permissions = permissions;
+    }
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Internal server error' });

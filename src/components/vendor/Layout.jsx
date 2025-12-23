@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/vendor/AuthContext'
 import { trackPageView } from '../../utils/vendor/analytics'
+import { getVendorPermissions, hasVendorPermission, isVendorOwner } from '../../utils/vendor/permissions'
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -14,9 +15,11 @@ import {
   ChevronRight,
   BookOpen,
   MessageSquare,
-  Settings
+  Settings,
+  UserCog,
+  Shield
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -24,25 +27,84 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false)
+  const [staffDropdownOpen, setStaffDropdownOpen] = useState(false)
 
-  const navigation = [
+  // All navigation items with permissions
+  const allNavigationItems = [
     { 
       name: 'Dashboard', 
       href: '/vendor/', 
       icon: LayoutDashboard,
+      permission: 'vendor_view_dashboard',
       hasDropdown: true,
       dropdownItems: [
-        { name: 'Overview', href: '/vendor/', icon: LayoutDashboard },
-        { name: 'Calendar Management', href: '/vendor/calendar', icon: CalendarDays },
-        { name: 'Ledger', href: '/vendor/ledger', icon: BookOpen },
+        { name: 'Overview', href: '/vendor/', icon: LayoutDashboard, permission: 'vendor_view_dashboard' },
+        { name: 'Calendar Management', href: '/vendor/calendar', icon: CalendarDays, permission: 'vendor_view_calendar' },
+        { name: 'Ledger', href: '/vendor/ledger', icon: BookOpen, permission: 'vendor_view_ledger' },
       ]
     },
-    { name: 'Venues', href: '/vendor/venues', icon: MapPin },
-    { name: 'Bookings', href: '/vendor/bookings', icon: Calendar },
-    { name: 'Reviews', href: '/vendor/reviews', icon: MessageSquare },
-    { name: 'Payouts', href: '/vendor/payouts', icon: Wallet },
-    { name: 'Settings', href: '/vendor/settings', icon: Settings },
+    { name: 'Venues', href: '/vendor/venues', icon: MapPin, permission: 'vendor_view_venues' },
+    { name: 'Bookings', href: '/vendor/bookings', icon: Calendar, permission: 'vendor_view_bookings' },
+    { name: 'Reviews', href: '/vendor/reviews', icon: MessageSquare, permission: 'vendor_view_reviews' },
+    { name: 'Payouts', href: '/vendor/payouts', icon: Wallet, permission: 'vendor_view_payouts' },
+    {
+      name: 'Staff',
+      href: '/vendor/staff',
+      icon: UserCog,
+      permission: null, // Only vendor owners can access (no permission check needed)
+      ownerOnly: true, // Only show to vendor owners
+      hasDropdown: true,
+      dropdownItems: [
+        { name: 'Roles', href: '/vendor/roles', icon: Shield, permission: null, ownerOnly: true },
+        { name: 'Staff', href: '/vendor/staff', icon: UserCog, permission: null, ownerOnly: true },
+      ]
+    },
+    { name: 'Settings', href: '/vendor/settings', icon: Settings, permission: 'vendor_view_profile' },
   ]
+
+  // Get user permissions and filter navigation items
+  const userPermissions = useMemo(() => getVendorPermissions(), [])
+  const isOwner = useMemo(() => isVendorOwner(), [])
+  
+  // Filter navigation items based on permissions
+  const navigation = useMemo(() => {
+    return allNavigationItems
+      .map((item) => {
+        // If item is owner-only, only show to vendor owners
+        if (item.ownerOnly && !isOwner) return null;
+        
+        // Vendor owners see everything (except items that are explicitly hidden)
+        if (isOwner) return item;
+        
+        // If no permission required, show it
+        if (!item.permission) return item;
+        
+        // Check if user has permission for this item
+        if (!hasVendorPermission(item.permission)) return null;
+        
+        // For items with dropdown, filter children based on permissions
+        if (item.hasDropdown && item.dropdownItems) {
+          const accessibleChildren = item.dropdownItems.filter((child) => {
+            // Owner-only items only for owners
+            if (child.ownerOnly && !isOwner) return false;
+            if (!child.permission) return true;
+            return hasVendorPermission(child.permission);
+          });
+          
+          // Only show parent if at least one child is accessible
+          if (accessibleChildren.length === 0) return null;
+          
+          // Return item with filtered children
+          return {
+            ...item,
+            dropdownItems: accessibleChildren,
+          };
+        }
+        
+        return item;
+      })
+      .filter((item) => item !== null);
+  }, [userPermissions, isOwner])
 
   const handleLogout = () => {
     logout()
@@ -55,6 +117,9 @@ export default function Layout() {
   useEffect(() => {
     if (location.pathname === '/vendor/calendar' || location.pathname === '/vendor/ledger') {
       setDashboardDropdownOpen(true)
+    }
+    if (location.pathname === '/vendor/staff' || location.pathname === '/vendor/roles') {
+      setStaffDropdownOpen(true)
     }
   }, [location.pathname])
 
@@ -108,13 +173,18 @@ export default function Layout() {
               const Icon = item.icon
               const active = isActive(item.href) || (item.hasDropdown && item.dropdownItems?.some(subItem => isActive(subItem.href)))
               
-              if (item.hasDropdown && item.dropdownItems) {
+              if (item.hasDropdown && item.dropdownItems && item.dropdownItems.length > 0) {
+                const isDashboardDropdown = item.name === 'Dashboard'
+                const isStaffDropdown = item.name === 'Staff'
+                const dropdownOpen = isDashboardDropdown ? dashboardDropdownOpen : (isStaffDropdown ? staffDropdownOpen : false)
+                const setDropdownOpen = isDashboardDropdown ? setDashboardDropdownOpen : (isStaffDropdown ? setStaffDropdownOpen : () => {})
+                
                 return (
                   <div key={item.name} className="space-y-1">
                     <button
                       onClick={() => {
-                        setDashboardDropdownOpen(!dashboardDropdownOpen)
-                        if (!dashboardDropdownOpen) {
+                        setDropdownOpen(!dropdownOpen)
+                        if (!dropdownOpen) {
                           navigate(item.href)
                         }
                       }}
@@ -128,7 +198,7 @@ export default function Layout() {
                         <Icon className={`w-5 h-5 ${active ? 'text-primary-600' : ''}`} />
                         <span className="font-medium">{item.name}</span>
                       </div>
-                      {dashboardDropdownOpen ? (
+                      {dropdownOpen ? (
                         <ChevronDown className={`w-4 h-4 ${active ? 'text-primary-600' : 'text-gray-500'}`} />
                       ) : (
                         <ChevronRight className={`w-4 h-4 ${active ? 'text-primary-600' : 'text-gray-500'}`} />
@@ -136,7 +206,7 @@ export default function Layout() {
                     </button>
                     
                     {/* Dropdown Items */}
-                    {dashboardDropdownOpen && (
+                    {dropdownOpen && (
                       <div className="ml-4 space-y-1">
                         {item.dropdownItems.map((subItem) => {
                           const SubIcon = subItem.icon

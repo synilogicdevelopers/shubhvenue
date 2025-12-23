@@ -1,10 +1,5 @@
-// Base URL; override via VITE_API_URL. Default to local backend with /api prefix.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
-
-// Debug: Log the API base URL being used
-console.log('API Base URL:', API_BASE_URL);
-console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
-console.log('Is Dev:', import.meta.env.DEV);
+// Production server URL
+const API_BASE_URL = 'https://shubhvenue.com/api';
 
 // Helper function to make API requests
 const apiRequest = async (endpoint, options = {}) => {

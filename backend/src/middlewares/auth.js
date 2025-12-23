@@ -13,6 +13,7 @@ export function requireAuth(req, res, next) {
       userId: payload.userId,
       email: payload.email,
       role: payload.role,
+      vendorId: payload.vendorId,
       hasPermissions: !!payload.permissions,
       permissionsCount: payload.permissions?.length || 0
     });
@@ -77,6 +78,13 @@ export function requirePermission(...requiredPermissions) {
       return next();
     }
     
+    // Vendor owners have all vendor permissions - bypass check
+    // (vendor_staff have role='vendor_staff', not 'vendor', so they will be checked below)
+    if (req.user.role === 'vendor') {
+      // This is a vendor owner - grant all access (like admin)
+      return next();
+    }
+    
     // For staff, check if they have the required permissions
     if (req.user.role === 'staff') {
       const userPermissions = req.user.permissions || [];
@@ -88,6 +96,32 @@ export function requirePermission(...requiredPermissions) {
       
       if (!hasPermission) {
         console.log('Permission check failed:', {
+          required: requiredPermissions,
+          userPermissions: userPermissions,
+          userRole: req.user.role
+        });
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: 'You do not have the required permissions to access this resource',
+          required: requiredPermissions,
+          yourPermissions: userPermissions
+        });
+      }
+      
+      return next();
+    }
+    
+    // For vendor_staff, check if they have the required permissions
+    if (req.user.role === 'vendor_staff') {
+      const userPermissions = req.user.permissions || [];
+      
+      // Check if vendor staff has at least one of the required permissions
+      const hasPermission = requiredPermissions.some(permission => 
+        userPermissions.includes(permission)
+      );
+      
+      if (!hasPermission) {
+        console.log('Vendor staff permission check failed:', {
           required: requiredPermissions,
           userPermissions: userPermissions,
           userRole: req.user.role

@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Shield, UserCog } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { authAPI } from '../../../services/admin/api';
 import { Button } from '../../../components/admin/ui/Button';
 import toast from 'react-hot-toast';
 
 export const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [loginType, setLoginType] = useState('admin'); // 'admin' or 'staff'
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -42,20 +41,54 @@ export const Login = () => {
 
     try {
       let response;
-      if (loginType === 'admin') {
+      let loginType = null;
+      
+      // Try admin login first
+      try {
         response = await authAPI.login(formData);
-      } else {
-        response = await authAPI.loginStaff(formData);
+        // Check if response has token
+        if (response?.data?.token) {
+          loginType = 'admin';
+        } else {
+          throw new Error('Invalid admin response');
+        }
+      } catch (adminError) {
+        // Only try staff login if admin login failed with 401 (invalid credentials) or 404
+        // Don't try staff login for other errors like 403, 503, etc.
+        if (adminError.response?.status === 401 || adminError.response?.status === 404) {
+          try {
+            response = await authAPI.loginStaff(formData);
+            // Check if response has token
+            if (response?.data?.token) {
+              loginType = 'staff';
+            } else {
+              throw new Error('Invalid staff response');
+            }
+          } catch (staffError) {
+            // Both failed, throw staff error
+            throw staffError;
+          }
+        } else {
+          // Admin login failed with non-401/404 error, don't try staff
+          throw adminError;
+        }
       }
 
-      if (response.data.token) {
+      // If we have a successful login
+      if (loginType && response?.data?.token) {
         localStorage.setItem('admin_token', response.data.token);
         localStorage.setItem('admin_role', loginType);
         
         // Store permissions if available (for staff)
-        if (response.data.staff?.role?.permissions) {
-          localStorage.setItem('admin_permissions', JSON.stringify(response.data.staff.role.permissions));
-        } else if (loginType === 'admin') {
+        if (loginType === 'staff') {
+          // Staff login response structure
+          if (response.data.staff?.role?.permissions) {
+            localStorage.setItem('admin_permissions', JSON.stringify(response.data.staff.role.permissions));
+          } else {
+            // If no permissions in response, set empty array
+            localStorage.setItem('admin_permissions', JSON.stringify([]));
+          }
+        } else {
           // Admin has all permissions
           localStorage.setItem('admin_permissions', JSON.stringify(['*']));
         }
@@ -63,10 +96,12 @@ export const Login = () => {
         const roleLabel = loginType === 'admin' ? 'Admin' : 'Staff';
         toast.success(`Login successful! Welcome, ${roleLabel}!`);
         navigate('/admin/dashboard');
+      } else {
+        throw new Error('Login failed: Invalid response');
       }
     } catch (error) {
       // Get error message from response
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Login failed. Please check your credentials.';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       setErrors({ submit: errorMessage });
     } finally {
@@ -116,33 +151,6 @@ export const Login = () => {
             onSubmit={handleSubmit}
             className="space-y-5"
           >
-            {/* Login type toggle */}
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setLoginType('admin')}
-                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-full border transition-all ${
-                  loginType === 'admin'
-                    ? 'bg-primary text-white border-primary shadow-md'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                <span>Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginType('staff')}
-                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-full border transition-all ${
-                  loginType === 'staff'
-                    ? 'bg-primary text-white border-primary shadow-md'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                <UserCog className="w-4 h-4" />
-                <span>Staff</span>
-              </button>
-            </div>
             {/* Email Input */}
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
@@ -154,7 +162,7 @@ export const Login = () => {
                 </div>
                 <input
                   type="email"
-                  placeholder="admin@admin.com"
+                  placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => {
                     setFormData({ ...formData, email: e.target.value });
@@ -246,7 +254,7 @@ export const Login = () => {
             className="mt-6 text-center"
           >
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Secure admin access only
+              Secure admin and staff access
             </p>
           </motion.div>
         </div>

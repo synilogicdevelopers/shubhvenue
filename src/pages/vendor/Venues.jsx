@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { getImageUrl } from '../../utils/vendor/imageUrl'
+import { hasVendorPermission } from '../../utils/vendor/permissions'
 
 
 export default function Venues() {
@@ -429,6 +430,53 @@ export default function Venues() {
     }
   }
 
+  // Helper function to convert 24-hour time to 12-hour format (HH:mm -> hh:mm AM/PM)
+  const convertTo12Hour = (time24) => {
+    if (!time24 || !time24.includes(':')) return ''
+    const [hours, minutes] = time24.split(':')
+    const hour24 = parseInt(hours, 10)
+    if (isNaN(hour24)) return time24
+    
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24
+    const ampm = hour24 >= 12 ? 'PM' : 'AM'
+    return `${hour12}:${minutes} ${ampm}`
+  }
+
+  // Helper function to convert 12-hour time to 24-hour format (hh:mm AM/PM -> HH:mm)
+  const convertTo24Hour = (time12) => {
+    if (!time12) return ''
+    
+    // Check if already in 24-hour format (no AM/PM)
+    if (!time12.includes('AM') && !time12.includes('PM')) {
+      return time12
+    }
+    
+    const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+    if (!match) return time12
+    
+    let hours = parseInt(match[1], 10)
+    const minutes = match[2]
+    const ampm = match[3].toUpperCase()
+    
+    if (ampm === 'PM' && hours !== 12) {
+      hours += 12
+    } else if (ampm === 'AM' && hours === 12) {
+      hours = 0
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes}`
+  }
+
+  // Handle time input change with AM/PM format
+  const handleTimeChange = (e) => {
+    const { name, value } = e.target
+    // Store in 12-hour format for display (user types in format like "9:00 AM" or "2:30 PM")
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
   const handleGallerySelect = (e) => {
     const files = Array.from(e.target.files)
     setGalleryImages([...galleryImages, ...files])
@@ -539,35 +587,45 @@ export default function Venues() {
       }
       
       // Availability - always send if any field exists
+      // Convert 12-hour format to 24-hour format for backend
       const availability = {
         status: 'Open',
-        openTime: formData.openTime || '',
-        closeTime: formData.closeTime || '',
+        openTime: formData.openTime ? convertTo24Hour(formData.openTime) : '',
+        closeTime: formData.closeTime ? convertTo24Hour(formData.closeTime) : '',
         openDays: formData.openDays || []
       }
       formDataToSend.append('availability', JSON.stringify(availability))
       
-      // Images - only send if new file selected
-      if (selectedImage) formDataToSend.append('image', selectedImage)
+      // Main Image field removed - not sending image field
       
       // Gallery images - handle both new uploads and existing (when editing)
       if (editingVenue) {
-        // When editing: send existing URLs via body to replace gallery
-        // Backend replaces gallery when req.body.gallery is sent as array
-        // Append each URL separately so FormData creates an array
-        if (existingGalleryUrls.length > 0) {
-          existingGalleryUrls.forEach(url => {
-            formDataToSend.append('gallery', url)
-          })
-        }
+        // When editing: always send existing URLs as JSON string (even if empty) to avoid FormData conflict with files
+        // Backend will parse both files from req.files.gallery and URLs from req.body.existingGallery
+        // This ensures backend knows to update gallery even if all images are removed
+        const existingGalleryJson = JSON.stringify(existingGalleryUrls || [])
+        formDataToSend.append('existingGallery', existingGalleryJson)
+        console.log('📤 Sending gallery data:', {
+          existingUrls: existingGalleryUrls.length,
+          existingUrlsData: existingGalleryUrls,
+          newFiles: galleryImages?.length || 0,
+          existingGalleryJson
+        })
         // Send new file uploads - these will be merged with existing
         if (galleryImages && galleryImages.length > 0) {
-          galleryImages.forEach(file => formDataToSend.append('gallery', file))
+          galleryImages.forEach(file => {
+            console.log('📤 Adding gallery file:', file.name, file.type)
+            formDataToSend.append('gallery', file)
+          })
         }
       } else {
         // When creating: only send new uploads as files
         if (galleryImages && galleryImages.length > 0) {
-          galleryImages.forEach(file => formDataToSend.append('gallery', file))
+          console.log('📤 Creating venue - sending gallery files:', galleryImages.length)
+          galleryImages.forEach(file => {
+            console.log('📤 Adding gallery file:', file.name, file.type)
+            formDataToSend.append('gallery', file)
+          })
         }
       }
       
@@ -662,11 +720,16 @@ export default function Venues() {
       // More detailed error message
       let fullErrorMessage = errorMessage
       if (error.response?.status === 403) {
-        fullErrorMessage = `Access Denied: ${errorMessage}`
-        if (errorDetails) {
-          fullErrorMessage += `\n\nDetails: ${JSON.stringify(errorDetails, null, 2)}`
+        // Check if it's a permission error or ownership error
+        if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+          fullErrorMessage = `Access Denied: ${errorMessage}\n\nYou do not have the required permissions to perform this action. Please contact your administrator.`
+        } else {
+          fullErrorMessage = `Access Denied: ${errorMessage}`
+          if (errorDetails) {
+            fullErrorMessage += `\n\nDetails: ${JSON.stringify(errorDetails, null, 2)}`
+          }
+          fullErrorMessage += '\n\nPlease ensure:\n1. You are logged in as a vendor or vendor staff\n2. This venue belongs to your vendor account\n3. Your session is valid'
         }
-        fullErrorMessage += '\n\nPlease ensure:\n1. You are logged in as a vendor\n2. This venue belongs to you\n3. Your session is valid'
       } else if (error.response?.status === 401) {
         fullErrorMessage = 'Authentication failed. Please login again.'
         localStorage.removeItem('vendor_token')
@@ -675,7 +738,12 @@ export default function Venues() {
         return
       }
       
-      alert(fullErrorMessage)
+      // Use feedback modal instead of alert for better UX
+      setFeedbackModal({
+        title: 'Error',
+        message: fullErrorMessage,
+        status: 'error'
+      })
     } finally {
       setSubmitting(false)
     }
@@ -744,9 +812,20 @@ export default function Venues() {
         status: 'success'
       })
     } catch (error) {
+      let errorMsg = error.response?.data?.error || 'Failed to delete venue'
+      
+      // Better error messages for vendor_staff
+      if (error.response?.status === 403) {
+        if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
+          errorMsg = `Access Denied: ${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
+        } else {
+          errorMsg = `Access Denied: ${errorMsg}\n\nPlease ensure you have the required permissions and this venue belongs to your vendor account.`
+        }
+      }
+      
       setFeedbackModal({
         title: 'Error',
-        message: error.response?.data?.error || 'Failed to delete venue',
+        message: errorMsg,
         status: 'error'
       })
     } finally {
@@ -877,8 +956,9 @@ export default function Venues() {
         amenities: amenitiesArray,
         highlights: highlightsArray,
         rooms: fullVenueData.rooms?.toString() || '',
-        openTime: fullVenueData.availability?.openTime || '',
-        closeTime: fullVenueData.availability?.closeTime || '',
+        // Convert 24-hour time to 12-hour format for display
+        openTime: fullVenueData.availability?.openTime ? convertTo12Hour(fullVenueData.availability.openTime) : '',
+        closeTime: fullVenueData.availability?.closeTime ? convertTo12Hour(fullVenueData.availability.closeTime) : '',
         openDays: openDaysArray,
       })
 
@@ -889,6 +969,7 @@ export default function Venues() {
       // Set existing image preview if available - check all possible image fields
       const mainImage = fullVenueData.image || fullVenueData.coverImage || 
                        (fullVenueData.images && Array.isArray(fullVenueData.images) && fullVenueData.images[0]) ||
+                       (fullVenueData.gallery && typeof fullVenueData.gallery === 'object' && fullVenueData.gallery.photos && Array.isArray(fullVenueData.gallery.photos) && fullVenueData.gallery.photos[0]) ||
                        (fullVenueData.galleryInfo?.photos && Array.isArray(fullVenueData.galleryInfo.photos) && fullVenueData.galleryInfo.photos[0])
       
       if (mainImage) {
@@ -901,14 +982,31 @@ export default function Venues() {
       
       // Set existing gallery images - check multiple possible sources
       let galleryImagesList = []
-      if (fullVenueData.gallery && Array.isArray(fullVenueData.gallery) && fullVenueData.gallery.length > 0) {
+      
+      // Check gallery.photos (formatted response structure)
+      if (fullVenueData.gallery && typeof fullVenueData.gallery === 'object' && fullVenueData.gallery.photos && Array.isArray(fullVenueData.gallery.photos) && fullVenueData.gallery.photos.length > 0) {
+        galleryImagesList = fullVenueData.gallery.photos
+      }
+      // Check if gallery is an array (legacy format)
+      else if (fullVenueData.gallery && Array.isArray(fullVenueData.gallery) && fullVenueData.gallery.length > 0) {
         galleryImagesList = fullVenueData.gallery
-      } else if (fullVenueData.galleryInfo?.photos && Array.isArray(fullVenueData.galleryInfo.photos) && fullVenueData.galleryInfo.photos.length > 0) {
+      }
+      // Check galleryInfo.photos (alternative structure)
+      else if (fullVenueData.galleryInfo?.photos && Array.isArray(fullVenueData.galleryInfo.photos) && fullVenueData.galleryInfo.photos.length > 0) {
         galleryImagesList = fullVenueData.galleryInfo.photos
-      } else if (fullVenueData.images && Array.isArray(fullVenueData.images) && fullVenueData.images.length > 0) {
+      }
+      // Check images array (skip first one if it's the main image)
+      else if (fullVenueData.images && Array.isArray(fullVenueData.images) && fullVenueData.images.length > 0) {
         // Use images array, but skip first one if it's the main image
         galleryImagesList = fullVenueData.images.slice(1)
       }
+      
+      console.log('🖼️ Loading gallery images:', {
+        gallery: fullVenueData.gallery,
+        galleryInfo: fullVenueData.galleryInfo,
+        images: fullVenueData.images,
+        galleryImagesList
+      })
       
       if (galleryImagesList.length > 0) {
         setExistingGalleryUrls(galleryImagesList)
@@ -1060,13 +1158,15 @@ export default function Venues() {
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>
               </button>
-              <button
-                onClick={() => navigate('/vendor/venues/add')}
-                className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Add Venue</span>
-              </button>
+              {hasVendorPermission('vendor_create_venues') && (
+                <button
+                  onClick={() => navigate('/vendor/venues/add')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Add Venue</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1220,19 +1320,23 @@ export default function Venues() {
                     })()}
                     
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(venue)}
-                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(venue.id || venue._id, venue.name)}
-                        className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {hasVendorPermission('vendor_edit_venues') && (
+                        <button
+                          onClick={() => handleEdit(venue)}
+                          className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition"
+                        >
+                          <Edit className="w-4 h-4" />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      {hasVendorPermission('vendor_delete_venues') && (
+                        <button
+                          onClick={() => handleDelete(venue.id || venue._id, venue.name)}
+                          className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1391,46 +1495,6 @@ export default function Venues() {
               {currentStep === 1 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Images</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Main Image</label>
-                    {editingVenue && existingImageUrl && !selectedImage && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-500 mb-2">Current Image:</p>
-                        <img
-                          src={
-                            existingImageUrl?.startsWith('http')
-                              ? existingImageUrl
-                              : getImageUrl(existingImageUrl)
-                          }
-                          alt="Current"
-                          className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                            if (e.target.nextSibling && e.target.nextSibling.style) {
-                              e.target.nextSibling.style.display = 'block'
-                            }
-                          }}
-                        />
-                        <p className="text-xs text-gray-500 mt-2">Upload a new image to replace this one</p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    />
-                    {selectedImage && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-500 mb-2">New Image Preview:</p>
-                        <img
-                          src={URL.createObjectURL(selectedImage)}
-                          alt="Preview"
-                          className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                        />
-                      </div>
-                    )}
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
                     {editingVenue && existingGalleryUrls.length > 0 && (
@@ -1865,23 +1929,155 @@ export default function Venues() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Opening Time</label>
-                        <input
-                          type="time"
-                          name="openTime"
-                          value={formData.openTime}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
+                        <div className="flex items-center gap-2">
+                          <select
+                            name="openTimeHour"
+                            value={(() => {
+                              if (!formData.openTime) return 9
+                              const match = formData.openTime.match(/(\d{1,2}):/)
+                              return match ? parseInt(match[1]) : 9
+                            })()}
+                            onChange={(e) => {
+                              const hour = parseInt(e.target.value)
+                              const currentTime = formData.openTime || '9:00 AM'
+                              const match = currentTime.match(/:(\d{2})\s*(AM|PM)/i)
+                              const minutes = match ? match[1] : '00'
+                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              setFormData(prev => ({
+                                ...prev,
+                                openTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
+                              <option key={hour} value={hour}>{hour}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-600">:</span>
+                          <select
+                            name="openTimeMinute"
+                            value={(() => {
+                              if (!formData.openTime) return '00'
+                              const match = formData.openTime.match(/:(\d{2})\s*(AM|PM)/i)
+                              return match ? match[1] : '00'
+                            })()}
+                            onChange={(e) => {
+                              const minutes = e.target.value
+                              const currentTime = formData.openTime || '9:00 AM'
+                              const match = currentTime.match(/(\d{1,2}):/)
+                              const hour = match ? match[1] : '9'
+                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              setFormData(prev => ({
+                                ...prev,
+                                openTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
+                              <option key={minute} value={minute}>{minute}</option>
+                            ))}
+                          </select>
+                          <select
+                            name="openTimeAmPm"
+                            value={(() => {
+                              if (!formData.openTime) return 'AM'
+                              return formData.openTime.includes('PM') || formData.openTime.includes('pm') ? 'PM' : 'AM'
+                            })()}
+                            onChange={(e) => {
+                              const ampm = e.target.value
+                              const currentTime = formData.openTime || '9:00 AM'
+                              const match = currentTime.match(/(\d{1,2}):(\d{2})/)
+                              const hour = match ? match[1] : '9'
+                              const minutes = match ? match[2] : '00'
+                              setFormData(prev => ({
+                                ...prev,
+                                openTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Closing Time</label>
-                        <input
-                          type="time"
-                          name="closeTime"
-                          value={formData.closeTime}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
+                        <div className="flex items-center gap-2">
+                          <select
+                            name="closeTimeHour"
+                            value={(() => {
+                              if (!formData.closeTime) return 6
+                              const match = formData.closeTime.match(/(\d{1,2}):/)
+                              return match ? parseInt(match[1]) : 6
+                            })()}
+                            onChange={(e) => {
+                              const hour = parseInt(e.target.value)
+                              const currentTime = formData.closeTime || '6:00 PM'
+                              const match = currentTime.match(/:(\d{2})\s*(AM|PM)/i)
+                              const minutes = match ? match[1] : '00'
+                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              setFormData(prev => ({
+                                ...prev,
+                                closeTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
+                              <option key={hour} value={hour}>{hour}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-600">:</span>
+                          <select
+                            name="closeTimeMinute"
+                            value={(() => {
+                              if (!formData.closeTime) return '00'
+                              const match = formData.closeTime.match(/:(\d{2})\s*(AM|PM)/i)
+                              return match ? match[1] : '00'
+                            })()}
+                            onChange={(e) => {
+                              const minutes = e.target.value
+                              const currentTime = formData.closeTime || '6:00 PM'
+                              const match = currentTime.match(/(\d{1,2}):/)
+                              const hour = match ? match[1] : '6'
+                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              setFormData(prev => ({
+                                ...prev,
+                                closeTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
+                              <option key={minute} value={minute}>{minute}</option>
+                            ))}
+                          </select>
+                          <select
+                            name="closeTimeAmPm"
+                            value={(() => {
+                              if (!formData.closeTime) return 'PM'
+                              return formData.closeTime.includes('PM') || formData.closeTime.includes('pm') ? 'PM' : 'AM'
+                            })()}
+                            onChange={(e) => {
+                              const ampm = e.target.value
+                              const currentTime = formData.closeTime || '6:00 PM'
+                              const match = currentTime.match(/(\d{1,2}):(\d{2})/)
+                              const hour = match ? match[1] : '6'
+                              const minutes = match ? match[2] : '00'
+                              setFormData(prev => ({
+                                ...prev,
+                                closeTime: `${hour}:${minutes} ${ampm}`
+                              }))
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4">

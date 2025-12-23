@@ -2,6 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Production server URL
+const API_URL = 'https://shubhvenue.com/api';
+// Extract base URL (remove /api suffix for proxy target)
+const API_BASE_URL = 'https://shubhvenue.com';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -18,12 +23,16 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8030',
+        target: API_BASE_URL,
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api'),
       }
     }
+  },
+  // Make environment variables available to the client
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(API_URL),
   }
 })
 

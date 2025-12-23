@@ -175,9 +175,20 @@ export default function Reviews() {
       await loadReviews()
     } catch (error) {
       console.error('Failed to submit reply:', error)
+      let errorMsg = error.response?.data?.error || 'Failed to submit reply'
+      
+      // Better error messages for vendor_staff
+      if (error.response?.status === 403) {
+        if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
+          errorMsg = `Access Denied: ${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
+        } else {
+          errorMsg = `Access Denied: ${errorMsg}\n\nPlease ensure you have the required permissions.`
+        }
+      }
+      
       setFeedbackModal({
         title: 'Error',
-        message: error.response?.data?.error || 'Failed to submit reply',
+        message: errorMsg,
         status: 'error'
       })
     } finally {
@@ -205,9 +216,20 @@ export default function Reviews() {
       await loadReviews()
     } catch (error) {
       console.error('Failed to delete reply:', error)
+      let errorMsg = error.response?.data?.error || 'Failed to delete reply'
+      
+      // Better error messages for vendor_staff
+      if (error.response?.status === 403) {
+        if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
+          errorMsg = `Access Denied: ${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
+        } else {
+          errorMsg = `Access Denied: ${errorMsg}\n\nPlease ensure you have the required permissions.`
+        }
+      }
+      
       setFeedbackModal({
         title: 'Error',
-        message: error.response?.data?.error || 'Failed to delete reply',
+        message: errorMsg,
         status: 'error'
       })
     } finally {

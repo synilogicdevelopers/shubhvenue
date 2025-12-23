@@ -163,8 +163,6 @@ export const Videos = () => {
       // Create preview URL for video
       const videoUrl = URL.createObjectURL(file);
       setVideoPreview(videoUrl);
-      // Clear URL input if file is selected
-      setFormData({ ...formData, video: '' });
     }
   };
 
@@ -176,8 +174,9 @@ export const Videos = () => {
       return;
     }
 
-    if (!videoFile && !formData.video) {
-      toast.error('Video file or URL is required');
+    // For new videos, file is required. For editing, file is optional (existing video will be preserved)
+    if (!editingVideo && !videoFile) {
+      toast.error('Video file is required');
       return;
     }
 
@@ -198,11 +197,14 @@ export const Videos = () => {
         submitData.append('endDate', formData.endDate);
       }
       
-      // Add video file if selected, otherwise add video URL
+      // Add video file if new file uploaded
       if (videoFile) {
         submitData.append('video', videoFile);
-      } else if (formData.video) {
-        submitData.append('video', formData.video);
+      } else if (editingVideo && formData.video && formData.video.trim()) {
+        // When editing without new file, send existing video URL to preserve it
+        // Backend will preserve existing video if no file and no video field sent
+        // But we send it explicitly to ensure it's preserved
+        submitData.append('video', formData.video.trim());
       }
 
       if (editingVideo) {
@@ -516,33 +518,6 @@ export const Videos = () => {
                   </video>
                 </div>
               )}
-              
-              {/* OR Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">OR</span>
-                </div>
-              </div>
-              
-              {/* URL Input */}
-              <Input
-                label="Video URL"
-                value={formData.video}
-                onChange={(e) => {
-                  setFormData({ ...formData, video: e.target.value });
-                  setVideoFile(null);
-                  if (e.target.value) {
-                    setVideoPreview(e.target.value);
-                  } else {
-                    setVideoPreview(null);
-                  }
-                }}
-                placeholder="https://example.com/video.mp4"
-                type="url"
-              />
             </div>
           </div>
 

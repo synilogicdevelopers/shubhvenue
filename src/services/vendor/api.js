@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// Base URL; override via VITE_API_URL. Default to local backend with /api prefix.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api'
+// Production server URL
+const API_BASE_URL = 'https://shubhvenue.com/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -167,6 +167,41 @@ export const videosAPI = {
 export const publicVideosAPI = {
   getAll: () => api.get('/videos'),
   getById: (id) => api.get(`/videos/${id}`),
+}
+
+// Vendor Roles APIs
+export const vendorRolesAPI = {
+  getAll: (params) => api.get('/vendor/roles', { params }),
+  getById: (id) => api.get(`/vendor/roles/${id}`),
+  create: (data) => api.post('/vendor/roles', data),
+  update: (id, data) => api.put(`/vendor/roles/${id}`, data),
+  delete: (id) => api.delete(`/vendor/roles/${id}`),
+  getAvailablePermissions: () => api.get('/vendor/roles/permissions/available'),
+}
+
+// Vendor Staff APIs
+export const vendorStaffAPI = {
+  login: (data) => api.post('/vendor/staff/login', data),
+  getProfile: () => api.get('/vendor/staff/profile'),
+  getAll: (params) => api.get('/vendor/staff', { params }),
+  getById: (id) => api.get(`/vendor/staff/${id}`),
+  create: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/vendor/staff', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/vendor/staff', data);
+  },
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.put(`/vendor/staff/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/vendor/staff/${id}`, data);
+  },
+  delete: (id) => api.delete(`/vendor/staff/${id}`),
 }
 
 export default api

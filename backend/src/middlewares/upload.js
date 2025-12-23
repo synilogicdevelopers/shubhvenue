@@ -13,6 +13,7 @@ const menusUploadsDir = path.join(__dirname, '../../uploads/menus');
 const bannersUploadsDir = path.join(__dirname, '../../uploads/banners');
 const videosUploadsDir = path.join(__dirname, '../../uploads/videos');
 const staffUploadsDir = path.join(__dirname, '../../uploads/staff');
+const vendorStaffUploadsDir = path.join(__dirname, '../../uploads/vendor-staff');
 if (!fs.existsSync(venuesUploadsDir)) {
   fs.mkdirSync(venuesUploadsDir, { recursive: true });
 }
@@ -30,6 +31,9 @@ if (!fs.existsSync(videosUploadsDir)) {
 }
 if (!fs.existsSync(staffUploadsDir)) {
   fs.mkdirSync(staffUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(vendorStaffUploadsDir)) {
+  fs.mkdirSync(vendorStaffUploadsDir, { recursive: true });
 }
 
 // Configure storage for venues
@@ -271,6 +275,32 @@ const staffUpload = multer({
 
 // Middleware for staff image upload
 export const uploadStaffImage = staffUpload.single('img');
+
+// Configure storage for vendor staff
+const vendorStaffStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, vendorStaffUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Configure multer for vendor staff images
+const vendorStaffUpload = multer({
+  storage: vendorStaffStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: fileFilter
+});
+
+// Middleware for vendor staff image upload
+export const uploadVendorStaffImage = vendorStaffUpload.single('img');
 
 // Error handling wrapper for multer
 export const handleUploadError = (err, req, res, next) => {

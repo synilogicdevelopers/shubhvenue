@@ -4,15 +4,37 @@ import Booking from '../models/Booking.js';
 import Payout from '../models/Payout.js';
 import Ledger from '../models/Ledger.js';
 
-// Get vendor dashboard stats
-export const getVendorDashboard = async (req, res) => {
-  try {
+// Helper function to get vendor ID from request
+// For vendor_staff, use vendorId; for vendor, use userId
+const getVendorId = (req) => {
+  // For vendor_staff, vendorId is in the token
+  // For vendor owner, userId is the vendorId
+  const vendorId = req.user?.vendorId || req.user?.userId;
+  
+  // Ensure it's converted to string for consistent comparison
+  return vendorId ? String(vendorId) : null;
+};
+
+// Helper function to check vendor access
+const checkVendorAccess = (req) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+  if ((userRole !== 'vendor' && userRole !== 'vendor_staff') || !userId) {
+    return { error: 'Access denied. Vendor access required.' };
+  }
+  
+  return { vendorId: getVendorId(req) };
+};
+
+// Get vendor dashboard stats
+export const getVendorDashboard = async (req, res) => {
+  try {
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -38,7 +60,7 @@ export const getVendorDashboard = async (req, res) => {
     const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
 
     // Get vendor venues
-    const vendorVenues = await Venue.find({ vendorId: userId }).select('_id');
+    const vendorVenues = await Venue.find({ vendorId: vendorId }).select('_id');
     const venueIds = vendorVenues.map(v => v._id.toString());
 
     // Get total venues count (not filtered by month)
@@ -68,7 +90,7 @@ export const getVendorDashboard = async (req, res) => {
 
     // Calculate total commission paid (from payouts)
     const payouts = await Payout.find({ 
-      vendorId: userId,
+      vendorId: vendorId,
       payment_status: 'paid'
     });
     
@@ -181,9 +203,11 @@ export const getVendorBookings = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -199,7 +223,7 @@ export const getVendorBookings = async (req, res) => {
     }
 
     // Get vendor venues
-    const vendorVenues = await Venue.find({ vendorId: userId }).select('_id');
+    const vendorVenues = await Venue.find({ vendorId: vendorId }).select('_id');
     const venueIds = vendorVenues.map(v => v._id);
 
     // Get bookings for vendor venues (only admin-approved bookings)
@@ -255,9 +279,11 @@ export const getBlockedDates = async (req, res) => {
     const userRole = req.user?.role;
     const { venueId } = req.query;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -273,7 +299,7 @@ export const getBlockedDates = async (req, res) => {
     }
 
     // Get vendor venues
-    let filter = { vendorId: userId };
+    let filter = { vendorId: vendorId };
     if (venueId) {
       filter._id = venueId;
     }
@@ -343,9 +369,11 @@ export const addBlockedDates = async (req, res) => {
     const userRole = req.user?.role;
     const { venueId, dates } = req.body;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     if (!venueId || !dates || !Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: 'Venue ID and dates array are required' });
@@ -370,7 +398,7 @@ export const addBlockedDates = async (req, res) => {
       return res.status(404).json({ error: 'Venue not found' });
     }
 
-    if (venue.vendorId.toString() !== userId) {
+    if (venue.vendorId.toString() !== vendorId) {
       return res.status(403).json({ error: 'You can only manage dates for your own venues' });
     }
 
@@ -458,9 +486,11 @@ export const removeBlockedDates = async (req, res) => {
     const userRole = req.user?.role;
     const { venueId, dates } = req.body;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     if (!venueId || !dates || !Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: 'Venue ID and dates array are required' });
@@ -485,7 +515,7 @@ export const removeBlockedDates = async (req, res) => {
       return res.status(404).json({ error: 'Venue not found' });
     }
 
-    if (venue.vendorId.toString() !== userId) {
+    if (venue.vendorId.toString() !== vendorId) {
       return res.status(403).json({ error: 'You can only manage dates for your own venues' });
     }
 
@@ -527,9 +557,11 @@ export const createVendorBooking = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     const { 
       venueId, 
@@ -578,7 +610,7 @@ export const createVendorBooking = async (req, res) => {
       return res.status(404).json({ error: 'Venue not found' });
     }
 
-    if (venue.vendorId.toString() !== userId) {
+    if (venue.vendorId.toString() !== vendorId) {
       return res.status(403).json({ error: 'You can only create bookings for your own venues' });
     }
 
@@ -748,9 +780,11 @@ export const getVendorLedger = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -766,16 +800,16 @@ export const getVendorLedger = async (req, res) => {
     }
 
     // Get vendor venues
-    const vendorVenues = await Venue.find({ vendorId: userId }).select('_id');
+    const vendorVenues = await Venue.find({ vendorId: vendorId }).select('_id');
     const venueIds = vendorVenues.map(v => v._id.toString());
 
     // Get all payouts (expense transactions)
-    const payouts = await Payout.find({ vendorId: userId })
+    const payouts = await Payout.find({ vendorId: vendorId })
       .sort({ createdAt: -1 });
 
     // Get all ledger entries (includes booking entries created when confirmed + manual entries)
     // This avoids duplicates - we only use entries from Ledger collection
-    const allLedgerEntries = await Ledger.find({ vendorId: userId })
+    const allLedgerEntries = await Ledger.find({ vendorId: vendorId })
       .populate('venueId', 'name')
       .sort({ date: -1 });
 
@@ -915,9 +949,11 @@ export const getVendorPayouts = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -933,7 +969,7 @@ export const getVendorPayouts = async (req, res) => {
     }
 
     // Get payouts for vendor
-    const payouts = await Payout.find({ vendorId: userId })
+    const payouts = await Payout.find({ vendorId: vendorId })
       .sort({ createdAt: -1 });
 
     // Format payouts
@@ -977,9 +1013,11 @@ export const addLedgerEntry = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     const { type, category, description, amount, date, status, reference, venueId, notes } = req.body;
 
@@ -1019,14 +1057,14 @@ export const addLedgerEntry = async (req, res) => {
       if (!venue) {
         return res.status(404).json({ error: 'Venue not found' });
       }
-      if (venue.vendorId.toString() !== userId) {
+      if (venue.vendorId.toString() !== vendorId) {
         return res.status(403).json({ error: 'You can only add entries for your own venues' });
       }
     }
 
     // Create ledger entry
     const ledgerEntry = new Ledger({
-      vendorId: userId,
+      vendorId: vendorId,
       type,
       category: category.trim(),
       description: description.trim(),
@@ -1066,9 +1104,11 @@ export const updateLedgerEntry = async (req, res) => {
     const userRole = req.user?.role;
     const { id } = req.params;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     const { type, category, description, amount, date, status, reference, venueId, notes } = req.body;
 
@@ -1093,7 +1133,7 @@ export const updateLedgerEntry = async (req, res) => {
     }
 
     // Verify vendor owns this entry
-    if (entry.vendorId.toString() !== userId) {
+    if (entry.vendorId.toString() !== vendorId) {
       return res.status(403).json({ error: 'You can only update your own ledger entries' });
     }
 
@@ -1111,7 +1151,7 @@ export const updateLedgerEntry = async (req, res) => {
         if (!venue) {
           return res.status(404).json({ error: 'Venue not found' });
         }
-        if (venue.vendorId.toString() !== userId) {
+        if (venue.vendorId.toString() !== vendorId) {
           return res.status(403).json({ error: 'You can only use your own venues' });
         }
         entry.venueId = venueId;
@@ -1149,9 +1189,11 @@ export const deleteLedgerEntry = async (req, res) => {
     const userRole = req.user?.role;
     const { id } = req.params;
 
-    if (userRole !== 'vendor' || !userId) {
-      return res.status(403).json({ error: 'Access denied. Vendor access required.' });
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -1174,7 +1216,7 @@ export const deleteLedgerEntry = async (req, res) => {
     }
 
     // Verify vendor owns this entry
-    if (entry.vendorId.toString() !== userId) {
+    if (entry.vendorId.toString() !== vendorId) {
       return res.status(403).json({ error: 'You can only delete your own ledger entries' });
     }
 

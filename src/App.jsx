@@ -60,6 +60,8 @@ import Calendar from './pages/vendor/Calendar'
 import Ledger from './pages/vendor/Ledger'
 import Reviews from './pages/vendor/Reviews'
 import VendorSettings from './pages/vendor/Settings'
+import VendorStaff from './pages/vendor/Staff'
+import VendorRoles from './pages/vendor/Roles'
 import Layout from './components/vendor/Layout'
 
 // Vendor Private Route Component
@@ -101,6 +103,8 @@ function VendorRoutes() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="reviews" element={<Reviews />} />
+        <Route path="staff" element={<VendorStaff />} />
+        <Route path="roles" element={<VendorRoles />} />
         <Route path="settings" element={<VendorSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/vendor/login" replace />} />

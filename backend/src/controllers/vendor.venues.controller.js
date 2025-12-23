@@ -404,9 +404,18 @@ export const getVenues = async (req, res) => {
 
     let filter = {};
 
-    // If user is a vendor, show only their venues
+    // If user is a vendor or vendor_staff, show only their vendor's venues
     if (userRole === 'vendor' && userId) {
       filter.vendorId = userId;
+    } else if (userRole === 'vendor_staff') {
+      // For vendor_staff, use vendorId from token (not userId)
+      const vendorId = req.user?.vendorId || userId;
+      if (vendorId) {
+        filter.vendorId = vendorId;
+      } else {
+        // If no vendorId found, deny access
+        return res.status(403).json({ error: 'Vendor ID not found in token. Please login again.' });
+      }
     } else {
       // Public/customers: only show admin-approved/active and vendorActive not false (treat undefined as true)
       filter.status = { $in: ['approved', 'active'] };
@@ -491,8 +500,8 @@ export const getVenues = async (req, res) => {
 
     // Status filtering
     if (status) {
-      if (userRole === 'vendor') {
-        // Vendors can filter by any status for their own venues
+      if (userRole === 'vendor' || userRole === 'vendor_staff') {
+        // Vendors and vendor_staff can filter by any status for their own venues
         filter.status = status;
       } else {
         // For public access, only allow approved/active status
@@ -809,15 +818,67 @@ export const getVenueById = async (req, res) => {
   }
 };
 
+// Helper function to get vendor ID from request
+// For vendor_staff, use vendorId; for vendor, use userId
+const getVendorId = (req) => {
+  // For vendor_staff, vendorId is in the token
+  // For vendor owner, userId is the vendorId
+  const vendorId = req.user?.vendorId || req.user?.userId;
+  
+  // Ensure it's converted to string for consistent comparison
+  return vendorId ? String(vendorId) : null;
+};
+
+// Helper function to check vendor access and permissions
+const checkVendorAccess = (req, requiredPermission = null) => {
+  const userId = req.user?.userId;
+  const userRole = req.user?.role;
+  
+  // Allow both vendor and vendor_staff
+  if (userRole !== 'vendor' && userRole !== 'vendor_staff') {
+    return { error: 'Access denied. Vendor access required.' };
+  }
+  
+  const vendorId = getVendorId(req);
+  
+  // Debug logging
+  console.log('checkVendorAccess:', {
+    userRole,
+    userId,
+    reqUserVendorId: req.user?.vendorId,
+    vendorId,
+    requiredPermission,
+    userPermissions: req.user?.permissions || []
+  });
+  
+  // Vendor owners have all permissions
+  if (userRole === 'vendor') {
+    return { vendorId };
+  }
+  
+  // For vendor_staff, check permissions if required
+  if (userRole === 'vendor_staff' && requiredPermission) {
+    const userPermissions = req.user?.permissions || [];
+    if (!userPermissions.includes(requiredPermission)) {
+      console.log('Permission check failed for vendor_staff:', {
+        required: requiredPermission,
+        hasPermissions: userPermissions
+      });
+      return { error: 'You do not have permission to perform this action.' };
+    }
+  }
+  
+  return { vendorId };
+};
+
 // Create venue (vendor only)
 export const createVenue = async (req, res) => {
   try {
-    const userId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'vendor') {
-      return res.status(403).json({ error: 'Only vendors can create venues' });
+    const accessCheck = checkVendorAccess(req, 'vendor_create_venues');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     const { 
       name, 
@@ -1102,7 +1163,7 @@ export const createVenue = async (req, res) => {
 
     // Build venue object
     const venueData = {
-      vendorId: userId, // Always use authenticated user's ID for security
+      vendorId: vendorId, // Use vendorId from access check (supports vendor_staff)
       name,
       capacity: capacityValue,
       status: status || 'pending' // New venues need admin approval unless specified
@@ -1353,12 +1414,11 @@ export const createVenue = async (req, res) => {
 export const updateVenue = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'vendor') {
-      return res.status(403).json({ error: 'Only vendors can update venues' });
+    const accessCheck = checkVendorAccess(req, 'vendor_edit_venues');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -1380,8 +1440,34 @@ export const updateVenue = async (req, res) => {
     }
 
     // Check if venue belongs to the vendor
-    if (venue.vendorId.toString() !== userId) {
-      return res.status(403).json({ error: 'You can only update your own venues' });
+    // Convert both to strings for reliable comparison
+    const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+    const userVendorIdStr = vendorId ? String(vendorId) : null;
+    
+    console.log('Venue ownership check:', {
+      venueId: id,
+      venueVendorId: venue.vendorId,
+      venueVendorIdStr,
+      userVendorId: vendorId,
+      userVendorIdStr,
+      userRole: req.user?.role,
+      reqUserVendorId: req.user?.vendorId,
+      reqUserId: req.user?.userId,
+      match: venueVendorIdStr === userVendorIdStr,
+      venueVendorIdType: typeof venue.vendorId,
+      userVendorIdType: typeof vendorId
+    });
+    
+    if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
+      return res.status(403).json({ 
+        error: 'You can only update venues that belong to your vendor account. This venue belongs to a different vendor.',
+        details: {
+          venueVendorId: venueVendorIdStr,
+          yourVendorId: userVendorIdStr,
+          userRole: req.user?.role,
+          message: 'Please ensure you are trying to update a venue that belongs to your vendor account.'
+        }
+      });
     }
 
     const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, menuId, subMenuId, description, availability } = req.body;
@@ -1641,27 +1727,81 @@ export const updateVenue = async (req, res) => {
         : [];
 
     // Support gallery update via body (URLs or local /uploads paths)
-    // NOTE: Frontend vendor editor sends existing gallery URLs in body while editing.
-    // We must NOT delete files that are still referenced in the new gallery list.
-    if (req.body.gallery !== undefined) {
+    // Frontend vendor editor sends existing gallery URLs as JSON string in 'existingGallery' field
+    // to avoid FormData conflict when mixing files and strings with same key
+    let bodyGalleryUrls = [];
+    let hasExistingGalleryField = false;
+    
+    // Check for existingGallery field (JSON string from frontend)
+    if (req.body.existingGallery !== undefined) {
+      hasExistingGalleryField = true;
+      try {
+        const parsed = typeof req.body.existingGallery === 'string' 
+          ? JSON.parse(req.body.existingGallery) 
+          : req.body.existingGallery;
+        if (Array.isArray(parsed)) {
+          bodyGalleryUrls = parsed;
+        }
+        console.log('📸 Gallery update - existingGallery parsed:', {
+          raw: req.body.existingGallery,
+          parsed: bodyGalleryUrls,
+          uploadedFiles: uploadedGalleryPaths.length
+        });
+      } catch (error) {
+        console.warn('Failed to parse existingGallery JSON:', error);
+        bodyGalleryUrls = [];
+      }
+    }
+    
+    // Also support legacy format where gallery URLs are sent directly in req.body.gallery
+    if (req.body.gallery !== undefined && !hasExistingGalleryField) {
       const bodyGalleryRaw = Array.isArray(req.body.gallery)
         ? req.body.gallery
         : (typeof req.body.gallery === 'string' && req.body.gallery.trim()
             ? [req.body.gallery]
             : []);
+      bodyGalleryUrls = bodyGalleryRaw;
+      hasExistingGalleryField = true;
+      console.log('📸 Gallery update - legacy format:', {
+        gallery: req.body.gallery,
+        parsed: bodyGalleryUrls
+      });
+    }
 
-      const validatedBodyUrls = validateAndProcessGalleryUrls(bodyGalleryRaw);
+    // Update gallery if existingGallery field was sent (even if empty) or if new files were uploaded
+    if (hasExistingGalleryField || uploadedGalleryPaths.length > 0) {
+      const validatedBodyUrls = validateAndProcessGalleryUrls(bodyGalleryUrls);
       const nextGallery = [...validatedBodyUrls, ...uploadedGalleryPaths];
+
+      console.log('📸 Gallery update - final gallery:', {
+        existingPhotos: existingGalleryPhotos.length,
+        bodyUrls: bodyGalleryUrls.length,
+        validatedUrls: validatedBodyUrls.length,
+        uploadedFiles: uploadedGalleryPaths.length,
+        nextGallery: nextGallery.length,
+        nextGalleryItems: nextGallery
+      });
 
       // Delete only removed local files (diff-based), not everything.
       const toDelete = existingGalleryPhotos
         .filter(p => typeof p === 'string' && p.startsWith('/uploads/venues/'))
         .filter(p => !nextGallery.includes(p));
       if (toDelete.length > 0) {
+        console.log('📸 Deleting removed gallery files:', toDelete);
         deleteGalleryFiles(toDelete);
       }
 
+      // Update both legacy gallery field and galleryInfo.photos
       venue.gallery = nextGallery;
+      // Also update galleryInfo if it exists, or create it
+      if (!venue.galleryInfo) {
+        venue.galleryInfo = {
+          photos: nextGallery,
+          videos: venue.videos || []
+        };
+      } else {
+        venue.galleryInfo.photos = nextGallery;
+      }
     } else if (uploadedGalleryPaths.length > 0) {
       if (req.body.replaceGallery === 'true') {
         // Replace entire gallery - delete old local files (safe even if gallery had remote URLs)
@@ -1672,9 +1812,28 @@ export const updateVenue = async (req, res) => {
           deleteGalleryFiles(toDelete);
         }
         venue.gallery = uploadedGalleryPaths;
+        // Also update galleryInfo
+        if (!venue.galleryInfo) {
+          venue.galleryInfo = {
+            photos: uploadedGalleryPaths,
+            videos: venue.videos || []
+          };
+        } else {
+          venue.galleryInfo.photos = uploadedGalleryPaths;
+        }
       } else {
         // Merge with existing gallery (legacy behavior)
-        venue.gallery = [...existingGalleryPhotos, ...uploadedGalleryPaths];
+        const mergedGallery = [...existingGalleryPhotos, ...uploadedGalleryPaths];
+        venue.gallery = mergedGallery;
+        // Also update galleryInfo
+        if (!venue.galleryInfo) {
+          venue.galleryInfo = {
+            photos: mergedGallery,
+            videos: venue.videos || []
+          };
+        } else {
+          venue.galleryInfo.photos = mergedGallery;
+        }
       }
     }
 
@@ -1771,12 +1930,11 @@ export const updateVenue = async (req, res) => {
 export const toggleVenueStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'vendor') {
-      return res.status(403).json({ error: 'Only vendors can toggle venue status' });
+    const accessCheck = checkVendorAccess(req, 'vendor_toggle_venues');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -1798,7 +1956,11 @@ export const toggleVenueStatus = async (req, res) => {
     }
 
     // Check if venue belongs to the vendor
-    if (venue.vendorId.toString() !== userId) {
+    // Convert both to strings for reliable comparison
+    const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+    const userVendorIdStr = vendorId ? String(vendorId) : null;
+    
+    if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
       return res.status(403).json({ error: 'You can only toggle status of your own venues' });
     }
 
@@ -1838,12 +2000,11 @@ export const toggleVenueStatus = async (req, res) => {
 export const deleteVenue = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'vendor') {
-      return res.status(403).json({ error: 'Only vendors can delete venues' });
+    const accessCheck = checkVendorAccess(req, 'vendor_delete_venues');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -1865,7 +2026,11 @@ export const deleteVenue = async (req, res) => {
     }
 
     // Check if venue belongs to the vendor
-    if (venue.vendorId.toString() !== userId) {
+    // Convert both to strings for reliable comparison
+    const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+    const userVendorIdStr = vendorId ? String(vendorId) : null;
+    
+    if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
       return res.status(403).json({ error: 'You can only delete your own venues' });
     }
 

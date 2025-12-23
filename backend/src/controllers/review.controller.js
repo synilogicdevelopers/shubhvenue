@@ -12,6 +12,48 @@ const withTimeout = (promise, timeoutMs = 10000) => {
   ]);
 };
 
+// Helper function to get vendor ID from request
+// For vendor_staff, use vendorId; for vendor, use userId
+const getVendorId = (req) => {
+  // For vendor_staff, vendorId is in the token
+  // For vendor owner, userId is the vendorId
+  const vendorId = req.user?.vendorId || req.user?.userId;
+  
+  // Ensure it's converted to string for consistent comparison
+  return vendorId ? String(vendorId) : null;
+};
+
+// Helper function to check vendor access and permissions
+const checkVendorAccess = (req, requiredPermission = null) => {
+  const userId = req.user?.userId;
+  const userRole = req.user?.role;
+  
+  // Allow both vendor and vendor_staff
+  if (userRole !== 'vendor' && userRole !== 'vendor_staff' && userRole !== 'admin') {
+    return { error: 'Access denied. Vendor access required.' };
+  }
+  
+  // Admin has all access
+  if (userRole === 'admin') {
+    return { vendorId: getVendorId(req), isAdmin: true };
+  }
+  
+  // Vendor owners have all permissions
+  if (userRole === 'vendor') {
+    return { vendorId: getVendorId(req) };
+  }
+  
+  // For vendor_staff, check permissions if required
+  if (userRole === 'vendor_staff' && requiredPermission) {
+    const userPermissions = req.user?.permissions || [];
+    if (!userPermissions.includes(requiredPermission)) {
+      return { error: 'You do not have permission to perform this action.' };
+    }
+  }
+  
+  return { vendorId: getVendorId(req) };
+};
+
 // Create a new review
 export const createReview = async (req, res) => {
   try {
@@ -398,13 +440,11 @@ export const deleteReview = async (req, res) => {
 // Get reviews for all venues owned by a vendor
 export const getReviewsByVendor = async (req, res) => {
   try {
-    const vendorId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    // Only vendors can access this endpoint
-    if (userRole !== 'vendor' && userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only vendors can access this endpoint' });
+    const accessCheck = checkVendorAccess(req, 'vendor_view_reviews');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -461,13 +501,12 @@ export const addReplyToReview = async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
-    const vendorId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    // Only vendors and admins can reply
-    if (userRole !== 'vendor' && userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only vendors can reply to reviews' });
+    const accessCheck = checkVendorAccess(req, 'vendor_reply_reviews');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
+    const userRole = req.user?.role;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Reply message is required' });
@@ -503,8 +542,13 @@ export const addReplyToReview = async (req, res) => {
     }
 
     // Check if vendor owns this venue (unless admin)
-    if (userRole !== 'admin' && venue.vendorId.toString() !== vendorId) {
-      return res.status(403).json({ error: 'You can only reply to reviews for your own venues' });
+    if (userRole !== 'admin') {
+      const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+      const userVendorIdStr = vendorId ? String(vendorId) : null;
+      
+      if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
+        return res.status(403).json({ error: 'You can only reply to reviews for your own venues' });
+      }
     }
 
     // Add reply
@@ -543,13 +587,12 @@ export const updateReplyToReview = async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
-    const vendorId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    // Only vendors and admins can update replies
-    if (userRole !== 'vendor' && userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only vendors can update replies' });
+    const accessCheck = checkVendorAccess(req, 'vendor_edit_reviews');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
+    const userRole = req.user?.role;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Reply message is required' });
@@ -589,8 +632,13 @@ export const updateReplyToReview = async (req, res) => {
     }
 
     // Check if vendor owns this venue (unless admin)
-    if (userRole !== 'admin' && venue.vendorId.toString() !== vendorId) {
-      return res.status(403).json({ error: 'You can only update replies for your own venues' });
+    if (userRole !== 'admin') {
+      const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+      const userVendorIdStr = vendorId ? String(vendorId) : null;
+      
+      if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
+        return res.status(403).json({ error: 'You can only update replies for your own venues' });
+      }
     }
 
     // Update reply
@@ -625,13 +673,12 @@ export const updateReplyToReview = async (req, res) => {
 export const deleteReplyFromReview = async (req, res) => {
   try {
     const { id } = req.params;
-    const vendorId = req.user?.userId;
-    const userRole = req.user?.role;
-
-    // Only vendors and admins can delete replies
-    if (userRole !== 'vendor' && userRole !== 'admin') {
-      return res.status(403).json({ error: 'Only vendors can delete replies' });
+    const accessCheck = checkVendorAccess(req, 'vendor_delete_reviews');
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
     }
+    const vendorId = accessCheck.vendorId;
+    const userRole = req.user?.role;
 
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -667,8 +714,13 @@ export const deleteReplyFromReview = async (req, res) => {
     }
 
     // Check if vendor owns this venue (unless admin)
-    if (userRole !== 'admin' && venue.vendorId.toString() !== vendorId) {
-      return res.status(403).json({ error: 'You can only delete replies for your own venues' });
+    if (userRole !== 'admin') {
+      const venueVendorIdStr = venue.vendorId ? String(venue.vendorId) : null;
+      const userVendorIdStr = vendorId ? String(vendorId) : null;
+      
+      if (!venueVendorIdStr || !userVendorIdStr || venueVendorIdStr !== userVendorIdStr) {
+        return res.status(403).json({ error: 'You can only delete replies for your own venues' });
+      }
     }
 
     // Delete reply

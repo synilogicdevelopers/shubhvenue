@@ -1,9 +1,9 @@
+
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// In development, use relative URL to leverage Vite proxy
-// In production, use full URL
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://shubhvenue.com/api');
+// Production server URL
+const API_URL = 'https://shubhvenue.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -30,6 +30,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const url = error.config?.url || '';
+    const isLoginEndpoint = url.includes('/login');
+    
+    // Don't show toast or redirect for login endpoints - let the component handle it
+    if (isLoginEndpoint) {
+      return Promise.reject(error);
+    }
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token');
       window.location.href = '/admin/login';

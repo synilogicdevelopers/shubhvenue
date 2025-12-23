@@ -20,10 +20,23 @@ export default function Register() {
   const navigate = useNavigate()
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+    const { name, value } = e.target;
+    
+    // Special handling for phone field - only allow digits and limit to 15
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 15) {
+        setFormData({
+          ...formData,
+          [name]: digitsOnly,
+        });
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -39,6 +52,12 @@ export default function Register() {
     // Validate password length
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long.')
+      return
+    }
+
+    // Validate phone number length
+    if (formData.phone.length < 10 || formData.phone.length > 15) {
+      setError('Phone number must be between 10 and 15 digits.')
       return
     }
 
@@ -118,6 +137,7 @@ export default function Register() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  autoComplete="off"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
                   placeholder="Enter your email"
                 />
@@ -137,8 +157,11 @@ export default function Register() {
                   value={formData.phone}
                   onChange={handleChange}
                   required
+                  minLength={10}
+                  maxLength={15}
+                  autoComplete="off"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                  placeholder="Enter your phone number"
+                  placeholder="Enter phone (10-15 digits)"
                 />
               </div>
             </div>
