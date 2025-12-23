@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { usersAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
@@ -20,6 +21,8 @@ export const Users = () => {
   const [loadingUser, setLoadingUser] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
@@ -133,6 +136,18 @@ export const Users = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredUsers.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter]);
+
   const getRoleBadge = (role) => {
     const colors = {
       customer: 'info',
@@ -189,6 +204,11 @@ export const Users = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Users: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -203,16 +223,16 @@ export const Users = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No users found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredUsers.map((user, idx) => (
+                paginatedUsers.map((user, idx) => (
                   <TableRow key={user._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell className="whitespace-normal break-words max-w-[12rem] text-sm">
                       {user.email}
@@ -270,6 +290,17 @@ export const Users = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

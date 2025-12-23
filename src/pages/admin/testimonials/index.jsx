@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { testimonialsAPI } from '../../../services/admin/api';
 import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, Search, MessageSquare } from 'lucide-react';
@@ -17,6 +18,8 @@ export const Testimonials = () => {
   const [editingTestimonial, setEditingTestimonial] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     text: '',
@@ -178,6 +181,18 @@ export const Testimonials = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredTestimonials.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTestimonials = filteredTestimonials.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -214,7 +229,12 @@ export const Testimonials = () => {
             </div>
           </div>
 
-          {filteredTestimonials.length === 0 ? (
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Testimonials: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
+          {paginatedTestimonials.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 dark:text-gray-400">
@@ -237,9 +257,9 @@ export const Testimonials = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTestimonials.map((testimonial, idx) => (
+                  {paginatedTestimonials.map((testimonial, idx) => (
                     <TableRow key={testimonial._id}>
-                      <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                      <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                       <TableCell className="font-medium">{testimonial.name}</TableCell>
                       <TableCell className="max-w-md">
                         <div className="truncate" title={testimonial.text}>
@@ -295,6 +315,17 @@ export const Testimonials = () => {
                 </TableBody>
               </Table>
             </div>
+          )}
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           )}
         </div>
       </Card>

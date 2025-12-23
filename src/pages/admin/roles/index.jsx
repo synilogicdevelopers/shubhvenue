@@ -6,6 +6,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { rolesAPI } from '../../../services/admin/api';
 import toast from 'react-hot-toast';
 import { Search, Eye, Trash2, Plus, Edit, Shield, X, ArrowLeft, Check } from 'lucide-react';
@@ -24,6 +25,8 @@ export const Roles = () => {
   const [loadingRole, setLoadingRole] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -248,6 +251,18 @@ export const Roles = () => {
       r.description?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  // Pagination logic
+  const totalItems = filteredRoles.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRoles = filteredRoles.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, isActiveFilter]);
 
   const getCategoryLabel = (category) => {
     const labels = {
@@ -518,6 +533,11 @@ export const Roles = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Roles: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -531,16 +551,16 @@ export const Roles = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRoles.length === 0 ? (
+              {paginatedRoles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No roles found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRoles.map((r, idx) => (
+                paginatedRoles.map((r, idx) => (
                   <TableRow key={r._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell className="max-w-xs truncate">{r.description || 'N/A'}</TableCell>
                     <TableCell>
@@ -584,6 +604,17 @@ export const Roles = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

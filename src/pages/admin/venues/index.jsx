@@ -3,6 +3,7 @@ import { Card, CardContent } from '../../../components/admin/ui/Card';
 import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { venuesAPI, vendorsAPI, categoriesAPI, menusAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import { hasPermission } from '../../../utils/admin/permissions';
@@ -18,6 +19,8 @@ export const Venues = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   // Form data
   const [formData, setFormData] = useState({
@@ -531,6 +534,18 @@ export const Venues = () => {
     ? venues 
     : venues.filter(v => v.status === statusFilter);
 
+  // Pagination logic
+  const totalItems = filteredVenues.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedVenues = filteredVenues.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -566,16 +581,21 @@ export const Venues = () => {
         </div>
       </div>
 
+      {/* Total Count */}
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        Total Venues: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredVenues.length === 0 ? (
+        {paginatedVenues.length === 0 ? (
           <div className="col-span-full text-center py-12 text-gray-500">
             No venues found
           </div>
         ) : (
-          filteredVenues.map((venue, idx) => (
+          paginatedVenues.map((venue, idx) => (
             <Card key={venue._id} className="overflow-hidden relative">
               <span className="absolute top-3 left-3 z-10 px-2 py-1 rounded-md text-xs font-semibold bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200">
-                {idx + 1}
+                {startIndex + idx + 1}
               </span>
               <div className="h-48 bg-gradient-primary flex items-center justify-center">
                 {venue.images && venue.images.length > 0 ? (
@@ -700,6 +720,17 @@ export const Venues = () => {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalItems > 10 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
+      )}
 
       {/* Add Venue Modal - 4 Steps */}
       <Modal

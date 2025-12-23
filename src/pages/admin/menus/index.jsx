@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { menusAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import toast from 'react-hot-toast';
@@ -20,6 +21,8 @@ export const Menus = () => {
   const [expandedMenus, setExpandedMenus] = useState(new Set());
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -375,6 +378,18 @@ export const Menus = () => {
     return matchesSearch && matchesStatus && isMainMenu;
   });
 
+  // Pagination logic
+  const totalItems = filteredMenus.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMenus = filteredMenus.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   const getSubmenus = (menuId) => {
     // Find the main menu and return its submenus array
     const mainMenu = menus.find(m => m._id === menuId);
@@ -431,6 +446,11 @@ export const Menus = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Menus: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -447,14 +467,14 @@ export const Menus = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMenus.length === 0 ? (
+              {paginatedMenus.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     No menus found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredMenus.map((menu, idx) => {
+                paginatedMenus.map((menu, idx) => {
                   const submenus = getSubmenus(menu._id);
                   const isExpanded = expandedMenus.has(menu._id);
                   
@@ -475,7 +495,7 @@ export const Menus = () => {
                             </button>
                           )}
                         </TableCell>
-                        <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                        <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <MenuIcon className="w-4 h-4 text-primary" />
@@ -612,6 +632,17 @@ export const Menus = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { categoriesAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import toast from 'react-hot-toast';
@@ -19,6 +20,8 @@ export const Categories = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -268,27 +271,20 @@ export const Categories = () => {
     
     const matches = matchesSearch && matchesStatus;
     
-    // Debug logging for first few categories
-    if (categories.indexOf(category) < 3) {
-      console.log('Filtering category:', {
-        name: category.name,
-        isActive: category.isActive,
-        isCategoryActive,
-        matchesSearch,
-        matchesStatus,
-        statusFilter,
-        matches
-      });
-    }
-    
     return matches;
   });
-  
-  // Debug: Log filter results
-  console.log('Categories before filter:', categories.length);
-  console.log('Search term:', searchTerm);
-  console.log('Status filter:', statusFilter);
-  console.log('Filtered categories:', filteredCategories.length);
+
+  // Pagination logic
+  const totalItems = filteredCategories.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   if (loading) {
     return (
@@ -337,6 +333,11 @@ export const Categories = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Categories: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -351,16 +352,16 @@ export const Categories = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCategories.length === 0 ? (
+              {paginatedCategories.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No categories found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCategories.map((category, idx) => (
+                paginatedCategories.map((category, idx) => (
                   <TableRow key={category._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">
                       {category.name}
                     </TableCell>
@@ -416,6 +417,17 @@ export const Categories = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

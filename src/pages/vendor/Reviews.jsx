@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { getImageUrl } from '../../utils/vendor/imageUrl'
+import { Pagination } from '../../components/admin/ui/Pagination'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://shubhvenue.com/api')
 
@@ -26,6 +27,12 @@ export default function Reviews() {
   const [loading, setLoading] = useState(true)
   const [selectedVenue, setSelectedVenue] = useState('all')
   const [selectedRating, setSelectedRating] = useState('all')
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  })
   const [stats, setStats] = useState({
     total: 0,
     average: 0,
@@ -50,10 +57,32 @@ export default function Reviews() {
     loadReviews()
   }, [])
 
+  useEffect(() => {
+    if (pagination.page === 1) {
+      loadReviews()
+    } else {
+      setPagination(prev => ({ ...prev, page: 1 }))
+    }
+  }, [selectedVenue, selectedRating])
+
+  useEffect(() => {
+    loadReviews()
+  }, [pagination.page])
+
   const loadReviews = async () => {
     try {
       setLoading(true)
-      const response = await reviewAPI.getReviewsByVendor()
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit
+      }
+      if (selectedVenue !== 'all') {
+        params.venueId = selectedVenue
+      }
+      if (selectedRating !== 'all') {
+        params.rating = selectedRating
+      }
+      const response = await reviewAPI.getReviewsByVendor(params)
       const reviewsData = response.data?.reviews || []
       const venuesData = response.data?.venues || []
       
@@ -92,6 +121,21 @@ export default function Reviews() {
       
       // Calculate statistics
       calculateStats(reviewsData)
+      
+      // Update pagination from response
+      if (response.data?.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || response.data.totalCount || reviewsData.length,
+          pages: response.data.pagination.pages || response.data.totalPages || 1
+        }))
+      } else if (response.data?.totalCount) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.totalCount,
+          pages: Math.ceil(response.data.totalCount / pagination.limit)
+        }))
+      }
     } catch (error) {
       console.error('Failed to load reviews:', error)
       setFeedbackModal({
@@ -665,6 +709,19 @@ export default function Reviews() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.pages}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+          />
         </div>
       )}
 

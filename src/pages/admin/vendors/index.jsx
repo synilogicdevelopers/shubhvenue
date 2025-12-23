@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { vendorsAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
@@ -20,6 +21,8 @@ export const Vendors = () => {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [createForm, setCreateForm] = useState({
     name: '',
     email: '',
@@ -115,6 +118,13 @@ export const Vendors = () => {
     }
   };
 
+  // Pagination logic
+  const totalItems = vendors.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedVendors = vendors.slice(startIndex, endIndex);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -139,7 +149,12 @@ export const Vendors = () => {
       </div>
 
       <Card>
-        <div className="p-6">
+        <div className="p-6 space-y-4">
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Vendors: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -153,16 +168,16 @@ export const Vendors = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendors.length === 0 ? (
+              {paginatedVendors.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No vendors found
                   </TableCell>
                 </TableRow>
               ) : (
-                vendors.map((vendor, idx) => (
+                paginatedVendors.map((vendor, idx) => (
                   <TableRow key={vendor._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">{vendor.name}</TableCell>
                     <TableCell>{vendor.email}</TableCell>
                     <TableCell>{vendor.phone || 'N/A'}</TableCell>
@@ -201,6 +216,17 @@ export const Vendors = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

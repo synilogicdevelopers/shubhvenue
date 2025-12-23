@@ -6,6 +6,7 @@ import { Button } from '../../components/admin/ui/Button';
 import { Badge } from '../../components/admin/ui/Badge';
 import { Input } from '../../components/admin/ui/Input';
 import { Modal } from '../../components/admin/ui/Modal';
+import { Pagination } from '../../components/admin/ui/Pagination';
 import { vendorRolesAPI } from '../../services/vendor/api';
 import { hasVendorPermission } from '../../utils/vendor/permissions';
 import toast from 'react-hot-toast';
@@ -20,6 +21,12 @@ export default function VendorRoles() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('all');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  });
   const [selectedRole, setSelectedRole] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingRole, setLoadingRole] = useState(false);
@@ -40,7 +47,7 @@ export default function VendorRoles() {
   useEffect(() => {
     fetchRoles();
     fetchAvailablePermissions();
-  }, [isActiveFilter]);
+  }, [isActiveFilter, pagination.page]);
 
   useEffect(() => {
     if (isEditMode && roleId) {
@@ -52,10 +59,28 @@ export default function VendorRoles() {
 
   const fetchRoles = async () => {
     try {
-      const params = {};
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit
+      };
       if (isActiveFilter !== 'all') params.isActive = isActiveFilter === 'true';
       const response = await vendorRolesAPI.getAll(params);
       setRoles(response.data?.roles || []);
+      
+      // Update pagination from response
+      if (response.data?.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || response.data.totalCount || (response.data?.roles?.length || 0),
+          pages: response.data.pagination.pages || response.data.totalPages || 1
+        }));
+      } else if (response.data?.totalCount) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.totalCount,
+          pages: Math.ceil(response.data.totalCount / pagination.limit)
+        }));
+      }
     } catch (error) {
       toast.error('Failed to load roles');
     } finally {
@@ -558,6 +583,19 @@ export default function VendorRoles() {
               )}
             </TableBody>
           </Table>
+          
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.pages}
+                totalItems={pagination.total}
+                itemsPerPage={pagination.limit}
+                onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+              />
+            </div>
+          )}
         </div>
       </Card>
 

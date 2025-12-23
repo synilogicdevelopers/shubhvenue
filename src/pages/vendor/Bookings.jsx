@@ -17,11 +17,18 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { Pagination } from '../../components/admin/ui/Pagination'
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedBookings, setExpandedBookings] = useState(new Set())
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  })
   const [showAddForm, setShowAddForm] = useState(false)
   const [venues, setVenues] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -48,6 +55,10 @@ export default function Bookings() {
     loadVenues()
   }, [])
 
+  useEffect(() => {
+    loadBookings()
+  }, [pagination.page])
+
   const loadVenues = async () => {
     try {
       const response = await vendorAPI.getVenues()
@@ -64,10 +75,29 @@ export default function Bookings() {
   const loadBookings = async () => {
     try {
       setLoading(true)
-      const response = await vendorAPI.getBookings()
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit
+      }
+      const response = await vendorAPI.getBookings(params)
       const bookingsData = response.data?.bookings || response.data?.data || response.data || []
       // Ensure it's always an array
       setBookings(Array.isArray(bookingsData) ? bookingsData : [])
+      
+      // Update pagination from response
+      if (response.data?.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || response.data.totalCount || bookingsData.length,
+          pages: response.data.pagination.pages || response.data.totalPages || 1
+        }))
+      } else if (response.data?.totalCount) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.totalCount,
+          pages: Math.ceil(response.data.totalCount / pagination.limit)
+        }))
+      }
     } catch (error) {
       console.error('Failed to load bookings:', error)
       setBookings([]) // Set empty array on error
@@ -694,6 +724,19 @@ export default function Bookings() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.pages}
+            totalItems={pagination.total}
+            itemsPerPage={pagination.limit}
+            onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+          />
         </div>
       )}
 

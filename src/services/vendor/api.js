@@ -59,14 +59,14 @@ export const vendorAPI = {
     if (year) params.year = year
     return api.get('/vendor/dashboard', { params })
   },
-  getBookings: () => api.get('/vendor/bookings'),
+  getBookings: (params) => api.get('/vendor/bookings', { params }),
   createBooking: (data) => api.post('/vendor/bookings', data),
   getPayouts: () => api.get('/vendor/payouts'),
   getLedger: () => api.get('/vendor/ledger'),
   addLedgerEntry: (data) => api.post('/vendor/ledger', data),
   updateLedgerEntry: (id, data) => api.put(`/vendor/ledger/${id}`, data),
   deleteLedgerEntry: (id) => api.delete(`/vendor/ledger/${id}`),
-  getVenues: () => api.get('/vendor/venues'),
+  getVenues: (params) => api.get('/vendor/venues', { params }),
   getVenueById: (id) => api.get(`/vendor/venues/${id}`),
   getStates: () => api.get('/vendor/venues/states'),
   getCities: (state) => api.get('/vendor/venues/cities', { params: { state } }),
@@ -109,7 +109,7 @@ export const reviewAPI = {
   getReviewsByUser: (userId) => api.get(`/reviews/user/${userId}`),
   
   // Get all reviews for vendor's venues
-  getReviewsByVendor: () => api.get('/reviews/vendor/all'),
+  getReviewsByVendor: (params) => api.get('/reviews/vendor/all', { params }),
   
   // Get all reviews (with optional filters)
   getReviews: (params) => api.get('/reviews', { params }),

@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { staffAPI, rolesAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import { hasPermission } from '../../../utils/admin/permissions';
@@ -25,6 +26,8 @@ export const Staff = () => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -243,6 +246,18 @@ export const Staff = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredStaff.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStaff = filteredStaff.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, isActiveFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -305,6 +320,11 @@ export const Staff = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Staff: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -319,16 +339,16 @@ export const Staff = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStaff.length === 0 ? (
+              {paginatedStaff.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No staff found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStaff.map((s, idx) => (
+                paginatedStaff.map((s, idx) => (
                   <TableRow key={s._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="whitespace-normal break-words max-w-[12rem] text-sm">
                       {s.email}
@@ -381,6 +401,17 @@ export const Staff = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

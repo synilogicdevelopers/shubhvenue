@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { reviewsAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
@@ -21,6 +22,8 @@ export const Reviews = () => {
   const [loadingReview, setLoadingReview] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     rating: '',
     comment: '',
@@ -153,6 +156,18 @@ export const Reviews = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredReviews.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedReviews = filteredReviews.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, ratingFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -200,6 +215,11 @@ export const Reviews = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Reviews: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -213,16 +233,16 @@ export const Reviews = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredReviews.length === 0 ? (
+              {paginatedReviews.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No reviews found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredReviews.map((r, idx) => (
+                paginatedReviews.map((r, idx) => (
                   <TableRow key={r._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">
                       {r.userId?.name || 'Unknown User'}
                     </TableCell>
@@ -275,6 +295,17 @@ export const Reviews = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 
@@ -459,5 +490,6 @@ export const Reviews = () => {
     </div>
   );
 };
+
 
 

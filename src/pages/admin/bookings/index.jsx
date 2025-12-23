@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { bookingsAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
@@ -22,6 +23,8 @@ export const Bookings = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchBookings();
@@ -200,6 +203,18 @@ export const Bookings = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredBookings.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedBookings = filteredBookings.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -248,6 +263,11 @@ export const Bookings = () => {
             </select>
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Bookings: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <div className="w-full">
             <Table className="w-full table-auto text-xs md:text-sm leading-tight">
@@ -268,16 +288,16 @@ export const Bookings = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.length === 0 ? (
+                {paginatedBookings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                       No bookings found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBookings.map((booking, idx) => (
+                  paginatedBookings.map((booking, idx) => (
                     <TableRow key={booking._id}>
-                      <TableCell className="text-center font-medium px-2 py-2">{idx + 1}</TableCell>
+                      <TableCell className="text-center font-medium px-2 py-2">{startIndex + idx + 1}</TableCell>
                       <TableCell className="font-mono text-xs md:text-sm break-words px-2 py-2">{booking._id?.slice(-8) || 'N/A'}</TableCell>
                       <TableCell className="whitespace-normal break-words max-w-[9rem] px-2 py-2">
                         <div>
@@ -387,6 +407,17 @@ export const Bookings = () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

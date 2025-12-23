@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { videosAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import toast from 'react-hot-toast';
@@ -18,6 +19,8 @@ export const Videos = () => {
   const [editingVideo, setEditingVideo] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -259,6 +262,18 @@ export const Videos = () => {
     return matchesSearch;
   });
 
+  // Pagination logic
+  const totalItems = filteredVideos.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedVideos = filteredVideos.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -294,6 +309,11 @@ export const Videos = () => {
             />
           </div>
 
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Videos: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           {/* Table */}
           <Table>
             <TableHeader>
@@ -309,7 +329,7 @@ export const Videos = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredVideos.length === 0 ? (
+              {paginatedVideos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12">
                     <div className="flex flex-col items-center gap-4">
@@ -337,11 +357,11 @@ export const Videos = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredVideos.map((video, idx) => {
+                paginatedVideos.map((video, idx) => {
                   const videoUrl = getVideoUrl(video.video);
                   return (
                     <TableRow key={video._id}>
-                      <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                      <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                       <TableCell>
                         {videoUrl ? (
                           <div className="relative w-32 h-20 bg-gray-900 rounded overflow-hidden">
@@ -419,6 +439,17 @@ export const Videos = () => {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

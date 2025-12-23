@@ -5,6 +5,7 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
+import { Pagination } from '../../../components/admin/ui/Pagination';
 import { leadsAPI } from '../../../services/admin/api';
 import toast from 'react-hot-toast';
 import { Calendar, Phone, Mail, User, MapPin, Eye, CreditCard } from 'lucide-react';
@@ -21,6 +22,8 @@ export const Leads = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [paymentIdInput, setPaymentIdInput] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchLeads();
@@ -106,6 +109,18 @@ export const Leads = () => {
     }
   };
 
+  // Pagination logic
+  const totalItems = leads.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeads = leads.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -138,7 +153,12 @@ export const Leads = () => {
       </div>
 
       <Card>
-        <div className="p-6">
+        <div className="p-6 space-y-4">
+          {/* Total Count */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Total Leads: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+          </div>
+
           <div className="w-full overflow-x-auto">
             <Table className="min-w-full table-auto">
               <TableHeader>
@@ -156,16 +176,16 @@ export const Leads = () => {
                 </TableRow>
               </TableHeader>
             <TableBody>
-              {leads.length === 0 ? (
+              {paginatedLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                     No leads found
                   </TableCell>
                 </TableRow>
               ) : (
-                leads.map((lead, idx) => (
+                paginatedLeads.map((lead, idx) => (
                   <TableRow key={lead._id}>
-                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+                    <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-mono text-sm whitespace-nowrap">{lead._id.slice(-8)}</TableCell>
                     <TableCell>
                       <div className="min-w-0">
@@ -260,6 +280,17 @@ export const Leads = () => {
             </TableBody>
           </Table>
           </div>
+
+          {/* Pagination */}
+          {totalItems > 10 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </Card>
 

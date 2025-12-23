@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns'
 import { getImageUrl } from '../../utils/vendor/imageUrl'
 import { hasVendorPermission } from '../../utils/vendor/permissions'
+import { Pagination } from '../../components/admin/ui/Pagination'
 
 
 export default function Venues() {
@@ -35,6 +36,12 @@ export default function Venues() {
   const [menus, setMenus] = useState([])
   const [submenus, setSubmenus] = useState([])
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  })
   const [showAddModal, setShowAddModal] = useState(isAddPage)
   const [editingVenue, setEditingVenue] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all') // Status filter
@@ -94,6 +101,10 @@ export default function Venues() {
     loadMenus()
     loadStates()
   }, [])
+
+  useEffect(() => {
+    loadVenues()
+  }, [pagination.page, statusFilter])
 
   useEffect(() => {
     if (isAddPage) {
@@ -165,10 +176,32 @@ export default function Venues() {
   const loadVenues = async () => {
     try {
       setLoading(true)
-      const response = await vendorAPI.getVenues()
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit
+      }
+      if (statusFilter !== 'all') {
+        params.status = statusFilter
+      }
+      const response = await vendorAPI.getVenues(params)
       const venuesData = response.data?.venues || response.data?.data || response.data || []
       // Ensure it's always an array
       setVenues(Array.isArray(venuesData) ? venuesData : [])
+      
+      // Update pagination from response
+      if (response.data?.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination.total || response.data.totalCount || venuesData.length,
+          pages: response.data.pagination.pages || response.data.totalPages || 1
+        }))
+      } else if (response.data?.totalCount) {
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.totalCount,
+          pages: Math.ceil(response.data.totalCount / pagination.limit)
+        }))
+      }
     } catch (error) {
       console.error('Failed to load venues:', error)
       setVenues([]) // Set empty array on error
@@ -1207,10 +1240,11 @@ export default function Venues() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.isArray(venues) && venues
-                .filter(venue => statusFilter === 'all' || venue.status === statusFilter)
-                .map((venue) => (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.isArray(venues) && venues
+                  .filter(venue => statusFilter === 'all' || venue.status === statusFilter)
+                  .map((venue) => (
                 <div key={venue.id || venue._id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition">
                   <div className="relative h-48 bg-gray-200">
                     {venue.images && venue.images[0] ? (
@@ -1340,8 +1374,20 @@ export default function Venues() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {pagination.pages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.pages}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.limit}
+                    onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+                  />
+                </div>
+              )}
+            </>
           )}
         </>
       )}
