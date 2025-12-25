@@ -3,10 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ad
 import { Button } from '../../../components/admin/ui/Button';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
-import { authAPI, paymentConfigAPI, googleMapsConfigAPI, legalPagesAPI } from '../../../services/admin/api';
+import { authAPI, paymentConfigAPI, emailConfigAPI, googleMapsConfigAPI, legalPagesAPI } from '../../../services/admin/api';
 import { setTheme, getTheme } from '../../../utils/theme';
 import toast from 'react-hot-toast';
-import { User, Lock, Moon, Sun, LogOut, Trash2, CreditCard, Eye, EyeOff, MapPin, FileText, ChevronDown } from 'lucide-react';
+import { User, Lock, Moon, Sun, LogOut, Trash2, CreditCard, Eye, EyeOff, MapPin, FileText, ChevronDown, Mail } from 'lucide-react';
 
 export const Settings = () => {
   const [profile, setProfile] = useState({ name: '', email: '' });
@@ -28,6 +28,23 @@ export const Settings = () => {
   });
   const [showMapsKey, setShowMapsKey] = useState(false);
   const [mapsLoading, setMapsLoading] = useState(false);
+  const [emailConfig, setEmailConfig] = useState({
+    smtpUsername: '',
+    smtpPassword: '',
+    smtpHost: '',
+    mailDriver: '',
+    smtpPort: '',
+    smtpSecurity: '',
+    smtpAuthDomain: '',
+    smtpAddress: '',
+    emailFromAddress: '',
+    emailFromName: '',
+    replyEmailAddress: '',
+    replyEmailName: '',
+    adminNotificationEmail: '',
+  });
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [selectedLegalPage, setSelectedLegalPage] = useState('privacy-policy');
   const [legalPageData, setLegalPageData] = useState({
     title: '',
@@ -42,6 +59,7 @@ export const Settings = () => {
   useEffect(() => {
     fetchProfile();
     fetchPaymentConfig();
+    fetchEmailConfig();
     fetchGoogleMapsConfig();
     fetchLegalPage();
   }, [selectedLegalPage]);
@@ -167,6 +185,83 @@ const handleConfirmAction = async () => {
       toast.error(errorMessage);
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const fetchEmailConfig = async () => {
+    try {
+      const response = await emailConfigAPI.get();
+      console.log('Email config response:', response.data);
+      if (response.data?.success && response.data?.config) {
+        const config = response.data.config;
+        const emailConfigData = {
+          smtpUsername: config.smtpUsername || '',
+          smtpPassword: '', // Don't load masked password
+          smtpHost: config.smtpHost || '',
+          mailDriver: config.mailDriver || '',
+          smtpPort: config.smtpPort?.toString() || '',
+          smtpSecurity: config.smtpSecurity || '',
+          smtpAuthDomain: config.smtpAuthDomain || '',
+          smtpAddress: config.smtpAddress || '',
+          emailFromAddress: config.emailFromAddress || '',
+          emailFromName: config.emailFromName || '',
+          replyEmailAddress: config.replyEmailAddress || '',
+          replyEmailName: config.replyEmailName || '',
+          adminNotificationEmail: config.adminNotificationEmail || '',
+        };
+        console.log('Setting email config:', emailConfigData);
+        setEmailConfig(emailConfigData);
+      } else {
+        console.warn('Email config response format unexpected:', response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load email config:', error);
+      console.error('Error details:', error.response?.data || error.message);
+    }
+  };
+
+  const handleEmailConfigUpdate = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!emailConfig.smtpUsername || !emailConfig.smtpHost || !emailConfig.mailDriver || 
+        !emailConfig.smtpPort || !emailConfig.smtpSecurity || !emailConfig.emailFromAddress || 
+        !emailConfig.emailFromName) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+    
+    // Warning if admin notification email is not set
+    if (!emailConfig.adminNotificationEmail) {
+      const confirm = window.confirm('Admin Notification Email is not set. Vendor registration emails will be sent to all admin users. Continue anyway?');
+      if (!confirm) {
+        return;
+      }
+    }
+    
+    setEmailLoading(true);
+    try {
+      const response = await emailConfigAPI.update(emailConfig);
+      
+      if (response.data?.success) {
+        toast.success('Email configuration updated successfully');
+        // Clear password field after successful update (for security)
+        setEmailConfig({
+          ...emailConfig,
+          smtpPassword: '',
+        });
+        setShowEmailPassword(false);
+        // Reload config
+        fetchEmailConfig();
+      } else {
+        toast.error(response.data?.message || 'Failed to update email configuration');
+      }
+    } catch (error) {
+      console.error('Email config update error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update email configuration';
+      toast.error(errorMessage);
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -417,6 +512,168 @@ const handleConfirmAction = async () => {
             </div>
             <Button type="submit" loading={paymentLoading}>
               Update Payment Configuration
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Email Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5" />
+            Email Configuration (SMTP)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleEmailConfigUpdate} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Username</label>
+                <Input
+                  type="text"
+                  value={emailConfig.smtpUsername}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpUsername: e.target.value })}
+                  placeholder="emailapikey"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Password</label>
+                <div className="relative">
+                  <Input
+                    type={showEmailPassword ? 'text' : 'password'}
+                    value={emailConfig.smtpPassword}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, smtpPassword: e.target.value })}
+                    placeholder="Enter full SMTP Password to update"
+                    required={!emailConfig.smtpPassword}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailPassword(!showEmailPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    {showEmailPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Enter the full password to update. For security, the saved password is not displayed.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Host</label>
+                <Input
+                  type="text"
+                  value={emailConfig.smtpHost}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpHost: e.target.value })}
+                  placeholder="smtp.zeptomail.in"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Mail Driver</label>
+                <Input
+                  type="text"
+                  value={emailConfig.mailDriver}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, mailDriver: e.target.value })}
+                  placeholder="smtp"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Port</label>
+                <Input
+                  type="number"
+                  value={emailConfig.smtpPort}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpPort: e.target.value })}
+                  placeholder="465"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Security</label>
+                <Input
+                  type="text"
+                  value={emailConfig.smtpSecurity}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpSecurity: e.target.value })}
+                  placeholder="ssl"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Authentication Domain</label>
+                <Input
+                  type="text"
+                  value={emailConfig.smtpAuthDomain}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpAuthDomain: e.target.value })}
+                  placeholder="true"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">SMTP Address</label>
+                <Input
+                  type="email"
+                  value={emailConfig.smtpAddress}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, smtpAddress: e.target.value })}
+                  placeholder="noreply@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Email From Address *</label>
+                <Input
+                  type="email"
+                  value={emailConfig.emailFromAddress}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, emailFromAddress: e.target.value })}
+                  placeholder="noreply@shubhvenue.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Email From Name *</label>
+                <Input
+                  type="text"
+                  value={emailConfig.emailFromName}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, emailFromName: e.target.value })}
+                  placeholder="ShubhVenue"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Reply Email Address</label>
+                <Input
+                  type="email"
+                  value={emailConfig.replyEmailAddress}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, replyEmailAddress: e.target.value })}
+                  placeholder="support@shubhvenue.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Reply Email Name</label>
+                <Input
+                  type="text"
+                  value={emailConfig.replyEmailName}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, replyEmailName: e.target.value })}
+                  placeholder="ShubhVenue Support"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2">
+                  Admin Notification Email <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={emailConfig.adminNotificationEmail}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, adminNotificationEmail: e.target.value })}
+                  placeholder="admin@example.com"
+                  required
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  This email will receive notifications when vendors register. If not set, all admin users will receive emails.
+                </p>
+              </div>
+            </div>
+            <Button type="submit" loading={emailLoading}>
+              Update Email Configuration
             </Button>
           </form>
         </CardContent>

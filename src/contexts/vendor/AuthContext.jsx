@@ -128,10 +128,21 @@ export function AuthProvider({ children }) {
       const response = await authAPI.register(data)
       const { token, user } = response.data
       
-      // Use vendor-specific localStorage keys
+      // Vendors can now login immediately after registration
+      // Approval is only required for adding venues, not for login
+      // Store token and user data to allow immediate login
       localStorage.setItem('vendor_token', token)
       localStorage.setItem('vendor_user', JSON.stringify(user))
       setUser(user)
+      
+      // Check if vendor needs approval for venue addition
+      if (user.role === 'vendor' && user.vendorStatus !== 'approved') {
+        return { 
+          success: true, 
+          requiresApproval: true,
+          message: 'Registration successful! You can now login. However, you need admin approval before you can add venues.'
+        }
+      }
       
       return { success: true }
     } catch (error) {

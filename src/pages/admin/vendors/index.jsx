@@ -6,7 +6,7 @@ import { Badge } from '../../../components/admin/ui/Badge';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
 import { Pagination } from '../../../components/admin/ui/Pagination';
-import { vendorsAPI } from '../../../services/admin/api';
+import { vendorsAPI, vendorCategoriesAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
 import { Check, X, Eye, Trash2, Plus } from 'lucide-react';
@@ -29,10 +29,23 @@ export const Vendors = () => {
     phone: '',
     password: '',
   });
+  const [phoneError, setPhoneError] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [updatingCategory, setUpdatingCategory] = useState(false);
 
   useEffect(() => {
     fetchVendors();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await vendorCategoriesAPI.getAll({ activeOnly: 'true' });
+      setCategories(response.data.categories || []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
 
   const fetchVendors = async () => {
     try {
@@ -160,8 +173,9 @@ export const Vendors = () => {
               <TableRow>
                 <TableHead className="w-12 text-center">S.No</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead className="max-w-[200px]">Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Revenue</TableHead>
                 <TableHead>Actions</TableHead>
@@ -170,7 +184,7 @@ export const Vendors = () => {
             <TableBody>
               {paginatedVendors.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     No vendors found
                   </TableCell>
                 </TableRow>
@@ -179,8 +193,23 @@ export const Vendors = () => {
                   <TableRow key={vendor._id}>
                     <TableCell className="text-center font-medium">{startIndex + idx + 1}</TableCell>
                     <TableCell className="font-medium">{vendor.name}</TableCell>
-                    <TableCell>{vendor.email}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <div 
+                        className="truncate" 
+                        title={vendor.email}
+                        style={{ maxWidth: '200px' }}
+                      >
+                        {vendor.email}
+                      </div>
+                    </TableCell>
                     <TableCell>{vendor.phone || 'N/A'}</TableCell>
+                    <TableCell>
+                      {vendor.vendorCategory ? (
+                        <Badge variant="default">{vendor.vendorCategory.name}</Badge>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No category</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={vendor.status === 'approved' ? 'success' : vendor.status === 'pending' ? 'warning' : 'danger'}>
                         {vendor.status || 'pending'}
@@ -278,7 +307,11 @@ export const Vendors = () => {
       <Modal
         isOpen={createOpen}
         onClose={() => {
-          if (!createLoading) setCreateOpen(false);
+          if (!createLoading) {
+            setCreateOpen(false);
+            setCreateForm({ name: '', email: '', phone: '', password: '' });
+            setPhoneError('');
+          }
         }}
         title="Add Vendor"
         size="md"
@@ -287,12 +320,26 @@ export const Vendors = () => {
           className="space-y-4"
           onSubmit={async (e) => {
             e.preventDefault();
+            
+            // Validate phone number if provided
+            if (createForm.phone) {
+              const phoneStr = String(createForm.phone).trim();
+              const digitsOnly = phoneStr.replace(/\D/g, '');
+              
+              if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+                setPhoneError('Phone number must be between 10 and 15 digits');
+                return;
+              }
+              setPhoneError('');
+            }
+            
             setCreateLoading(true);
             try {
               await vendorsAPI.create(createForm);
               toast.success('Vendor created successfully');
               setCreateOpen(false);
               setCreateForm({ name: '', email: '', phone: '', password: '' });
+              setPhoneError('');
               fetchVendors();
             } catch (error) {
               toast.error(error.response?.data?.message || 'Failed to create vendor');
@@ -316,12 +363,43 @@ export const Vendors = () => {
             disabled={createLoading}
             required
           />
-          <Input
-            label="Phone"
-            value={createForm.phone}
-            onChange={(e) => setCreateForm((p) => ({ ...p, phone: e.target.value }))}
-            disabled={createLoading}
-          />
+          <div>
+            <Input
+              label="Phone"
+              type="tel"
+              value={createForm.phone}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Only allow digits and limit to 15 digits
+                const digitsOnly = value.replace(/\D/g, '');
+                if (digitsOnly.length <= 15) {
+                  setCreateForm((p) => ({ ...p, phone: digitsOnly }));
+                  
+                  // Real-time validation
+                  if (digitsOnly.length > 0) {
+                    if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+                      setPhoneError('Phone number must be between 10 and 15 digits');
+                    } else {
+                      setPhoneError('');
+                    }
+                  } else {
+                    setPhoneError('');
+                  }
+                }
+              }}
+              disabled={createLoading}
+              placeholder="Enter 10-15 digit phone number"
+              maxLength={15}
+            />
+            {phoneError && (
+              <p className="text-sm text-red-500 mt-1">{phoneError}</p>
+            )}
+            {!phoneError && createForm.phone && (
+              <p className="text-xs text-gray-500 mt-1">
+                {createForm.phone.replace(/\D/g, '').length} digits
+              </p>
+            )}
+          </div>
           <Input
             label="Password"
             type="password"
@@ -385,6 +463,47 @@ export const Vendors = () => {
                     <Badge variant={vendorDetail.vendorStatus === 'approved' ? 'success' : vendorDetail.vendorStatus === 'pending' ? 'warning' : 'danger'}>
                       {vendorDetail.vendorStatus || vendorDetail.status || 'pending'}
                     </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Category</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    {hasPermission('edit_vendors') ? (
+                      <select
+                        value={vendorDetail.vendorCategory?._id || vendorDetail.vendorCategory || ''}
+                        onChange={async (e) => {
+                          const newCategoryId = e.target.value || null;
+                          setUpdatingCategory(true);
+                          try {
+                            await vendorsAPI.updateCategory(selectedVendor, newCategoryId);
+                            toast.success('Category updated successfully');
+                            // Refresh vendor details
+                            const response = await vendorsAPI.getById(selectedVendor);
+                            const vendorData = response.data?.vendor || response.data?.data || response.data;
+                            setVendorDetail(vendorData);
+                            // Refresh vendors list
+                            fetchVendors();
+                          } catch (error) {
+                            toast.error(error.response?.data?.message || 'Failed to update category');
+                          } finally {
+                            setUpdatingCategory(false);
+                          }
+                        }}
+                        disabled={updatingCategory}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">No category</option>
+                        {categories.map((cat) => (
+                          <option key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-gray-900 dark:text-gray-100">
+                        {vendorDetail.vendorCategory?.name || 'No category'}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div>

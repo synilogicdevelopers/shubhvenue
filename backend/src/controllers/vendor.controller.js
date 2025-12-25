@@ -3,6 +3,7 @@ import Venue from '../models/Venue.js';
 import Booking from '../models/Booking.js';
 import Payout from '../models/Payout.js';
 import Ledger from '../models/Ledger.js';
+import CalendarEvent from '../models/CalendarEvent.js';
 
 // Helper function to get vendor ID from request
 // For vendor_staff, use vendorId; for vendor, use userId
@@ -58,6 +59,12 @@ export const getVendorDashboard = async (req, res) => {
     // Calculate date range for selected month
     const startOfMonth = new Date(selectedYear, selectedMonth, 1);
     const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+    
+    // Normalize month boundaries for comparison (used for both revenue and expenses)
+    const monthStart = new Date(selectedYear, selectedMonth, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
 
     // Get vendor venues
     const vendorVenues = await Venue.find({ vendorId: vendorId }).select('_id');
@@ -66,14 +73,32 @@ export const getVendorDashboard = async (req, res) => {
     // Get total venues count (not filtered by month)
     const totalVenues = vendorVenues.length;
 
-    // Get all bookings for vendor venues (only admin-approved bookings)
+    // Get all bookings for vendor venues
+    // Include both:
+    // 1. Admin-approved customer bookings (adminApproved: true)
+    // 2. Vendor-created bookings (adminApproved: true, created by vendor)
     const allBookings = await Booking.find({
       venueId: { $in: venueIds },
       adminApproved: true
     });
 
-    // Filter bookings for selected month
+    // Filter bookings for selected month - check booking date, dateFrom/dateTo range, or createdAt
     const bookings = allBookings.filter(booking => {
+      // Check if booking has dateFrom and dateTo (date range)
+      if (booking.dateFrom && booking.dateTo) {
+        const dateFrom = new Date(booking.dateFrom);
+        const dateTo = new Date(booking.dateTo);
+        // Check if date range overlaps with selected month
+        return (dateFrom <= endOfMonth && dateTo >= startOfMonth);
+      }
+      
+      // Use booking date (event date) if available
+      if (booking.date) {
+        const bookingDate = new Date(booking.date);
+        return bookingDate >= startOfMonth && bookingDate <= endOfMonth;
+      }
+      
+      // Fallback to createdAt
       const bookingDate = new Date(booking.createdAt || booking.updatedAt);
       return bookingDate >= startOfMonth && bookingDate <= endOfMonth;
     });
@@ -82,11 +107,111 @@ export const getVendorDashboard = async (req, res) => {
     const monthlyBookingsCount = bookings.length; // For selected month
 
     // Calculate monthly revenue (selected month)
+    // Include all confirmed bookings:
+    // - Customer bookings (admin-approved)
+    // - Vendor-created bookings (auto-approved, status: confirmed)
     const monthlyBookings = bookings.filter(booking => booking.status === 'confirmed');
     
     const monthlyRevenue = monthlyBookings.reduce((sum, booking) => {
-      return sum + (booking.totalAmount || 0);
+      const amount = Number(booking.totalAmount) || 0;
+      return sum + amount;
     }, 0);
+
+    // Calculate daily revenue breakdown for selected month
+    const dailyRevenue = {};
+    
+    // Calculate daily revenue breakdown
+    // Include both customer bookings and vendor-created bookings
+    monthlyBookings.forEach(booking => {
+      if (!booking) return;
+      
+      const amount = Number(booking.totalAmount) || 0;
+      // Include bookings with amount > 0 (vendor bookings might have amount)
+      if (amount <= 0) return;
+      
+      // Handle date range bookings (dateFrom and dateTo)
+      // Show full amount only on start date (dateFrom) - one time only in graph
+      if (booking.dateFrom && booking.dateTo) {
+        const dateFrom = new Date(booking.dateFrom);
+        dateFrom.setHours(0, 0, 0, 0);
+        
+        // Only include if start date falls within selected month
+        if (dateFrom >= monthStart && dateFrom <= monthEnd) {
+          const day = dateFrom.getDate();
+          const dayKey = Number(day);
+          
+          if (!dailyRevenue[dayKey]) {
+            dailyRevenue[dayKey] = 0;
+          }
+          // Add full amount only on start date (one time)
+          dailyRevenue[dayKey] += amount;
+          
+          // Debug log for date range bookings
+          const dateTo = new Date(booking.dateTo);
+          const daysInRange = Math.ceil((dateTo - dateFrom) / (1000 * 60 * 60 * 24)) + 1;
+          console.log(`Date Range Booking: ${booking.dateFrom} to ${booking.dateTo}, Amount: ${amount}, Added to Day ${dayKey} (start date only)`);
+        }
+      } else {
+        // Single date booking - use date field or createdAt
+        let bookingDate = null;
+        
+        if (booking.date) {
+          bookingDate = new Date(booking.date);
+        } else if (booking.createdAt) {
+          bookingDate = new Date(booking.createdAt);
+        } else {
+          return; // Skip if no date available
+        }
+        
+        bookingDate.setHours(0, 0, 0, 0);
+        
+        // Only include if date falls within selected month
+        if (bookingDate >= monthStart && bookingDate <= monthEnd) {
+          const day = bookingDate.getDate();
+          const dayKey = Number(day);
+          
+          if (!dailyRevenue[dayKey]) {
+            dailyRevenue[dayKey] = 0;
+          }
+          dailyRevenue[dayKey] += amount;
+        }
+      }
+    });
+
+    // Get daily expenses from ledger for selected month
+    // Query all expense entries for the vendor first, then filter by date
+    const allLedgerEntries = await Ledger.find({
+      vendorId: vendorId,
+      type: 'expense',
+      status: { $ne: 'cancelled' }
+    }).select('amount date createdAt').lean();
+
+    const dailyExpenses = {};
+    let monthlyExpenses = 0;
+    
+    allLedgerEntries.forEach(entry => {
+      if (!entry) return;
+      
+      // Use date field if available, otherwise use createdAt
+      let entryDate = entry.date ? new Date(entry.date) : new Date(entry.createdAt);
+      
+      // Normalize to start of day for comparison
+      entryDate.setHours(0, 0, 0, 0);
+      
+      // Check if date falls within selected month
+      if (entryDate >= monthStart && entryDate <= monthEnd) {
+        const day = entryDate.getDate();
+        // Ensure day is stored as number (not string) for consistent access
+        const dayKey = Number(day);
+        const amount = Number(entry.amount) || 0;
+        
+        if (!dailyExpenses[dayKey]) {
+          dailyExpenses[dayKey] = 0;
+        }
+        dailyExpenses[dayKey] += amount;
+        monthlyExpenses += amount;
+      }
+    });
 
     // Calculate total commission paid (from payouts)
     const payouts = await Payout.find({ 
@@ -178,8 +303,49 @@ export const getVendorDashboard = async (req, res) => {
         paid: paidBookings.length,
         pending: pendingBookings.length,
         failed: failedBookings.length
-      }
+      },
+      monthlyExpenses,
+      dailyRevenue,
+      dailyExpenses
     });
+    
+    // Comprehensive debug logging
+    console.log('=== BACKEND DASHBOARD RESPONSE ===');
+    console.log('Month:', selectedMonth + 1, 'Year:', selectedYear);
+    console.log('Total Bookings (all):', allBookings.length);
+    console.log('Bookings (filtered for month):', bookings.length);
+    console.log('Confirmed Bookings:', monthlyBookings.length);
+    console.log('Monthly Revenue:', monthlyRevenue);
+    console.log('Monthly Expenses:', monthlyExpenses);
+    console.log('Daily Revenue Object:', dailyRevenue);
+    console.log('Daily Expenses Object:', dailyExpenses);
+    console.log('Daily Revenue Keys:', Object.keys(dailyRevenue));
+    console.log('Daily Expenses Keys:', Object.keys(dailyExpenses));
+    console.log('Daily Revenue Count:', Object.keys(dailyRevenue).length);
+    console.log('Daily Expenses Count:', Object.keys(dailyExpenses).length);
+    
+    // Check specific days 25-30 for bookings
+    console.log('Days 25-30 Revenue:', {
+      day25: dailyRevenue[25] || dailyRevenue['25'] || 0,
+      day26: dailyRevenue[26] || dailyRevenue['26'] || 0,
+      day27: dailyRevenue[27] || dailyRevenue['27'] || 0,
+      day28: dailyRevenue[28] || dailyRevenue['28'] || 0,
+      day29: dailyRevenue[29] || dailyRevenue['29'] || 0,
+      day30: dailyRevenue[30] || dailyRevenue['30'] || 0
+    });
+    
+    // Sample values
+    if (Object.keys(dailyRevenue).length > 0) {
+      const sampleKeys = Object.keys(dailyRevenue).slice(0, 10);
+      console.log('Sample Revenue Values:', sampleKeys.map(key => ({ key, value: dailyRevenue[key], type: typeof dailyRevenue[key] })));
+    }
+    
+    if (Object.keys(dailyExpenses).length > 0) {
+      const sampleKeys = Object.keys(dailyExpenses).slice(0, 10);
+      console.log('Sample Expense Values:', sampleKeys.map(key => ({ key, value: dailyExpenses[key], type: typeof dailyExpenses[key] })));
+    }
+    
+    console.log('=== END BACKEND DASHBOARD RESPONSE ===');
   } catch (error) {
     console.error('Get vendor dashboard error:', error);
     
@@ -320,19 +486,23 @@ export const getBlockedDates = async (req, res) => {
       const bookedDates = new Set();
       
       venueBookings.forEach(booking => {
-        if (booking.date) {
-          const dateStr = new Date(booking.date).toISOString().split('T')[0];
-          bookedDates.add(dateStr);
-        }
+        // If booking has dateFrom and dateTo, use the range (ignore the date field)
         if (booking.dateFrom && booking.dateTo) {
           const startDate = new Date(booking.dateFrom);
           const endDate = new Date(booking.dateTo);
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(0, 0, 0, 0);
+          
           let currentDate = new Date(startDate);
           while (currentDate <= endDate) {
             const dateStr = currentDate.toISOString().split('T')[0];
             bookedDates.add(dateStr);
             currentDate.setDate(currentDate.getDate() + 1);
           }
+        } else if (booking.date) {
+          // Only use date field if dateFrom/dateTo are not present
+          const dateStr = new Date(booking.date).toISOString().split('T')[0];
+          bookedDates.add(dateStr);
         }
       });
 
@@ -1228,6 +1398,272 @@ export const deleteLedgerEntry = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete ledger entry error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Get calendar events for a venue
+export const getCalendarEvents = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const { venueId } = req.query;
+
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          error: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Build filter
+    const filter = { vendorId: vendorId };
+    if (venueId) {
+      // Verify venue belongs to vendor
+      const venue = await Venue.findById(venueId);
+      if (!venue) {
+        return res.status(404).json({ error: 'Venue not found' });
+      }
+      if (venue.vendorId.toString() !== vendorId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      filter.venueId = venueId;
+    }
+
+    const events = await CalendarEvent.find(filter)
+      .populate('venueId', 'name')
+      .sort({ date: 1 });
+
+    res.json({
+      success: true,
+      data: events
+    });
+  } catch (error) {
+    console.error('Get calendar events error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Create calendar event
+export const createCalendarEvent = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const { venueId, date, title, type } = req.body;
+
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    if (!venueId || !date || !title) {
+      return res.status(400).json({ error: 'Venue ID, date, and title are required' });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          error: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Verify venue belongs to vendor
+    const venue = await Venue.findById(venueId);
+    if (!venue) {
+      return res.status(404).json({ error: 'Venue not found' });
+    }
+    if (venue.vendorId.toString() !== vendorId) {
+      return res.status(403).json({ error: 'You can only create events for your own venues' });
+    }
+
+    // Parse and validate date
+    const eventDate = new Date(date);
+    if (isNaN(eventDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+    eventDate.setHours(0, 0, 0, 0);
+
+    // Allow multiple events per date - no duplicate check needed
+
+    // Create event
+    const event = new CalendarEvent({
+      vendorId: vendorId,
+      venueId: venueId,
+      date: eventDate,
+      title: title.trim(),
+      type: type || 'task'
+    });
+
+    await event.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Event created successfully',
+      data: event
+    });
+  } catch (error) {
+    console.error('Create calendar event error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Update calendar event
+export const updateCalendarEvent = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const { id } = req.params;
+    const { title, type, date, venueId } = req.body;
+
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          error: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Find event and verify ownership
+    const event = await CalendarEvent.findById(id);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.vendorId.toString() !== vendorId) {
+      return res.status(403).json({ error: 'You can only update your own events' });
+    }
+
+    // If venueId is being changed, verify new venue belongs to vendor
+    if (venueId && venueId !== event.venueId.toString()) {
+      const venue = await Venue.findById(venueId);
+      if (!venue) {
+        return res.status(404).json({ error: 'Venue not found' });
+      }
+      if (venue.vendorId.toString() !== vendorId) {
+        return res.status(403).json({ error: 'You can only use your own venues' });
+      }
+      event.venueId = venueId;
+    }
+
+    // Update event
+    event.title = title.trim();
+    if (type) {
+      event.type = type;
+    }
+
+    // Update date if provided
+    if (date) {
+      const eventDate = new Date(date);
+      if (isNaN(eventDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date format' });
+      }
+      eventDate.setHours(0, 0, 0, 0);
+      event.date = eventDate;
+    }
+
+    await event.save();
+
+    res.json({
+      success: true,
+      message: 'Event updated successfully',
+      data: event
+    });
+  } catch (error) {
+    console.error('Update calendar event error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Delete calendar event
+export const deleteCalendarEvent = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const { id } = req.params;
+
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          error: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Find event and verify ownership
+    const event = await CalendarEvent.findById(id);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.vendorId.toString() !== vendorId) {
+      return res.status(403).json({ error: 'You can only delete your own events' });
+    }
+
+    await CalendarEvent.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: 'Event deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete calendar event error:', error);
     res.status(500).json({ 
       error: 'Internal server error',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined

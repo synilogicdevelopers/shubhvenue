@@ -159,7 +159,7 @@ export const Staff = () => {
       data.append('role', formData.role);
       if (formData.location) data.append('location', formData.location);
       if (formData.gender) data.append('gender', formData.gender);
-      if (imageFile) data.append('image', imageFile);
+      if (imageFile) data.append('img', imageFile);
 
       await staffAPI.create(data);
       toast.success('Staff created successfully');
@@ -196,7 +196,7 @@ export const Staff = () => {
       if (formData.gender) data.append('gender', formData.gender);
       if (formData.password) data.append('password', formData.password);
       if (formData.isActive !== undefined) data.append('isActive', formData.isActive);
-      if (imageFile) data.append('image', imageFile);
+      if (imageFile) data.append('img', imageFile);
 
       await staffAPI.update(selectedStaff._id, data);
       toast.success('Staff updated successfully');

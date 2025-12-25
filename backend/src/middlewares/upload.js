@@ -14,11 +14,15 @@ const bannersUploadsDir = path.join(__dirname, '../../uploads/banners');
 const videosUploadsDir = path.join(__dirname, '../../uploads/videos');
 const staffUploadsDir = path.join(__dirname, '../../uploads/staff');
 const vendorStaffUploadsDir = path.join(__dirname, '../../uploads/vendor-staff');
+const vendorCategoryUploadsDir = path.join(__dirname, '../../uploads/vendor-categories');
 if (!fs.existsSync(venuesUploadsDir)) {
   fs.mkdirSync(venuesUploadsDir, { recursive: true });
 }
 if (!fs.existsSync(categoriesUploadsDir)) {
   fs.mkdirSync(categoriesUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(vendorCategoryUploadsDir)) {
+  fs.mkdirSync(vendorCategoryUploadsDir, { recursive: true });
 }
 if (!fs.existsSync(menusUploadsDir)) {
   fs.mkdirSync(menusUploadsDir, { recursive: true });
@@ -54,6 +58,20 @@ const venueStorage = multer.diskStorage({
 const categoryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, categoriesUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Configure storage for vendor categories
+const vendorCategoryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, vendorCategoryUploadsDir);
   },
   filename: (req, file, cb) => {
     // Generate unique filename: timestamp-random-originalname
@@ -150,6 +168,15 @@ const categoryUpload = multer({
   fileFilter: fileFilter
 });
 
+// Configure multer for vendor categories
+const vendorCategoryUpload = multer({
+  storage: vendorCategoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: fileFilter
+});
+
 // Configure multer for menus
 const menuUpload = multer({
   storage: menuStorage,
@@ -240,6 +267,9 @@ export const uploadVenueMedia = multer({
 
 // Middleware for category image upload
 export const uploadCategoryImage = categoryUpload.single('image');
+
+// Middleware for vendor category image upload
+export const uploadVendorCategoryImage = vendorCategoryUpload.single('image');
 
 // Middleware for menu image upload
 export const uploadMenuImage = menuUpload.single('image');

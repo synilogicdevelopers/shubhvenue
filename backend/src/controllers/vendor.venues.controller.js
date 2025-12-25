@@ -441,6 +441,7 @@ export const getVenues = async (req, res) => {
       status,
       venueType,
       categoryId,
+      vendorCategory, // Filter by vendor category
       menuId,
       subMenuId,
       tags,
@@ -524,14 +525,64 @@ export const getVenues = async (req, res) => {
       filter.categoryId = categoryId;
     }
 
+    // Vendor Category filtering - filter venues by vendor's category
+    if (vendorCategory) {
+      try {
+        // Import User model to find vendors with this category
+        const User = (await import('../models/User.js')).default;
+        const vendorsWithCategory = await User.find({ 
+          role: 'vendor',
+          vendorCategory: vendorCategory,
+          vendorStatus: 'approved',
+          isDeleted: { $ne: true }
+        }).select('_id').lean();
+        
+        const vendorIds = vendorsWithCategory.map(v => v._id);
+        if (vendorIds.length > 0) {
+          // If there are vendors with this category, filter venues by their vendorIds
+          if (filter.vendorId) {
+            // If vendorId filter already exists, combine with $and
+            if (!filter.$and) filter.$and = [];
+            filter.$and.push({ vendorId: { $in: vendorIds } });
+          } else {
+            filter.vendorId = { $in: vendorIds };
+          }
+        } else {
+          // If no vendors found with this category, return empty result
+          filter.vendorId = { $in: [] };
+        }
+      } catch (error) {
+        console.error('Error filtering by vendor category:', error);
+        // If error occurs, don't filter by vendor category
+      }
+    }
+
     // Menu filtering
     if (subMenuId) {
       // If subMenuId is provided, filter by subMenuId
       filter.subMenuId = subMenuId;
     } else if (menuId) {
-      // If only menuId is provided, filter by menuId (venues directly assigned to menu, not submenu)
-      filter.menuId = menuId;
-      filter.subMenuId = null; // Only venues directly assigned to menu, not submenus
+      // If only menuId is provided, get all submenus for this menu and include their venues too
+      try {
+        const Menu = (await import('../models/Menu.js')).default;
+        const submenus = await Menu.find({ 
+          parentMenuId: menuId,
+          isActive: true 
+        }).select('_id').lean();
+        
+        const submenuIds = submenus.map(s => s._id);
+        
+        // Filter: venues directly assigned to menu OR venues assigned to any of its submenus
+        filter.$or = [
+          { menuId: menuId, subMenuId: null }, // Directly assigned to menu
+          { subMenuId: { $in: submenuIds } } // Assigned to any submenu of this menu
+        ];
+      } catch (error) {
+        console.error('Error fetching submenus for menu filter:', error);
+        // Fallback: just filter by menuId if submenu fetch fails
+        filter.menuId = menuId;
+        filter.subMenuId = null;
+      }
     }
 
     // Tags filtering
@@ -879,6 +930,29 @@ export const createVenue = async (req, res) => {
       return res.status(403).json({ error: accessCheck.error });
     }
     const vendorId = accessCheck.vendorId;
+
+    // Check if vendor is approved - vendors need admin approval before adding venues
+    // Rejected vendors cannot add venues
+    const User = (await import('../models/User.js')).default;
+    const vendor = await User.findById(vendorId).select('vendorStatus role');
+    
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    
+    if (vendor.role === 'vendor') {
+      if (vendor.vendorStatus === 'rejected') {
+        return res.status(403).json({ 
+          error: 'Your vendor account has been rejected. You cannot add venues. Please contact support for more information.' 
+        });
+      }
+      
+      if (vendor.vendorStatus !== 'approved') {
+        return res.status(403).json({ 
+          error: 'Your vendor account is pending admin approval. You cannot add venues until your account is approved by the admin.' 
+        });
+      }
+    }
 
     const { 
       name, 
@@ -2080,6 +2154,10 @@ export const searchVenues = async (req, res) => {
       city,
       state,
       location, // General location search
+      vendorCategory, // Filter by vendor category
+      categoryId,
+      menuId,
+      subMenuId,
       page = 1,
       limit = 20,
       sortBy = 'createdAt',
@@ -2170,6 +2248,78 @@ export const searchVenues = async (req, res) => {
         filter.$and.push(locationSearch);
       } else {
         filter.$or = locationSearch.$or;
+      }
+    }
+
+    // Category filtering
+    if (categoryId) {
+      filter.categoryId = categoryId;
+    }
+
+    // Vendor Category filtering - filter venues by vendor's category
+    if (vendorCategory) {
+      // Import User model to find vendors with this category
+      const User = (await import('../models/User.js')).default;
+      const vendorsWithCategory = await User.find({ 
+        role: 'vendor',
+        vendorCategory: vendorCategory,
+        vendorStatus: 'approved',
+        isDeleted: { $ne: true }
+      }).select('_id');
+      
+      const vendorIds = vendorsWithCategory.map(v => v._id);
+      if (vendorIds.length > 0) {
+        filter.vendorId = { $in: vendorIds };
+      } else {
+        // If no vendors found with this category, return empty result
+        filter.vendorId = { $in: [] };
+      }
+    }
+
+    // Menu filtering
+    if (subMenuId) {
+      // If subMenuId is provided, filter by subMenuId
+      if (filter.$or || filter.$and) {
+        if (!filter.$and) filter.$and = [];
+        filter.$and.push({ subMenuId: subMenuId });
+      } else {
+        filter.subMenuId = subMenuId;
+      }
+    } else if (menuId) {
+      // If only menuId is provided, get all submenus for this menu and include their venues too
+      try {
+        const Menu = (await import('../models/Menu.js')).default;
+        const submenus = await Menu.find({ 
+          parentMenuId: menuId,
+          isActive: true 
+        }).select('_id').lean();
+        
+        const submenuIds = submenus.map(s => s._id);
+        
+        // Filter: venues directly assigned to menu OR venues assigned to any of its submenus
+        const menuFilter = {
+          $or: [
+            { menuId: menuId, subMenuId: null }, // Directly assigned to menu
+            { subMenuId: { $in: submenuIds } } // Assigned to any submenu of this menu
+          ]
+        };
+        
+        if (filter.$or || filter.$and) {
+          if (!filter.$and) filter.$and = [];
+          filter.$and.push(menuFilter);
+        } else {
+          filter.$or = menuFilter.$or;
+        }
+      } catch (error) {
+        console.error('Error fetching submenus for menu filter:', error);
+        // Fallback: just filter by menuId if submenu fetch fails
+        if (filter.$or || filter.$and) {
+          if (!filter.$and) filter.$and = [];
+          filter.$and.push({ menuId: menuId, subMenuId: null });
+        } else {
+          filter.menuId = menuId;
+          filter.subMenuId = null;
+        }
       }
     }
 

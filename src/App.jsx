@@ -13,6 +13,7 @@ import Profile from './pages/customer/Profile'
 import Booking from './pages/customer/Booking'
 import BookingHistory from './pages/customer/BookingHistory'
 import ContactVenue from './pages/customer/ContactVenue'
+import Shotlist from './pages/customer/Shotlist'
 import AboutUs from './pages/customer/AboutUs'
 import HowItWorks from './pages/customer/HowItWorks'
 import Blog from './pages/customer/Blog'
@@ -29,6 +30,7 @@ import { Login as AdminLogin } from './pages/admin/auth/Login'
 import { Dashboard as AdminDashboard } from './pages/admin/dashboard'
 import { Users } from './pages/admin/users'
 import { Vendors } from './pages/admin/vendors'
+import { VendorCategories } from './pages/admin/vendor-categories'
 import { Venues as AdminVenues } from './pages/admin/venues'
 import { Bookings as AdminBookings } from './pages/admin/bookings'
 import { Leads } from './pages/admin/leads'
@@ -127,12 +129,14 @@ function CustomerRoutes() {
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/venue/:categorySlug/:slug" element={<VenueDetail />} />
           <Route path="/venue/:slug" element={<VenueDetail />} />
           <Route path="/venues" element={<Venue />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/contact-venue" element={<ContactVenue />} />
           <Route path="/booking-history" element={<BookingHistory />} />
+          <Route path="/shotlist" element={<Shotlist />} />
           <Route path="/about-us" element={<AboutUs />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/blog" element={<Blog />} />
@@ -187,6 +191,16 @@ function AdminRoutes() {
           <AdminPrivateRoute>
             <DashboardLayout>
               <Vendors />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="vendor-categories"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <VendorCategories />
             </DashboardLayout>
           </AdminPrivateRoute>
         }

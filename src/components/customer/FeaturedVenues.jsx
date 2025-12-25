@@ -172,7 +172,10 @@ function FeaturedVenues({ onLoadComplete }) {
                   `${venue.capacity}`) : 
                 null,
               highlights: venue.highlights || [],
-              moreTags: venue.tags?.length || 0
+              moreTags: venue.tags?.length || 0,
+              // Store category data for URL generation
+              categoryId: venue.categoryId,
+              category: venue.category
             }
           })
           
@@ -225,7 +228,18 @@ function FeaturedVenues({ onLoadComplete }) {
               <div 
                 key={venue.id} 
                 className="venue-card"
-                onClick={() => navigate(`/venue/${createSlug(venue.name)}`)}
+                onClick={() => {
+                  const venueSlug = createSlug(venue.name)
+                  // Check for category in multiple possible locations
+                  const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                  const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                  
+                  const url = venueCategorySlug 
+                    ? `/venue/${venueCategorySlug}/${venueSlug}`
+                    : `/venue/${venueSlug}`
+                  
+                  navigate(url)
+                }}
               >
                 <div className="venue-image-wrapper">
                   <img 

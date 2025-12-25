@@ -1,5 +1,5 @@
-// Production server URL
-const API_BASE_URL = 'https://shubhvenue.com/api';
+// Local server URL
+const API_BASE_URL = 'http://localhost:8030/api';
 
 // Helper function to make API requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -86,6 +86,11 @@ export const publicCategoriesAPI = {
     return apiRequest(`/categories${queryString ? `?${queryString}` : ''}`);
   },
   getById: (id) => apiRequest(`/categories/${id}`),
+};
+
+// Public Vendor Categories APIs (no auth required)
+export const publicVendorCategoriesAPI = {
+  getAll: () => apiRequest('/admin/vendor-categories/public'),
 };
 
 // Public Venues APIs (no auth required)
@@ -202,6 +207,31 @@ export const publicMenusAPI = {
   },
   getSubmenus: (parentMenuId) => {
     return apiRequest(`/menus?parentMenuId=${parentMenuId}`);
+  },
+};
+
+// Shotlist APIs (optional auth - works with deviceId for non-logged in users)
+export const shotlistAPI = {
+  // Toggle like/unlike a venue
+  toggleLike: (venueId, deviceId) => {
+    // Send deviceId in body only (not in header) to avoid CORS issues
+    // Backend controller checks both req.body.deviceId and req.headers['x-device-id']
+    return apiRequest(`/shotlist/venue/${venueId}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ deviceId }),
+    });
+  },
+  // Get all shotlisted venues
+  getAll: (deviceId) => {
+    // Send deviceId in query string only (not in header) to avoid CORS issues
+    const queryString = deviceId ? `?deviceId=${encodeURIComponent(deviceId)}` : '';
+    return apiRequest(`/shotlist${queryString}`);
+  },
+  // Check if venue is liked
+  checkStatus: (venueId, deviceId) => {
+    // Send deviceId in query string only (not in header) to avoid CORS issues
+    const queryString = deviceId ? `?deviceId=${encodeURIComponent(deviceId)}` : '';
+    return apiRequest(`/shotlist/venue/${venueId}/status${queryString}`);
   },
 };
 

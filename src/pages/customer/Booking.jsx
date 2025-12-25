@@ -22,10 +22,20 @@ function Booking() {
     capacity: '100-500 pax'
   }
 
+  // Helper function to get image URL
+  const getImageUrl = (image) => {
+    if (!image) return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    return `${baseUrl}${image.startsWith('/') ? image : `/${image}`}`
+  }
+
   // Normalize venue data to handle different formats
   const venue = {
     ...venueData,
-    image: venueData.images?.[0] || venueData.image || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop',
+    image: getImageUrl(venueData.images?.[0] || venueData.image || venueData.coverImage),
     price: typeof venueData.price === 'string' 
       ? parseFloat(venueData.price.replace(/[^0-9.]/g, '')) 
       : venueData.price || 16.00,
@@ -696,7 +706,13 @@ function Booking() {
 
               <div className="venue-card-summary">
                 <div className="venue-image-summary">
-                  <img src={venue.image} alt={venue.name} />
+                  <img 
+                    src={venue.image} 
+                    alt={venue.name}
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                    }}
+                  />
                 </div>
                 <div className="venue-info-summary">
                   <h4 className="venue-name-summary">{venue.name}</h4>

@@ -94,7 +94,7 @@ export const getBookings = async (req, res) => {
 
     const bookings = await Booking.find(filter)
       .populate('customerId', 'name email phone')
-      .populate('venueId', 'name location price capacity rooms')
+      .populate('venueId', 'name location price capacity rooms images coverImage image')
       .sort({ createdAt: -1 });
 
     // Convert Mongoose documents to plain objects
@@ -136,7 +136,7 @@ export const getBookings = async (req, res) => {
       
       const leads = await Lead.find(leadFilter)
         .populate('customerId', 'name email phone')
-        .populate('venueId', 'name location price capacity rooms')
+        .populate('venueId', 'name location price capacity rooms images coverImage image')
         .sort({ createdAt: -1 });
       
       leadsData = leads.map(lead => {
@@ -242,13 +242,13 @@ export const getBookingById = async (req, res) => {
     // First try to find in Booking collection
     let booking = await Booking.findById(id)
       .populate('customerId', 'name email phone')
-      .populate('venueId', 'name location price capacity amenities');
+      .populate('venueId', 'name location price capacity amenities images coverImage image');
 
     // If not found in Booking, check Lead collection
     if (!booking) {
       const lead = await Lead.findById(id)
         .populate('customerId', 'name email phone')
-        .populate('venueId', 'name location price capacity amenities');
+        .populate('venueId', 'name location price capacity amenities images coverImage image');
       
       if (lead) {
         // Convert lead to booking-like format for frontend compatibility
@@ -553,7 +553,7 @@ export const createBooking = async (req, res) => {
       await lead.save();
       
       // Populate venue for response
-      await lead.populate('venueId', 'name location price capacity');
+      await lead.populate('venueId', 'name location price capacity images coverImage image');
 
       return res.status(201).json({
         success: true,
@@ -644,7 +644,7 @@ export const createBooking = async (req, res) => {
     await lead.save();
     
     await booking.populate('customerId', 'name email phone');
-    await booking.populate('venueId', 'name location price capacity');
+    await booking.populate('venueId', 'name location price capacity images coverImage image');
 
     res.status(201).json({
       success: true,
@@ -688,7 +688,7 @@ export const convertLeadToBookingWithPayment = async (req, res) => {
     
     // Find the lead
     const lead = await Lead.findById(leadId)
-      .populate('venueId', 'name location price capacity status');
+      .populate('venueId', 'name location price capacity status images coverImage image');
     
     if (!lead) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -767,7 +767,7 @@ export const convertLeadToBookingWithPayment = async (req, res) => {
     
     // Populate booking for response
     await booking.populate('customerId', 'name email phone');
-    await booking.populate('venueId', 'name location price capacity');
+    await booking.populate('venueId', 'name location price capacity images coverImage image');
     
     res.json({
       success: true,
@@ -948,7 +948,7 @@ export const updateBookingStatus = async (req, res) => {
     }
 
     await booking.populate('customerId', 'name email phone');
-    await booking.populate('venueId', 'name location price capacity');
+    await booking.populate('venueId', 'name location price capacity images coverImage image');
 
     res.json({
       success: true,

@@ -3,6 +3,7 @@ import HeroSection from './HeroSection'
 import Categories from './Categories'
 import HowItWorks from './HowItWorks'
 import WhyVenueMonk from './WhyVenueMonk'
+import VendorCategories from './VendorCategories'
 import FeaturedVenues from './FeaturedVenues'
 import CTASection from './CTASection'
 import Testimonials from './Testimonials'
@@ -77,6 +78,7 @@ function Home() {
         <Categories />
         <HowItWorks />
         <WhyVenueMonk />
+        <VendorCategories />
         <FeaturedVenues onLoadComplete={handleFeaturedVenuesLoadComplete} />
         <CTASection />
         <Testimonials onLoadComplete={handleTestimonialsLoadComplete} />

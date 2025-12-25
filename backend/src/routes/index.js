@@ -22,6 +22,7 @@ import microserviceRoutes from './v1/microservice.routes.js';
 import staffRoutes from './v1/staff.routes.js';
 import vendorRolesRoutes from './v1/vendor-roles.routes.js';
 import vendorStaffRoutes from './v1/vendor-staff.routes.js';
+import shotlistRoutes from './v1/shotlist.routes.js';
 
 const router = Router();
 
@@ -48,6 +49,7 @@ router.use('/reviews', reviewRoutes);
 router.use('/staff', staffRoutes);
 router.use('/vendor/roles', vendorRolesRoutes);
 router.use('/vendor/staff', vendorStaffRoutes);
+router.use('/shotlist', shotlistRoutes);
 
 export default router;
 

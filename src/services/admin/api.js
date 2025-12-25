@@ -2,8 +2,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Production server URL
-const API_URL = 'https://shubhvenue.com/api';
+// Local server URL
+const API_URL = 'http://localhost:8030/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -93,6 +93,31 @@ export const vendorsAPI = {
   approve: (id) => api.put(`/admin/vendors/${id}/approve`),
   reject: (id) => api.put(`/admin/vendors/${id}/reject`),
   delete: (id) => api.delete(`/admin/vendors/${id}`),
+  updateCategory: (vendorId, categoryId) => api.put(`/admin/vendors/${vendorId}/category`, { categoryId: categoryId || null }),
+};
+
+// Vendor Categories APIs
+export const vendorCategoriesAPI = {
+  getAll: (params) => api.get('/admin/vendor-categories', { params }),
+  getPublic: () => api.get('/admin/vendor-categories/public'),
+  getById: (id) => api.get(`/admin/vendor-categories/${id}`),
+  create: (data) => {
+    if (data instanceof FormData) {
+      return api.post('/admin/vendor-categories', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.post('/admin/vendor-categories', data);
+  },
+  update: (id, data) => {
+    if (data instanceof FormData) {
+      return api.put(`/admin/vendor-categories/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+    return api.put(`/admin/vendor-categories/${id}`, data);
+  },
+  delete: (id) => api.delete(`/admin/vendor-categories/${id}`),
 };
 
 // Venues APIs
@@ -157,6 +182,12 @@ export const analyticsAPI = {
 export const paymentConfigAPI = {
   get: () => api.get('/admin/payment-config'),
   update: (data) => api.put('/admin/payment-config', data),
+};
+
+// Email Config APIs
+export const emailConfigAPI = {
+  get: () => api.get('/admin/email-config'),
+  update: (data) => api.put('/admin/email-config', data),
 };
 
 // Google Maps Config APIs

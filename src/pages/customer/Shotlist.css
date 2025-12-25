@@ -1,0 +1,300 @@
+.shotlist-page {
+  min-height: calc(100vh - 200px);
+  padding: 40px 0;
+  background: #f9fafb;
+}
+
+.shotlist-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.shotlist-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-top: 20px;
+}
+
+.shotlist-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-dark, #1f2937);
+  margin-bottom: 10px;
+}
+
+.shotlist-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-gray, #6b7280);
+}
+
+.shotlist-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  text-align: center;
+  min-height: 400px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #e5e7eb;
+  border-top-color: var(--primary-purple, #8b5cf6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.shotlist-loading p {
+  color: var(--text-gray, #6b7280);
+  font-size: 1.1rem;
+}
+
+.shotlist-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  text-align: center;
+  min-height: 400px;
+}
+
+.shotlist-empty svg {
+  color: var(--text-gray, #9ca3af);
+  margin-bottom: 24px;
+}
+
+.shotlist-empty h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-dark, #1f2937);
+  margin-bottom: 12px;
+}
+
+.shotlist-empty p {
+  color: var(--text-gray, #6b7280);
+  margin-bottom: 24px;
+  font-size: 1.1rem;
+}
+
+.shotlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+  justify-items: center;
+}
+
+.shotlist-grid > * {
+  max-width: 100%;
+}
+
+.shotlist-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.shotlist-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.shotlist-card-image {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  background: #e5e7eb;
+}
+
+.shotlist-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.shotlist-card:hover .shotlist-card-image img {
+  transform: scale(1.05);
+}
+
+.shotlist-remove-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.shotlist-remove-btn:hover {
+  background: var(--primary-purple, #8b5cf6);
+  color: white;
+  transform: scale(1.1);
+}
+
+.shotlist-remove-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.shotlist-remove-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.venue-rating-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.venue-rating-badge svg {
+  width: 14px;
+  height: 14px;
+  fill: #fbbf24;
+}
+
+.shotlist-card-content {
+  padding: 20px;
+}
+
+.shotlist-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-dark, #1f2937);
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.shotlist-card-title:hover {
+  color: var(--primary-purple, #8b5cf6);
+}
+
+.shotlist-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-gray, #6b7280);
+  font-size: 0.9rem;
+}
+
+.info-item svg {
+  flex-shrink: 0;
+  color: var(--text-gray, #6b7280);
+}
+
+.shotlist-card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 12px 24px;
+  background: var(--primary-purple, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-purple-dark, #7c3aed);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .shotlist-page {
+    padding: 20px 0;
+  }
+
+  .shotlist-page .container {
+    padding: 0 16px;
+  }
+
+  .shotlist-header {
+    padding-top: 10px;
+    margin-bottom: 30px;
+  }
+
+  .shotlist-header h1 {
+    font-size: 2rem;
+  }
+
+  .shotlist-empty {
+    padding: 60px 20px;
+    min-height: 300px;
+  }
+
+  .shotlist-empty svg {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 20px;
+  }
+
+  .shotlist-empty h2 {
+    font-size: 1.25rem;
+  }
+
+  .shotlist-empty p {
+    font-size: 1rem;
+  }
+
+  .shotlist-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    justify-items: stretch;
+  }
+
+  .shotlist-card-image {
+    height: 200px;
+  }
+}
+

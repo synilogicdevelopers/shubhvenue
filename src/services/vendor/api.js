@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// Production server URL
-const API_BASE_URL = 'https://shubhvenue.com/api'
+// Local server URL
+const API_BASE_URL = 'http://localhost:8030/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -84,11 +84,21 @@ export const vendorAPI = {
   getBlockedDates: (venueId) => api.get('/vendor/blocked-dates', { params: venueId ? { venueId } : {} }),
   addBlockedDates: (venueId, dates) => api.post('/vendor/blocked-dates', { venueId, dates }),
   removeBlockedDates: (venueId, dates) => api.delete('/vendor/blocked-dates', { data: { venueId, dates } }),
+  // Calendar Events APIs
+  getCalendarEvents: (venueId) => api.get('/vendor/calendar-events', { params: venueId ? { venueId } : {} }),
+  createCalendarEvent: (data) => api.post('/vendor/calendar-events', data),
+  updateCalendarEvent: (id, data) => api.put(`/vendor/calendar-events/${id}`, data),
+  deleteCalendarEvent: (id) => api.delete(`/vendor/calendar-events/${id}`),
 }
 
 // Category APIs
 export const categoryAPI = {
   getCategories: () => api.get('/categories'),
+}
+
+// Vendor Categories APIs (public - no auth required)
+export const vendorCategoriesAPI = {
+  getPublic: () => api.get('/admin/vendor-categories/public'),
 }
 
 // Menu APIs

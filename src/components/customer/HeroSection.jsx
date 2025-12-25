@@ -89,20 +89,27 @@ function HeroSection({ onLoadComplete }) {
   // Handle search button click
   const handleSearch = () => {
     const params = {}
+    const urlParams = new URLSearchParams()
+    
     if (selectedCity && selectedCity.trim()) {
       params.city = selectedCity.trim()
       params.state = 'Rajasthan' // Default state
+      urlParams.set('city', selectedCity.trim())
+      urlParams.set('state', 'Rajasthan')
     }
     if (selectedOccasion) {
       // Find category ID from selected occasion name
       const category = categories.find(cat => cat.name === selectedOccasion)
       if (category) {
         params.categoryId = category._id
+        urlParams.set('categoryId', category._id)
+        urlParams.set('categoryName', encodeURIComponent(selectedOccasion))
       }
     }
     
-    // Navigate to venues page with filters
-    navigate('/venues', { 
+    // Navigate to venues page with filters and URL params
+    const urlString = urlParams.toString()
+    navigate(`/venues${urlString ? `?${urlString}` : ''}`, { 
       state: { 
         searchParams: params,
         categoryName: selectedOccasion || undefined,

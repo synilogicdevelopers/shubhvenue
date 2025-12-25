@@ -7,7 +7,7 @@ import User from '../models/User.js';
 // Register new user
 export const register = async (req, res) => {
   try {
-    const { name, email, password, phone, role = 'customer' } = req.body;
+    const { name, email, password, phone, role = 'customer', vendorCategory } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -56,6 +56,23 @@ export const register = async (req, res) => {
       return res.status(409).json({ error: 'User with this email already exists' });
     }
 
+    // Validate vendor category if role is vendor
+    if (role === 'vendor' && vendorCategory) {
+      if (!mongoose.Types.ObjectId.isValid(vendorCategory)) {
+        return res.status(400).json({ error: 'Invalid vendor category ID' });
+      }
+      
+      const VendorCategory = (await import('../models/VendorCategory.js')).default;
+      const category = await VendorCategory.findOne({ 
+        _id: vendorCategory, 
+        isActive: true 
+      });
+      
+      if (!category) {
+        return res.status(400).json({ error: 'Invalid or inactive vendor category' });
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -65,10 +82,84 @@ export const register = async (req, res) => {
       email: email.toLowerCase(),
       password: hashedPassword,
       phone: phone || undefined,
-      role
+      role,
+      // For vendors, set vendorStatus to 'pending' (requires admin approval)
+      vendorStatus: role === 'vendor' ? 'pending' : undefined,
+      // Set vendor category if provided
+      vendorCategory: role === 'vendor' && vendorCategory ? vendorCategory : undefined
     });
 
     await user.save();
+    
+    console.log('✅ User registered successfully');
+    console.log('   User ID:', user._id);
+    console.log('   User Name:', user.name);
+    console.log('   User Email:', user.email);
+    console.log('   User Role:', user.role);
+
+    // Send welcome emails based on user role
+    console.log('📧 Checking user role for email sending...');
+    console.log('   Role:', user.role);
+    console.log('   Role type:', typeof user.role);
+    console.log('   Is vendor?', user.role === 'vendor');
+    console.log('   Is customer?', user.role === 'customer');
+    
+    try {
+      if (user.role === 'vendor') {
+        console.log('📧 Vendor detected, sending vendor emails...');
+        // Vendor registration emails
+        const { sendVendorWelcomeEmail, sendVendorRegistrationEmailToAdmin } = await import('../utils/emailService.js');
+        
+        // Send welcome email to vendor
+        const welcomeResult = await sendVendorWelcomeEmail(user);
+        if (welcomeResult.success) {
+          console.log('✅ Vendor welcome email sent to:', user.email);
+        } else {
+          console.error('❌ Failed to send vendor welcome email:', welcomeResult.error);
+        }
+        
+        // Send notification email to admin
+        const adminResult = await sendVendorRegistrationEmailToAdmin(user);
+        if (adminResult.success) {
+          console.log('✅ Vendor registration notification sent to admin');
+        } else {
+          console.error('❌ Failed to send admin notification:', adminResult.error);
+        }
+      } else if (user.role === 'customer') {
+        // Customer welcome email
+        console.log('📧 Customer detected, sending customer welcome email...');
+        console.log('   Customer Email:', user.email);
+        console.log('   Customer Name:', user.name);
+        
+        try {
+          const { sendCustomerWelcomeEmail } = await import('../utils/emailService.js');
+          console.log('   Email service imported successfully');
+          
+          const welcomeResult = await sendCustomerWelcomeEmail(user);
+          console.log('   Email function returned:', welcomeResult);
+          
+          if (welcomeResult && welcomeResult.success) {
+            console.log('✅✅✅ Customer welcome email sent successfully to:', user.email);
+            console.log('   Message ID:', welcomeResult.messageId);
+          } else {
+            console.error('❌❌❌ Failed to send customer welcome email to:', user.email);
+            console.error('   Result:', welcomeResult);
+            console.error('   Error:', welcomeResult?.error || 'Unknown error');
+          }
+        } catch (emailError) {
+          console.error('❌❌❌ Error in customer welcome email:', emailError);
+          console.error('   Error message:', emailError.message);
+          console.error('   Error stack:', emailError.stack);
+        }
+      } else {
+        console.log('📧 User role is:', user.role, '- No welcome email configured for this role');
+      }
+    } catch (emailError) {
+      console.error('❌❌❌ Error in email sending block:', emailError);
+      console.error('   Error message:', emailError.message);
+      console.error('   Error stack:', emailError.stack);
+      // Don't fail registration if email fails
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -78,7 +169,7 @@ export const register = async (req, res) => {
     );
 
     // Return user data (without password)
-    res.status(201).json({
+    const responseData = {
       message: 'Registration successful',
       token,
       user: {
@@ -89,7 +180,18 @@ export const register = async (req, res) => {
         role: user.role,
         verified: user.verified
       }
-    });
+    };
+
+    // Include vendorStatus and vendorCategory for vendors
+    if (user.role === 'vendor') {
+      responseData.user.vendorStatus = user.vendorStatus;
+      if (user.vendorCategory) {
+        await user.populate('vendorCategory', 'name description');
+        responseData.user.vendorCategory = user.vendorCategory;
+      }
+    }
+
+    res.status(201).json(responseData);
   } catch (error) {
     console.error('Registration error:', error);
     
@@ -218,11 +320,10 @@ export const login = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
     }
 
-    // Check if vendor is rejected
-    if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
-      console.log(`Login attempt failed: Vendor account rejected for email: ${normalizedEmail}`);
-      return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
-    }
+    // Note: Removed reject check - rejected vendors can still login
+    // Rejection only affects venue creation, not login access
+    // Note: Removed approval check - vendors can now login immediately after registration
+    // Approval is only required for adding venues, not for login
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -272,6 +373,11 @@ export const login = async (req, res) => {
         verified: user.verified
       }
     };
+
+    // Include vendorStatus for vendors
+    if (user.role === 'vendor') {
+      responseData.user.vendorStatus = user.vendorStatus;
+    }
 
     // Include permissions in response for vendors
     if (permissions.length > 0) {
@@ -361,10 +467,10 @@ export const getProfile = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
     }
 
-    // Check if vendor is rejected
-    if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
-      return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
-    }
+    // Note: Removed reject check - rejected vendors can still access profile
+    // Rejection only affects venue creation, not profile access
+    // Note: Removed approval check - vendors can now access profile immediately after registration
+    // Approval is only required for adding venues, not for accessing profile
 
     // For vendors, include permissions (empty array means all permissions)
     let permissions = [];
@@ -385,6 +491,11 @@ export const getProfile = async (req, res) => {
         updatedAt: user.updatedAt
       }
     };
+    
+    // Include vendorStatus for vendors
+    if (user.role === 'vendor') {
+      responseData.user.vendorStatus = user.vendorStatus;
+    }
     
     // Include permissions in response for vendors
     if (permissions.length > 0) {
@@ -752,6 +863,23 @@ export const googleLogin = async (req, res) => {
         await user.save();
         isNewUser = false; // Existing user, just linked Google account
       } else {
+        // Validate vendor category if role is vendor
+        if (role === 'vendor' && vendorCategory) {
+          if (!mongoose.Types.ObjectId.isValid(vendorCategory)) {
+            return res.status(400).json({ error: 'Invalid vendor category ID' });
+          }
+          
+          const VendorCategory = (await import('../models/VendorCategory.js')).default;
+          const category = await VendorCategory.findOne({ 
+            _id: vendorCategory, 
+            isActive: true 
+          });
+          
+          if (!category) {
+            return res.status(400).json({ error: 'Invalid or inactive vendor category' });
+          }
+        }
+
         // Auto-register: Create new user (same flow as POST /api/auth/register)
         user = new User({
           name: name || 'User',
@@ -759,10 +887,77 @@ export const googleLogin = async (req, res) => {
           googleId: googleId,
           role: role,
           verified: true, // Google emails are verified
-          fcmToken: fcmToken || undefined
+          fcmToken: fcmToken || undefined,
+          // For vendors, set vendorStatus to 'pending' (requires admin approval)
+          vendorStatus: role === 'vendor' ? 'pending' : undefined,
+          // Set vendor category if provided
+          vendorCategory: role === 'vendor' && vendorCategory ? vendorCategory : undefined
         });
         await user.save();
         isNewUser = true; // New user registered
+        
+        console.log('✅ New user created via Google login');
+        console.log('   User ID:', user._id);
+        console.log('   User Name:', user.name);
+        console.log('   User Email:', user.email);
+        console.log('   User Role:', user.role);
+        
+        // Send welcome emails for new users (async, non-blocking)
+        // Don't await - let it run in background so login response is fast
+        (async () => {
+          try {
+            if (user.role === 'vendor') {
+            console.log('📧 Vendor detected (Google login), sending vendor emails...');
+            const { sendVendorWelcomeEmail, sendVendorRegistrationEmailToAdmin } = await import('../utils/emailService.js');
+            
+            // Send welcome email to vendor
+            const welcomeResult = await sendVendorWelcomeEmail(user);
+            if (welcomeResult && welcomeResult.success) {
+              console.log('✅ Vendor welcome email sent to:', user.email);
+            } else {
+              console.error('❌ Failed to send vendor welcome email:', welcomeResult?.error);
+            }
+            
+            // Send notification email to admin
+            const adminResult = await sendVendorRegistrationEmailToAdmin(user);
+            if (adminResult && adminResult.success) {
+              console.log('✅ Vendor registration notification sent to admin');
+            } else {
+              console.error('❌ Failed to send admin notification:', adminResult?.error);
+            }
+          } else if (user.role === 'customer') {
+            // Customer welcome email
+            console.log('📧 Customer detected (Google login), sending customer welcome email...');
+            console.log('   Customer Email:', user.email);
+            console.log('   Customer Name:', user.name);
+            
+            try {
+              const { sendCustomerWelcomeEmail } = await import('../utils/emailService.js');
+              console.log('   Email service imported successfully');
+              
+              const welcomeResult = await sendCustomerWelcomeEmail(user);
+              console.log('   Email function returned:', welcomeResult);
+              
+              if (welcomeResult && welcomeResult.success) {
+                console.log('✅✅✅ Customer welcome email sent successfully to:', user.email);
+                console.log('   Message ID:', welcomeResult.messageId);
+              } else {
+                console.error('❌❌❌ Failed to send customer welcome email to:', user.email);
+                console.error('   Result:', welcomeResult);
+                console.error('   Error:', welcomeResult?.error || 'Unknown error');
+              }
+            } catch (emailError) {
+              console.error('❌❌❌ Error in customer welcome email (Google login):', emailError);
+              console.error('   Error message:', emailError.message);
+              console.error('   Error stack:', emailError.stack);
+            }
+          }
+          } catch (emailError) {
+            console.error('❌❌❌ Error sending welcome emails (Google login):', emailError);
+            console.error('   Error message:', emailError.message);
+            // Don't fail login if email fails
+          }
+        })(); // Immediately invoked async function - runs in background
       }
     } else {
       // User exists with this Google ID - check if role matches
@@ -800,12 +995,25 @@ export const googleLogin = async (req, res) => {
       return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
     }
 
+    // Check if vendor is pending approval
+    if (user.role === 'vendor' && user.vendorStatus !== 'approved') {
+      console.log(`Google login attempt failed: Vendor account pending approval for email: ${user.email}`);
+      return res.status(403).json({ 
+        error: 'Your vendor account is pending admin approval. Please wait for approval before logging in.' 
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'change_me',
       { expiresIn: '7d' }
     );
+
+    // Populate vendorCategory if vendor
+    if (user.role === 'vendor' && user.vendorCategory) {
+      await user.populate('vendorCategory', 'name description');
+    }
 
     res.json({
       message: isNewUser ? 'Registration successful' : 'Google login successful',
@@ -818,7 +1026,11 @@ export const googleLogin = async (req, res) => {
         phone: user.phone,
         role: user.role,
         verified: user.verified,
-        picture: picture || null
+        picture: picture || null,
+        ...(user.role === 'vendor' && {
+          vendorStatus: user.vendorStatus,
+          vendorCategory: user.vendorCategory || null
+        })
       }
     });
   } catch (error) {

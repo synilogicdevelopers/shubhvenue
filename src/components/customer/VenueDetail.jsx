@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { publicVenuesAPI, reviewAPI, bookingAPI, paymentAPI } from '../../services/customer/api'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { publicVenuesAPI, reviewAPI, bookingAPI, paymentAPI, shotlistAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import LoginModal from './LoginModal'
 import SEO from '../SEO'
@@ -8,7 +8,7 @@ import { createSlug } from '../../utils/customer/slug'
 import './VenueDetail.css'
 
     function VenueDetail() {
-  const { slug } = useParams()
+  const { slug, categorySlug } = useParams()
   const navigate = useNavigate()
   const [venue, setVenue] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -28,6 +28,9 @@ import './VenueDetail.css'
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
   const [touchStartX, setTouchStartX] = useState(null)
   const [videoDurations, setVideoDurations] = useState({}) // Store video durations by video ID
+  const [showMapModal, setShowMapModal] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
+  const [isTogglingLike, setIsTogglingLike] = useState(false)
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     comment: ''
@@ -527,7 +530,12 @@ import './VenueDetail.css'
   // Fetch venue data from API
   useEffect(() => {
     const fetchVenue = async () => {
-      if (!slug) {
+      // Handle both URL formats: /venue/categorySlug/venueSlug or /venue/venueSlug
+      // If categorySlug exists, slug is the venue slug
+      // If categorySlug doesn't exist, slug is the venue slug (old format)
+      const actualSlug = categorySlug ? slug : (slug || '')
+      
+      if (!actualSlug) {
         toast.error('Venue not found')
         navigate('/venues')
         return
@@ -559,7 +567,7 @@ import './VenueDetail.css'
           // Find venue by matching slug
           const foundVenue = venuesData.find(venue => {
             const venueSlug = createSlug(venue.name || '')
-            return venueSlug === slug
+            return venueSlug === actualSlug
           })
           
           if (foundVenue) {
@@ -622,13 +630,18 @@ import './VenueDetail.css'
           const formattedVenue = {
             id: venueData._id || venueData.id,
             name: venueData.name || 'Unnamed Venue',
+            previousName: venueData.previousName || venueData.formerName || null,
             images: (venueData.gallery?.photos || venueData.images || (venueData.coverImage ? [venueData.coverImage] : [])).map(img => getImageUrl(img)),
             rating: ratingValue,
             reviews: reviewsCount,
-            location: formatLocation(venueData.location),
+            location: venueData.location && typeof venueData.location === 'object'
+              ? `${venueData.location.city || ''}${venueData.location.state ? `, ${venueData.location.state}` : ''}`.trim() || formatLocation(venueData.location)
+              : formatLocation(venueData.location),
             fullLocation: venueData.location && typeof venueData.location === 'object' 
               ? `${venueData.location.address || ''} ${venueData.location.city || ''} ${venueData.location.state || ''}`.trim() || formatLocation(venueData.location)
               : formatLocation(venueData.location),
+            locationCity: venueData.location && typeof venueData.location === 'object' ? venueData.location.city : null,
+            locationState: venueData.location && typeof venueData.location === 'object' ? venueData.location.state : null,
             type: venueData.category?.name || venueData.categoryId?.name || venueData.venueType || 'Venue',
             price: venueData.price || venueData.pricingInfo?.rentalPrice || 0,
             pricingInfo: venueData.pricingInfo || null,
@@ -854,7 +867,100 @@ import './VenueDetail.css'
     }
 
     fetchVenue()
-  }, [slug, navigate])
+  }, [slug, categorySlug, navigate])
+
+  // Check shotlist status when venue loads
+  useEffect(() => {
+    const checkShotlistStatus = async () => {
+      if (!venue?.id) return
+      
+      try {
+        const deviceId = getDeviceId()
+        const response = await shotlistAPI.checkStatus(venue.id, deviceId)
+        if (response.data?.success) {
+          setIsLiked(response.data.isLiked || false)
+        }
+      } catch (error) {
+        console.error('Error checking shotlist status:', error)
+      }
+    }
+
+    checkShotlistStatus()
+  }, [venue?.id])
+
+  // Handle share functionality
+  const handleShare = async () => {
+    try {
+      // Get current page URL
+      const currentUrl = window.location.href
+      
+      // Check if Web Share API is available (mobile devices)
+      if (navigator.share) {
+        await navigator.share({
+          title: venue?.name || 'Venue',
+          text: venue?.description || `Check out this venue: ${venue?.name || ''}`,
+          url: currentUrl
+        })
+        toast.success('Shared successfully!')
+      } else {
+        // Fallback: Copy URL to clipboard
+        await navigator.clipboard.writeText(currentUrl)
+        toast.success('URL copied to clipboard!')
+      }
+    } catch (error) {
+      // User cancelled share or error occurred
+      if (error.name !== 'AbortError') {
+        // Try fallback: Copy to clipboard
+        try {
+          await navigator.clipboard.writeText(window.location.href)
+          toast.success('URL copied to clipboard!')
+        } catch (clipboardError) {
+          // Final fallback: Show URL in alert
+          const url = window.location.href
+          const textArea = document.createElement('textarea')
+          textArea.value = url
+          textArea.style.position = 'fixed'
+          textArea.style.opacity = '0'
+          document.body.appendChild(textArea)
+          textArea.select()
+          try {
+            document.execCommand('copy')
+            toast.success('URL copied to clipboard!')
+          } catch (err) {
+            toast.error('Failed to copy URL. Please copy manually: ' + url)
+          }
+          document.body.removeChild(textArea)
+        }
+      }
+    }
+  }
+
+  // Handle toggle like/unlike
+  const handleToggleLike = async () => {
+    if (!venue?.id) return
+    
+    try {
+      setIsTogglingLike(true)
+      const deviceId = getDeviceId()
+      const response = await shotlistAPI.toggleLike(venue.id, deviceId)
+      
+      if (response.data?.success) {
+        setIsLiked(response.data.isLiked)
+        if (response.data.isLiked) {
+          toast.success('Venue added to shotlist')
+        } else {
+          toast.success('Venue removed from shotlist')
+        }
+      } else {
+        toast.error(response.data?.error || 'Failed to update shotlist')
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      toast.error(error.message || 'Failed to update shotlist')
+    } finally {
+      setIsTogglingLike(false)
+    }
+  }
 
   // Reset slider index when venue changes
   useEffect(() => {
@@ -884,7 +990,9 @@ import './VenueDetail.css'
 
   // Function to refresh venue data
   const refreshVenueData = async () => {
-    if (!slug) return
+    // Handle both URL formats
+    const actualSlug = categorySlug ? slug : (slug || '')
+    if (!actualSlug) return
     
     // Find venue ID from slug
     try {
@@ -909,7 +1017,7 @@ import './VenueDetail.css'
         
         const foundVenue = venuesData.find(venue => {
           const venueSlug = createSlug(venue.name || '')
-          return venueSlug === slug
+          return venueSlug === actualSlug
         })
         
         if (foundVenue) {
@@ -949,13 +1057,18 @@ import './VenueDetail.css'
         const formattedVenue = {
           id: venueData._id || venueData.id,
           name: venueData.name || 'Unnamed Venue',
+          previousName: venueData.previousName || venueData.formerName || null,
           images: (venueData.gallery?.photos || venueData.images || (venueData.coverImage ? [venueData.coverImage] : [])).map(img => getImageUrl(img)),
           rating: ratingValue,
           reviews: reviewsCount,
-          location: formatLocation(venueData.location),
+          location: venueData.location && typeof venueData.location === 'object'
+            ? `${venueData.location.city || ''}${venueData.location.state ? `, ${venueData.location.state}` : ''}`.trim() || formatLocation(venueData.location)
+            : formatLocation(venueData.location),
           fullLocation: venueData.location && typeof venueData.location === 'object' 
             ? `${venueData.location.address || ''} ${venueData.location.city || ''} ${venueData.location.state || ''}`.trim() || formatLocation(venueData.location)
             : formatLocation(venueData.location),
+          locationCity: venueData.location && typeof venueData.location === 'object' ? venueData.location.city : null,
+          locationState: venueData.location && typeof venueData.location === 'object' ? venueData.location.state : null,
           type: venueData.category?.name || venueData.categoryId?.name || venueData.venueType || 'Venue',
           price: venueData.price || venueData.pricingInfo?.rentalPrice || 0,
           pricingInfo: venueData.pricingInfo || null,
@@ -1685,19 +1798,38 @@ import './VenueDetail.css'
         image={venueImage}
         type="website"
       />
-      {/* Image Gallery Slider */}
-      <div className="venue-gallery-slider">
-        {/* Back Button */}
-        <button className="back-button" onClick={() => navigate(-1)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-          Back
-        </button>
-        
-        {/* Slider Container - 3 Images Layout */}
-        <div 
-          className="slider-container"
+      
+      {/* Breadcrumb Navigation */}
+      {venue && (
+        <div className="breadcrumb-nav">
+          <div className="breadcrumb-container">
+            <a href="/" className="breadcrumb-item">Home</a>
+            <span className="breadcrumb-separator"> &gt; </span>
+            <a href="/venues" className="breadcrumb-item">Venues</a>
+            {venue.type && venue.type !== 'Venue' && (
+              <>
+                <span className="breadcrumb-separator"> &gt; </span>
+                <span className="breadcrumb-item">{venue.type}</span>
+              </>
+            )}
+            {venue.location && (
+              <>
+                <span className="breadcrumb-separator"> &gt; </span>
+                <span className="breadcrumb-item">Wedding Venues {venue.location}</span>
+              </>
+            )}
+            <span className="breadcrumb-separator"> &gt; </span>
+            <span className="breadcrumb-item active">{venue.name}</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Image Gallery Slider with Right Buttons */}
+      <div className="venue-gallery-slider-wrapper">
+        <div className="venue-gallery-slider">
+          {/* Slider Container - 3 Images Layout */}
+          <div 
+            className="slider-container"
           onMouseEnter={() => setIsSliderPaused(true)}
           onMouseLeave={() => setIsSliderPaused(false)}
           onTouchStart={(e) => {
@@ -1742,79 +1874,20 @@ import './VenueDetail.css'
             </button>
           )}
           
-          {/* 3 Images Layout Slider */}
+          {/* Single Image Slider - Full Display */}
           <div className="slider-wrapper">
-            {isMobile ? (
-              <div className="slider-track-single">
-                <div className="slider-slide-single">
-                  <img
-                    src={getImageUrl(venue.images[currentImageIndex])}
-                    alt={`${venue.name} ${currentImageIndex + 1}`}
-                    onClick={() => setSelectedImage(getImageUrl(venue.images[currentImageIndex]))}
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=600&fit=crop'
-                    }}
-                  />
-                </div>
+            <div className="slider-track-single">
+              <div className="slider-slide-single">
+                <img
+                  src={getImageUrl(venue.images[currentImageIndex])}
+                  alt={`${venue.name} ${currentImageIndex + 1}`}
+                  onClick={() => setSelectedImage(getImageUrl(venue.images[currentImageIndex]))}
+                  onError={(e) => {
+                    e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=600&fit=crop'
+                  }}
+                />
               </div>
-            ) : (
-              <div className="slider-track-3images">
-                {/* Always show 3 images: previous, current, next */}
-                {(() => {
-                  const images = venue.images
-                  const prevIndex = currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1
-                  const nextIndex = currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1
-                  
-                  return (
-                    <>
-                      {/* Left Image */}
-                      <div className="slider-slide-3images left">
-                        <img 
-                          src={getImageUrl(images[prevIndex])} 
-                          alt={`${venue.name} previous`}
-                          onClick={() => {
-                            setSelectedImage(getImageUrl(images[prevIndex]))
-                            setCurrentImageIndex(prevIndex)
-                          }}
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=600&fit=crop'
-                          }}
-                        />
-                      </div>
-                      
-                      {/* Main Image */}
-                      <div className="slider-slide-3images main">
-                        <img 
-                          src={getImageUrl(images[currentImageIndex])} 
-                          alt={`${venue.name} ${currentImageIndex + 1}`}
-                          onClick={() => {
-                            setSelectedImage(getImageUrl(images[currentImageIndex]))
-                          }}
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=600&fit=crop'
-                          }}
-                        />
-                      </div>
-                      
-                      {/* Right Image */}
-                      <div className="slider-slide-3images right">
-                        <img 
-                          src={getImageUrl(images[nextIndex])} 
-                          alt={`${venue.name} next`}
-                          onClick={() => {
-                            setSelectedImage(getImageUrl(images[nextIndex]))
-                            setCurrentImageIndex(nextIndex)
-                          }}
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=600&fit=crop'
-                          }}
-                        />
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-            )}
+            </div>
           </div>
           
           {/* Next Button */}
@@ -1830,20 +1903,49 @@ import './VenueDetail.css'
             </button>
           )}
         </div>
-        
-        {/* Slider Dots */}
-        {venue.images.length > 1 && (
-          <div className="slider-dots">
-            {venue.images.map((_, index) => (
-              <button
-                key={index}
-                className={`slider-dot ${index === currentImageIndex ? 'active' : ''}`}
-                onClick={() => setCurrentImageIndex(index)}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
+        </div>
+
+        {/* Right Side Buttons */}
+        <div className="slider-right-buttons">
+          {(venue.bookingButtonEnabled === true || venue.bookingButtonEnabled === undefined) && (
+            <button 
+              className="slider-action-btn book-btn" 
+              onClick={() => {
+                const token = localStorage.getItem('token')
+                if (!token) {
+                  toast.error('Please login to continue with booking')
+                  setShowLoginModal(true)
+                  return
+                }
+                navigate('/booking', { state: { venue } })
+              }}
+            >
+              Book Now
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          )}
+
+          {(venue.leadsButtonEnabled === true || venue.leadsButtonEnabled === undefined) && (
+            <button 
+              className="slider-action-btn contact-btn"
+              onClick={() => navigate('/contact-venue', { state: { venue } })}
+            >
+              Contact Venue
+            </button>
+          )}
+
+          {/* Info Note */}
+          <div className="slider-info-note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Best price guaranteed. Free cancellation.</span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Main Content */}
@@ -1854,30 +1956,71 @@ import './VenueDetail.css'
             {/* Header */}
             <div className="venue-header">
               <div className="venue-title-section">
-                <h1 className="venue-title">{venue.name}</h1>
-                <div className="venue-meta">
-                  <div className="venue-rating">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                    <span className="rating-value">
-                      {typeof venue.rating === 'number' ? venue.rating.toFixed(1) : 'N/A'}
-                    </span>
-                    <span className="rating-reviews">({venue.reviews} reviews)</span>
+                <div className="venue-title-row">
+                  <div className="venue-title-left">
+                    <h1 className="venue-title">{venue.name}</h1>
+                    {venue.previousName && (
+                      <p className="venue-previous-name">(Formerly known as {venue.previousName})</p>
+                    )}
                   </div>
+                </div>
+                <div className="venue-meta">
                   <div className="venue-location">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
-                    <span>{venue.fullLocation}</span>
+                    <span>{venue.location}</span>
+                    <span className="view-map-link" onClick={() => setShowMapModal(true)} style={{ cursor: 'pointer' }}>(View on Map)</span>
                   </div>
-                  <div className="venue-type">
+                  {venue.fullLocation && (
+                    <div className="venue-address">{venue.fullLocation}</div>
+                  )}
+                </div>
+                <div className="venue-action-buttons">
+                  <button className="venue-action-btn" onClick={() => setSelectedImage(venue.images[0])}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
-                    <span>{venue.type}</span>
-                  </div>
+                    <span>{venue.images?.length || 0} Photos</span>
+                  </button>
+                  <button 
+                    className={`venue-action-btn ${isLiked ? 'liked' : ''}`}
+                    onClick={handleToggleLike}
+                    disabled={isTogglingLike}
+                    title={isLiked ? 'Remove from shotlist' : 'Add to shotlist'}
+                  >
+                    <svg 
+                      width="18" 
+                      height="18" 
+                      viewBox="0 0 24 24" 
+                      fill={isLiked ? "currentColor" : "none"} 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span>{isTogglingLike ? '...' : 'Shortlist'}</span>
+                  </button>
+                  <button className="venue-action-btn" onClick={() => setShowWriteReview(true)}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                    <span>Write a Review</span>
+                  </button>
+                  <button className="venue-action-btn" onClick={handleShare}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="18" cy="5" r="3"></circle>
+                      <circle cx="6" cy="12" r="3"></circle>
+                      <circle cx="18" cy="19" r="3"></circle>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    <span>Share</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1946,6 +2089,97 @@ import './VenueDetail.css'
                 </div>
               </div>
             </div>
+
+            {/* Portfolio & Albums */}
+            <div className="venue-section">
+              <h2 className="section-title">Portfolio & Albums</h2>
+              <div className="album-images-grid" style={{ marginTop: '24px' }}>
+                {(() => {
+                  // Collect all photos from albums
+                  const allPhotos = []
+                  if (venue.albums && Array.isArray(venue.albums)) {
+                    venue.albums.forEach(album => {
+                      if (album.images && Array.isArray(album.images)) {
+                        allPhotos.push(...album.images)
+                      }
+                    })
+                  }
+                  
+                  // Also add main images if not already included
+                  if (venue.images && Array.isArray(venue.images)) {
+                    venue.images.forEach(img => {
+                      if (!allPhotos.includes(img)) {
+                        allPhotos.push(img)
+                      }
+                    })
+                  }
+                  
+                  // Remove duplicates
+                  const uniquePhotos = [...new Set(allPhotos)]
+                  
+                  return uniquePhotos.length > 0 ? (
+                    uniquePhotos.map((image, index) => (
+                      <div 
+                        key={index} 
+                        className="album-image-item"
+                        onClick={() => setSelectedImage(image)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <img src={image} alt={`Gallery ${index + 1}`} />
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#666' }}>
+                      No photos available
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+
+            {/* Videos - Only show if videos exist */}
+            {venue.videos && Array.isArray(venue.videos) && venue.videos.length > 0 && (
+              <div className="venue-section">
+                <h2 className="section-title">Videos</h2>
+                <div className="videos-grid">
+                  {venue.videos.map((video) => (
+                    <div key={video.id} className="video-card" onClick={() => handleVideoClick(video)}>
+                      <div className="video-thumbnail-wrapper">
+                        <video
+                          src={video.videoUrl}
+                          preload="metadata"
+                          muted
+                          playsInline
+                          className="video-thumbnail"
+                          onLoadedMetadata={(e) => {
+                            // Extract and store video duration
+                            handleVideoMetadataLoaded(video.id, e.target)
+                          }}
+                          onError={(e) => {
+                            // Fallback to placeholder if video fails to load
+                            e.target.style.display = 'none'
+                            const placeholder = document.createElement('div')
+                            placeholder.className = 'video-thumbnail-placeholder'
+                            placeholder.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
+                            e.target.parentNode.appendChild(placeholder)
+                          }}
+                        />
+                        <div className="video-play-overlay">
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.5)"></circle>
+                            <polygon points="10 8 16 12 10 16" fill="white"></polygon>
+                          </svg>
+                        </div>
+                        <div className="video-duration">
+                          {videoDurations[video.id] || video.duration || '0:00'}
+                        </div>
+                      </div>
+                      <h3 className="video-title">{video.title}</h3>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Rating & Reviews */}
             <div className="venue-section">
@@ -2086,141 +2320,8 @@ import './VenueDetail.css'
                 </button>
               </div>
             </div>
-
-            {/* Portfolio & Albums */}
-            <div className="venue-section">
-              <h2 className="section-title">Portfolio & Albums</h2>
-              <div className="album-images-grid" style={{ marginTop: '24px' }}>
-                {(() => {
-                  // Collect all photos from albums
-                  const allPhotos = []
-                  if (venue.albums && Array.isArray(venue.albums)) {
-                    venue.albums.forEach(album => {
-                      if (album.images && Array.isArray(album.images)) {
-                        allPhotos.push(...album.images)
-                      }
-                    })
-                  }
-                  
-                  // Also add main images if not already included
-                  if (venue.images && Array.isArray(venue.images)) {
-                    venue.images.forEach(img => {
-                      if (!allPhotos.includes(img)) {
-                        allPhotos.push(img)
-                      }
-                    })
-                  }
-                  
-                  // Remove duplicates
-                  const uniquePhotos = [...new Set(allPhotos)]
-                  
-                  return uniquePhotos.length > 0 ? (
-                    uniquePhotos.map((image, index) => (
-                      <div 
-                        key={index} 
-                        className="album-image-item"
-                        onClick={() => setSelectedImage(image)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <img src={image} alt={`Gallery ${index + 1}`} />
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#666' }}>
-                      No photos available
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-
-            {/* Videos */}
-            <div className="venue-section">
-              <h2 className="section-title">Videos</h2>
-              <div className="videos-grid">
-                {venue.videos?.map((video) => (
-                  <div key={video.id} className="video-card" onClick={() => handleVideoClick(video)}>
-                    <div className="video-thumbnail-wrapper">
-                      <video
-                        src={video.videoUrl}
-                        preload="metadata"
-                        muted
-                        playsInline
-                        className="video-thumbnail"
-                        onLoadedMetadata={(e) => {
-                          // Extract and store video duration
-                          handleVideoMetadataLoaded(video.id, e.target)
-                        }}
-                        onError={(e) => {
-                          // Fallback to placeholder if video fails to load
-                          e.target.style.display = 'none'
-                          const placeholder = document.createElement('div')
-                          placeholder.className = 'video-thumbnail-placeholder'
-                          placeholder.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
-                          e.target.parentNode.appendChild(placeholder)
-                        }}
-                      />
-                      <div className="video-play-overlay">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.5)"></circle>
-                          <polygon points="10 8 16 12 10 16" fill="white"></polygon>
-                        </svg>
-                      </div>
-                      <div className="video-duration">
-                        {videoDurations[video.id] || video.duration || '0:00'}
-                      </div>
-                    </div>
-                    <h3 className="video-title">{video.title}</h3>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
-          {/* Right Column - Booking Card */}
-          <div className="venue-booking-card">
-            <div className="booking-card-content">
-
-              {(venue.bookingButtonEnabled === true || venue.bookingButtonEnabled === undefined) && (
-                <button 
-                  className="book-now-btn" 
-                  onClick={() => {
-                    const token = localStorage.getItem('token')
-                    if (!token) {
-                      toast.error('Please login to continue with booking')
-                      setShowLoginModal(true)
-                      return
-                    }
-                    navigate('/booking', { state: { venue } })
-                  }}
-                >
-                  Book Now
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="9 18 15 12 9 6"></polyline>
-                  </svg>
-                </button>
-              )}
-
-              {(venue.leadsButtonEnabled === true || venue.leadsButtonEnabled === undefined) && (
-                <button 
-                  className="contact-btn"
-                  onClick={() => navigate('/contact-venue', { state: { venue } })}
-                  disabled={processingBooking}
-                >
-                  {processingBooking ? 'Submitting...' : 'Contact Venue'}
-                </button>
-              )}
-
-              <div className="booking-note">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <span>Best price guaranteed. Free cancellation.</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -2284,6 +2385,52 @@ import './VenueDetail.css'
               <source src={playingVideo.videoUrl} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
+          </div>
+        </div>
+      )}
+
+      {/* Map Modal */}
+      {showMapModal && venue && (
+        <div className="modal-overlay" onClick={() => setShowMapModal(false)}>
+          <div className="map-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>{venue.name}</h2>
+                <p className="map-location-text">{venue.fullLocation || venue.location}</p>
+              </div>
+              <button className="modal-close" onClick={() => setShowMapModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="map-container">
+              <iframe
+                width="100%"
+                height="100%"
+                style={{ border: 0, borderRadius: '8px' }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(`${venue.name}, ${venue.fullLocation || venue.location || ''}`)}&output=embed`}
+              ></iframe>
+            </div>
+            <div className="map-actions">
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.name}, ${venue.fullLocation || venue.location || ''}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="map-open-btn"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Open in Google Maps
+              </a>
+            </div>
           </div>
         </div>
       )}

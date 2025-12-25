@@ -408,8 +408,7 @@ export const Venues = () => {
       };
       formDataToSend.append('availability', JSON.stringify(availability));
       
-      // Images
-      if (selectedImage) formDataToSend.append('image', selectedImage);
+      // Images - Main image removed, only gallery images
       if (galleryImages && galleryImages.length > 0) {
         galleryImages.forEach(file => formDataToSend.append('gallery', file));
       }
@@ -895,25 +894,6 @@ export const Venues = () => {
             {currentStep === 1 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold mb-4">Images</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Main Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                  {selectedImage && (
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-500 mb-2">Preview:</p>
-                      <img
-                        src={URL.createObjectURL(selectedImage)}
-                        alt="Preview"
-                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                      />
-                    </div>
-                  )}
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
                   <input

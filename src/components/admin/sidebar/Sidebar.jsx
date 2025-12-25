@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -34,14 +34,11 @@ const allMenuItems = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'view_dashboard' },
   { path: '/admin/users', icon: Users, label: 'Users', permission: 'view_users' },
   { path: '/admin/vendors', icon: Store, label: 'Vendors', permission: 'view_vendors' },
+  { path: '/admin/vendor-categories', icon: Tag, label: 'Vendor Categories', permission: 'view_vendors' },
   { path: '/admin/venues', icon: MapPin, label: 'Venues', permission: 'view_venues' },
   { path: '/admin/categories', icon: Tag, label: 'Categories', permission: 'view_categories' },
   { path: '/admin/menus', icon: MenuIcon, label: 'Menus', permission: 'view_menus' },
   { path: '/admin/videos', icon: VideoIcon, label: 'Videos', permission: 'view_videos' },
-  { path: '/admin/testimonials', icon: MessageSquare, label: 'Testimonials', permission: 'view_testimonials' },
-  { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs', permission: 'view_faqs' },
-  { path: '/admin/company', icon: Building2, label: 'Company', permission: 'view_company' },
-  { path: '/admin/contacts', icon: Mail, label: 'Contact Us', permission: 'view_contacts' },
   { path: '/admin/leads', icon: UserPlus, label: 'Leads', permission: 'view_leads' },
   { path: '/admin/bookings', icon: Calendar, label: 'Bookings', permission: 'view_bookings' },
   { path: '/admin/payouts', icon: DollarSign, label: 'Payouts', permission: 'view_payouts' },
@@ -56,7 +53,18 @@ const allMenuItems = [
     ],
   },
   { path: '/admin/analytics', icon: BarChart3, label: 'Analytics', permission: 'view_analytics' },
-  { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'view_settings' },
+  {
+    label: 'Settings',
+    icon: Settings,
+    permission: 'view_settings',
+    children: [
+      { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare, permission: 'view_testimonials' },
+      { path: '/admin/faqs', label: 'FAQs', icon: HelpCircle, permission: 'view_faqs' },
+      { path: '/admin/company', label: 'Company', icon: Building2, permission: 'view_company' },
+      { path: '/admin/contacts', label: 'Contact Us', icon: Mail, permission: 'view_contacts' },
+      { path: '/admin/settings', label: 'General Settings', icon: Settings, permission: 'view_settings' },
+    ],
+  },
 ];
 
 // Helper function to check if user has permission
@@ -72,8 +80,11 @@ const hasPermission = (permission, userPermissions) => {
 
 export const Sidebar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState({ Staff: true });
+  const [openSubmenus, setOpenSubmenus] = useState({ Staff: true, Settings: true });
   const location = useLocation();
+  const navRef = useRef(null);
+  const savedScrollPosition = useRef(0);
+  const isRestoringScroll = useRef(false);
 
   // Get user permissions from localStorage
   const userPermissions = useMemo(() => getUserPermissions(), []);
@@ -132,7 +143,19 @@ export const Sidebar = () => {
       </div>
 
       {/* Menu Items */}
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+      <nav 
+        ref={navRef} 
+        className="flex-1 p-4 space-y-2 overflow-y-auto"
+        onScroll={(e) => {
+          // If we're restoring scroll, prevent any changes
+          if (isRestoringScroll.current) {
+            e.target.scrollTop = savedScrollPosition.current;
+            return;
+          }
+          // Save current scroll position
+          savedScrollPosition.current = e.target.scrollTop;
+        }}
+      >
         {menuItems.map((item) => {
           const Icon = item.icon;
 
@@ -145,12 +168,69 @@ export const Sidebar = () => {
             return (
               <div key={item.label} className="space-y-1">
                 <button
-                  onClick={() =>
+                  type="button"
+                  tabIndex={-1}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Save current scroll position before state change
+                    const scrollPosition = navRef.current?.scrollTop || 0;
+                    savedScrollPosition.current = scrollPosition;
+                    isRestoringScroll.current = true;
+                    
                     setOpenSubmenus((prev) => ({
                       ...prev,
                       [item.label]: !isOpen,
-                    }))
-                  }
+                    }));
+                    
+                    // Restore scroll position multiple times
+                    const restoreScroll = () => {
+                      if (navRef.current && isRestoringScroll.current) {
+                        navRef.current.scrollTop = scrollPosition;
+                        savedScrollPosition.current = scrollPosition;
+                      }
+                    };
+                    
+                    // Immediate
+                    restoreScroll();
+                    
+                    // After frame
+                    requestAnimationFrame(() => {
+                      restoreScroll();
+                      requestAnimationFrame(() => {
+                        restoreScroll();
+                      });
+                    });
+                    
+                    // Multiple timeouts to catch any delayed scrolls
+                    setTimeout(restoreScroll, 0);
+                    setTimeout(restoreScroll, 10);
+                    setTimeout(restoreScroll, 50);
+                    setTimeout(() => {
+                      restoreScroll();
+                      isRestoringScroll.current = false;
+                    }, 150);
+                  }}
+                  onMouseDown={(e) => {
+                    // Prevent default to avoid focus and scroll
+                    e.preventDefault();
+                    // Save scroll position
+                    if (navRef.current) {
+                      savedScrollPosition.current = navRef.current.scrollTop;
+                      isRestoringScroll.current = true;
+                    }
+                    // Trigger click manually
+                    const button = e.currentTarget;
+                    setTimeout(() => {
+                      button.click();
+                    }, 0);
+                  }}
+                  onFocus={(e) => {
+                    // Immediately blur to prevent scroll
+                    e.target.blur();
+                  }}
+                  style={{ outline: 'none', cursor: 'pointer' }}
                   className={cn(
                     'w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 font-medium',
                     isAnyChildActive

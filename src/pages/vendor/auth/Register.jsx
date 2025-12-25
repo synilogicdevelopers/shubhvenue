@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../../contexts/vendor/AuthContext'
-import { Mail, Lock, User, Phone, Building2, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, Phone, Building2, Loader2, Eye, EyeOff, CheckCircle, Tag } from 'lucide-react'
 import { trackSignUp } from '../../../utils/vendor/analytics'
+import { vendorCategoriesAPI } from '../../../services/vendor/api'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -11,13 +12,43 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     phone: '',
+    vendorCategory: '',
   })
+  const [categories, setCategories] = useState([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
+
+  // Fetch vendor categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await vendorCategoriesAPI.getPublic()
+        // Handle different response structures
+        let categoriesData = []
+        if (response.data) {
+          if (Array.isArray(response.data)) {
+            categoriesData = response.data
+          } else if (response.data.categories && Array.isArray(response.data.categories)) {
+            categoriesData = response.data.categories
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            categoriesData = response.data.data
+          }
+        }
+        setCategories(categoriesData)
+      } catch (error) {
+        console.error('Failed to load categories:', error)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+    fetchCategories()
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,6 +73,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -69,12 +101,36 @@ export default function Register() {
     
     if (result.success) {
       trackSignUp('email')
-      navigate('/vendor/')
+      // If vendor requires approval for venue addition, show message
+      if (result.requiresApproval) {
+        // Show success message with approval pending info
+        const successMessage = result.message || 'Registration successful! You can now login. However, you need admin approval before you can add venues.'
+        setSuccess(successMessage)
+        // Clear form data
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          phone: '',
+          vendorCategory: '',
+        })
+        // Don't auto-redirect - wait for user to click OK
+      } else {
+        // If already approved, go to dashboard
+        navigate('/vendor/')
+      }
     } else {
       setError(result.error || 'Registration failed. Please try again.')
+      setLoading(false)
+      return
     }
     
     setLoading(false)
+  }
+
+  const handleOkClick = () => {
+    navigate('/vendor/login')
   }
 
   return (
@@ -98,6 +154,25 @@ export default function Register() {
 
         {/* Register Form */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
+          {success ? (
+            <div className="space-y-5">
+              <div className="bg-green-50 border-2 border-green-300 text-green-800 px-6 py-5 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-6 h-6 mt-0.5 flex-shrink-0 text-green-600" />
+                  <div className="flex-1">
+                    <p className="font-bold text-lg mb-2 text-green-900">Registration Successful!</p>
+                    <p className="text-green-800 mb-3">{success}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleOkClick}
+                className="w-full bg-gradient-to-r from-primary-600 to-accent-600 text-white py-3 rounded-lg font-semibold hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center"
+              >
+                OK
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -164,6 +239,39 @@ export default function Register() {
                   placeholder="Enter phone (10-15 digits)"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="vendorCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                Vendor Category <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <select
+                  id="vendorCategory"
+                  name="vendorCategory"
+                  value={formData.vendorCategory}
+                  onChange={handleChange}
+                  required
+                  disabled={loadingCategories}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">Select your category</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                {loadingCategories && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                )}
+              </div>
+              {categories.length === 0 && !loadingCategories && (
+                <p className="text-xs text-gray-500 mt-1">No categories available. Please contact admin.</p>
+              )}
             </div>
 
             <div>
@@ -235,7 +343,9 @@ export default function Register() {
               )}
             </button>
           </form>
+          )}
 
+          {!success && (
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
@@ -244,6 +354,7 @@ export default function Register() {
               </Link>
             </p>
           </div>
+          )}
         </div>
       </div>
     </div>

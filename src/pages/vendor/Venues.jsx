@@ -752,28 +752,40 @@ export default function Venues() {
       
       // More detailed error message
       let fullErrorMessage = errorMessage
+      let modalTitle = 'Unable to Add Venue'
+      
       if (error.response?.status === 403) {
-        // Check if it's a permission error or ownership error
-        if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
-          fullErrorMessage = `Access Denied: ${errorMessage}\n\nYou do not have the required permissions to perform this action. Please contact your administrator.`
+        // Check if it's a rejection error
+        if (errorMessage.includes('rejected') || errorMessage.includes('Rejected')) {
+          modalTitle = 'Account Status'
+          fullErrorMessage = 'Your vendor account has been rejected.\n\nYou cannot add venues. Please contact support for more information.'
+        } else if (errorMessage.includes('pending admin approval') || errorMessage.includes('approval')) {
+          modalTitle = 'Approval Required'
+          fullErrorMessage = 'Your vendor account is pending admin approval.\n\nYou cannot add venues until your account is approved by the admin. Please wait for approval or contact support if you have any questions.'
+        } else if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+          modalTitle = 'Access Denied'
+          fullErrorMessage = `${errorMessage}\n\nYou do not have the required permissions to perform this action. Please contact your administrator.`
         } else {
-          fullErrorMessage = `Access Denied: ${errorMessage}`
+          modalTitle = 'Access Denied'
+          fullErrorMessage = errorMessage
           if (errorDetails) {
             fullErrorMessage += `\n\nDetails: ${JSON.stringify(errorDetails, null, 2)}`
           }
-          fullErrorMessage += '\n\nPlease ensure:\n1. You are logged in as a vendor or vendor staff\n2. This venue belongs to your vendor account\n3. Your session is valid'
         }
       } else if (error.response?.status === 401) {
-        fullErrorMessage = 'Authentication failed. Please login again.'
+        modalTitle = 'Session Expired'
+        fullErrorMessage = 'Your session has expired. Please login again.'
         localStorage.removeItem('vendor_token')
         localStorage.removeItem('vendor_user')
         window.location.href = '/vendor/login'
         return
+      } else {
+        modalTitle = 'Unable to Save'
       }
       
       // Use feedback modal instead of alert for better UX
       setFeedbackModal({
-        title: 'Error',
+        title: modalTitle,
         message: fullErrorMessage,
         status: 'error'
       })
@@ -811,9 +823,26 @@ export default function Venues() {
         status: 'success'
       })
     } catch (error) {
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || `Failed to ${action} venue`
+      let errorMsg = error.response?.data?.error || error.response?.data?.message || `Failed to ${action} venue`
+      let modalTitle = 'Unable to Update Venue'
+      
+      if (error.response?.status === 403) {
+        if (errorMsg.includes('rejected') || errorMsg.includes('Rejected')) {
+          modalTitle = 'Account Status'
+          errorMsg = 'Your vendor account has been rejected.\n\nYou cannot perform this action. Please contact support for more information.'
+        } else if (errorMsg.includes('pending admin approval') || errorMsg.includes('approval')) {
+          modalTitle = 'Approval Required'
+          errorMsg = 'Your vendor account is pending admin approval.\n\nYou cannot perform this action until your account is approved by the admin.'
+        } else if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
+          modalTitle = 'Access Denied'
+          errorMsg = `${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
+        } else {
+          modalTitle = 'Access Denied'
+        }
+      }
+      
       setFeedbackModal({
-        title: 'Error',
+        title: modalTitle,
         message: errorMsg,
         status: 'error'
       })
@@ -846,18 +875,27 @@ export default function Venues() {
       })
     } catch (error) {
       let errorMsg = error.response?.data?.error || 'Failed to delete venue'
+      let modalTitle = 'Unable to Delete Venue'
       
       // Better error messages for vendor_staff
       if (error.response?.status === 403) {
-        if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
-          errorMsg = `Access Denied: ${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
+        if (errorMsg.includes('rejected') || errorMsg.includes('Rejected')) {
+          modalTitle = 'Account Status'
+          errorMsg = 'Your vendor account has been rejected.\n\nYou cannot perform this action. Please contact support for more information.'
+        } else if (errorMsg.includes('pending admin approval') || errorMsg.includes('approval')) {
+          modalTitle = 'Approval Required'
+          errorMsg = 'Your vendor account is pending admin approval.\n\nYou cannot add venues until your account is approved by the admin. Please wait for approval or contact support if you have any questions.'
+        } else if (errorMsg.includes('permission') || errorMsg.includes('Permission')) {
+          modalTitle = 'Access Denied'
+          errorMsg = `${errorMsg}\n\nYou do not have the required permissions. Please contact your administrator.`
         } else {
-          errorMsg = `Access Denied: ${errorMsg}\n\nPlease ensure you have the required permissions and this venue belongs to your vendor account.`
+          modalTitle = 'Access Denied'
+          errorMsg = errorMsg
         }
       }
       
       setFeedbackModal({
-        title: 'Error',
+        title: modalTitle,
         message: errorMsg,
         status: 'error'
       })

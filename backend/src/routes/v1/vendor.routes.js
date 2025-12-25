@@ -11,7 +11,11 @@ import {
   createVendorBooking,
   addLedgerEntry,
   updateLedgerEntry,
-  deleteLedgerEntry
+  deleteLedgerEntry,
+  getCalendarEvents,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent
 } from '../../controllers/vendor.controller.js';
 
 const router = Router();
@@ -44,6 +48,12 @@ router.delete('/ledger/:id', requirePermission('vendor_delete_ledger'), deleteLe
 router.get('/blocked-dates', requirePermission('vendor_view_blocked_dates'), getBlockedDates);
 router.post('/blocked-dates', requirePermission('vendor_create_blocked_dates'), addBlockedDates);
 router.delete('/blocked-dates', requirePermission('vendor_delete_blocked_dates'), removeBlockedDates);
+
+// Calendar events management
+router.get('/calendar-events', requirePermission('vendor_view_blocked_dates'), getCalendarEvents);
+router.post('/calendar-events', requirePermission('vendor_create_blocked_dates'), createCalendarEvent);
+router.put('/calendar-events/:id', requirePermission('vendor_create_blocked_dates'), updateCalendarEvent);
+router.delete('/calendar-events/:id', requirePermission('vendor_delete_blocked_dates'), deleteCalendarEvent);
 
 export default router;
 

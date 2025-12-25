@@ -294,6 +294,58 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     const loadMenus = async () => {
       try {
         setLoadingMenus(true)
+        
+        // Check localStorage first
+        const storedMenusData = localStorage.getItem('menus_data')
+        const storedMenusTimestamp = localStorage.getItem('menus_timestamp')
+        const CACHE_DURATION = 30 * 60 * 1000 // 30 minutes cache
+        
+        // If cached data exists and is not expired, use it
+        if (storedMenusData && storedMenusTimestamp) {
+          const cacheAge = Date.now() - parseInt(storedMenusTimestamp, 10)
+          if (cacheAge < CACHE_DURATION) {
+            try {
+              const cachedMenus = JSON.parse(storedMenusData)
+              if (Array.isArray(cachedMenus) && cachedMenus.length > 0) {
+                setMenus(cachedMenus)
+                setLoadingMenus(false)
+                // Fetch fresh data in background without blocking UI
+                fetchAndStoreMenus()
+                return
+              }
+            } catch (parseError) {
+              console.error('Error parsing cached menus:', parseError)
+              // Continue to fetch from API if cache is invalid
+            }
+          }
+        }
+        
+        // Fetch from API if no cache or cache expired
+        await fetchAndStoreMenus()
+      } catch (error) {
+        console.error('Error loading menus:', error)
+        // Try to load from cache even if expired as fallback
+        const storedMenusData = localStorage.getItem('menus_data')
+        if (storedMenusData) {
+          try {
+            const cachedMenus = JSON.parse(storedMenusData)
+            if (Array.isArray(cachedMenus) && cachedMenus.length > 0) {
+              setMenus(cachedMenus)
+              setLoadingMenus(false)
+              return
+            }
+          } catch (parseError) {
+            console.error('Error parsing fallback cached menus:', parseError)
+          }
+        }
+        toast.error('Could not load categories. Please try again.')
+        setMenus([])
+        setLoadingMenus(false)
+      }
+    }
+
+    const fetchAndStoreMenus = async () => {
+      try {
         const response = await withTimeout(
           publicMenusAPI.getMenus({ active: 'true', parentMenuId: null })
         )
@@ -331,15 +383,19 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             }
           })
         )
+        
+        // Store in localStorage
+        localStorage.setItem('menus_data', JSON.stringify(menusWithSubmenus))
+        localStorage.setItem('menus_timestamp', Date.now().toString())
+        
         setMenus(menusWithSubmenus)
-      } catch (error) {
-        console.error('Error loading menus:', error)
-        toast.error('Could not load categories. Please try again.')
-        setMenus([])
-      } finally {
         setLoadingMenus(false)
+      } catch (error) {
+        console.error('Error fetching menus from API:', error)
+        throw error
       }
     }
+
     loadMenus()
   }, [])
 
@@ -464,8 +520,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     const submenuName = submenu.name
     console.log('Navigating with submenuId:', submenuId, 'submenuName:', submenuName)
     
-    // Navigate immediately
-    navigate('/venues', {
+    // Navigate immediately with URL params
+    navigate(`/venues?submenuId=${submenuId}&submenuName=${encodeURIComponent(submenuName)}`, {
       state: {
         submenuId: submenuId,
         submenuName: submenuName
@@ -489,8 +545,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     
     console.log('Navigating with menuId:', menuId, 'menuName:', menuName)
     
-    // Navigate immediately - only pass menuId, backend will filter for venues directly assigned to menu
-    navigate('/venues', {
+    // Navigate immediately with URL params - only pass menuId, backend will filter for venues directly assigned to menu
+    navigate(`/venues?menuId=${menuId}&menuName=${encodeURIComponent(menuName)}`, {
       state: {
         menuId: menuId,
         menuName: menuName
@@ -508,7 +564,7 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
       <nav className="navbar">
         <div className="navbar-top">
           <div className="navbar-left">
-            <div className="logo">
+            <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
               <img 
                 src="/image/venuebook.png" 
                 alt="ShubhVenue Logo" 
@@ -729,6 +785,19 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
                       </svg>
                       Profile
                     </button>
+                    <button 
+                      className="dropdown-item" 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowDropdown(false)
+                        navigate('/shotlist')
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      Shotlist
+                    </button>
                     <button className="dropdown-item" onClick={(e) => {
                       e.stopPropagation()
                       handleLogout()
@@ -813,6 +882,16 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
                     {hasSubmenus && activeMenuId === menuId && (
                       <div className="submenu-dropdown">
                         <ul className="submenu-list">
+                          {/* All Menu option - shows all submenus */}
+                          <li>
+                            <button
+                              className="submenu-item"
+                              onClick={(e) => handleMenuClick(e, menu)}
+                              style={{ fontWeight: '600', color: 'var(--primary-purple)' }}
+                            >
+                              All {menu.name}
+                            </button>
+                          </li>
                           {menu.submenus.map((submenu) => (
                             <li key={submenu._id || submenu.id}>
                               <button
@@ -1072,7 +1151,7 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
       <div className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={toggleSidebar}></div>
       <div className={`sidebar ${isSidebarOpen ? 'active' : ''}`}>
         <div className="sidebar-header">
-          <div className="logo">
+          <div className="logo" onClick={() => { navigate('/'); toggleSidebar(); }} style={{ cursor: 'pointer' }}>
             <img 
               src="/image/venuebook.png" 
               alt="ShubhVenue Logo" 

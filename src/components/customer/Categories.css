@@ -54,21 +54,14 @@
   position: relative;
 }
 
-.categories-list {
-  display: flex;
-  gap: 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 10px 0;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+.categories-swiper {
   flex: 1;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  padding: 10px 0;
 }
 
-.categories-list::-webkit-scrollbar {
-  display: none;
+.categories-swiper .swiper-slide {
+  width: auto;
+  height: auto;
 }
 
 .category-item {
@@ -157,7 +150,7 @@
   transform: scale(1.1);
 }
 
-.category-arrow:disabled {
+.category-arrow.swiper-button-disabled {
   opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;

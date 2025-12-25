@@ -59,14 +59,20 @@ const Venue = () => {
   // Get search params from location state (from navbar search)
   const searchParams = location.state?.searchParams || {}
 
+  // Get URL search params
+  const urlParams = new URLSearchParams(location.search)
+
   // Get category filter from location state, search params, or URL params
-  const categoryId = location.state?.categoryId || searchParams.categoryId || new URLSearchParams(location.search).get('categoryId')
-  const categoryName = location.state?.categoryName || searchParams.categoryName
-  // Get submenu filter from location state
-  const submenuId = location.state?.submenuId
-  const submenuName = location.state?.submenuName
-  const menuId = location.state?.menuId
-  const menuName = location.state?.menuName
+  const categoryId = location.state?.categoryId || searchParams.categoryId || urlParams.get('categoryId')
+  const categoryName = location.state?.categoryName || searchParams.categoryName || urlParams.get('categoryName')
+  // Get vendor category filter from location state or URL params
+  const vendorCategoryId = location.state?.vendorCategoryId || urlParams.get('vendorCategoryId')
+  const vendorCategoryName = location.state?.vendorCategoryName || urlParams.get('vendorCategoryName')
+  // Get submenu filter from location state or URL params
+  const submenuId = location.state?.submenuId || urlParams.get('submenuId')
+  const submenuName = location.state?.submenuName || urlParams.get('submenuName')
+  const menuId = location.state?.menuId || urlParams.get('menuId')
+  const menuName = location.state?.menuName || urlParams.get('menuName')
   
   // Debug logging
   useEffect(() => {
@@ -77,6 +83,46 @@ const Venue = () => {
       console.log('Venue page - menuId:', menuId, 'menuName:', menuName)
     }
   }, [submenuId, submenuName, menuId, menuName])
+
+  // Update URL when filters change (but only if coming from state, not from URL)
+  useEffect(() => {
+    // Only update URL if we have filters from state (not from URL)
+    const hasStateFilters = location.state && (
+      location.state.vendorCategoryId || 
+      location.state.categoryId || 
+      location.state.menuId || 
+      location.state.submenuId
+    )
+    
+    if (!hasStateFilters) return
+    
+    const params = new URLSearchParams()
+    
+    if (vendorCategoryId) {
+      params.set('vendorCategoryId', vendorCategoryId)
+      if (vendorCategoryName) params.set('vendorCategoryName', vendorCategoryName)
+    }
+    if (categoryId) {
+      params.set('categoryId', categoryId)
+      if (categoryName) params.set('categoryName', categoryName)
+    }
+    if (menuId) {
+      params.set('menuId', menuId)
+      if (menuName) params.set('menuName', menuName)
+    }
+    if (submenuId) {
+      params.set('submenuId', submenuId)
+      if (submenuName) params.set('submenuName', submenuName)
+    }
+    
+    const newSearch = params.toString()
+    const currentSearch = location.search.replace('?', '')
+    
+    // Only update URL if params changed
+    if (newSearch !== currentSearch) {
+      navigate(`/venues${newSearch ? `?${newSearch}` : ''}`, { replace: true })
+    }
+  }, [vendorCategoryId, vendorCategoryName, categoryId, categoryName, menuId, menuName, submenuId, submenuName, navigate, location.search, location.state])
 
   // Fetch all venues from API
   useEffect(() => {
@@ -91,12 +137,16 @@ const Venue = () => {
           status: 'active'
         }
         
-        console.log('Fetching venues with filters - submenuId:', submenuId, 'menuId:', menuId, 'categoryId:', categoryId)
+        console.log('Fetching venues with filters - submenuId:', submenuId, 'menuId:', menuId, 'categoryId:', categoryId, 'vendorCategoryId:', vendorCategoryId)
         console.log('Location state:', location.state)
         
         // Add category filter if categoryId is provided
         if (categoryId) {
           apiParams.categoryId = categoryId
+        }
+        // Add vendor category filter if vendorCategoryId is provided
+        if (vendorCategoryId) {
+          apiParams.vendorCategory = vendorCategoryId
         }
         // Add search params if provided
         if (searchParams.q) {
@@ -133,6 +183,7 @@ const Venue = () => {
             if (searchParams.city) searchApiParams.city = searchParams.city
             if (searchParams.state) searchApiParams.state = searchParams.state
             if (categoryId) searchApiParams.categoryId = categoryId
+            if (vendorCategoryId) searchApiParams.vendorCategory = vendorCategoryId
             if (submenuId) searchApiParams.subMenuId = submenuId
             if (menuId) searchApiParams.menuId = menuId
             // Ensure we only surface active venues in search results
@@ -290,6 +341,9 @@ const Venue = () => {
               capacity: capacityValue,
               highlights: venue.highlights || [],
               moreTags: venue.tags?.length || 0,
+              // Store category data for URL generation
+              categoryId: venue.categoryId,
+              category: venue.category,
               // Store original location object for filtering
               locationObj: venue.location
             };
@@ -474,8 +528,8 @@ const Venue = () => {
   return (
     <div className="venues-page">
       <SEO location={seoLocation} />
-      {/* Category/Submenu Filter Banner */}
-      {(categoryName || submenuName || menuName) && (
+      {/* Category/Submenu/Vendor Category Filter Banner */}
+      {(categoryName || submenuName || menuName || vendorCategoryName) && (
         <div style={{ 
           background: 'linear-gradient(135deg, #92487a 0%, #b85a8f 100%)',
           color: 'white',
@@ -484,7 +538,7 @@ const Venue = () => {
           marginBottom: '20px'
         }}>
           <p style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
-            Showing venues for: <strong>{submenuName || menuName || categoryName}</strong>
+            Showing venues for: <strong>{vendorCategoryName || submenuName || menuName || categoryName}</strong>
             <button 
               onClick={() => {
                 navigate('/venues', { replace: true })
@@ -841,7 +895,23 @@ const Venue = () => {
               <div
                 key={venue.id}
                 className="venue-card"
-                onClick={() => navigate(`/venue/${createSlug(venue.name)}`)}
+                onClick={() => {
+                  const venueSlug = createSlug(venue.name)
+                  // Check for category in multiple possible locations
+                  const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                  const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                  
+                  console.log('Navigation - Venue:', venue.name)
+                  console.log('Navigation - Category Name:', categoryName)
+                  console.log('Navigation - Category Slug:', venueCategorySlug)
+                  
+                  const url = venueCategorySlug 
+                    ? `/venue/${venueCategorySlug}/${venueSlug}`
+                    : `/venue/${venueSlug}`
+                  
+                  console.log('Navigation - Final URL:', url)
+                  navigate(url)
+                }}
               >
                 <div className="venue-image-wrapper">
                   <img 

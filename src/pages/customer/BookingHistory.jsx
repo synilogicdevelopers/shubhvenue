@@ -23,6 +23,16 @@ function BookingHistory() {
       return image
     }
     const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle different path formats
+    if (image.startsWith('/uploads/') || image.startsWith('/uploads')) {
+      return `${baseUrl}${image}`
+    }
+    if (image.startsWith('uploads/')) {
+      return `${baseUrl}/${image}`
+    }
+    
+    // Handle other paths
     return `${baseUrl}${image.startsWith('/') ? image : `/${image}`}`
   }
 
@@ -119,13 +129,26 @@ function BookingHistory() {
             fullBooking: booking
           })
           
+          // Extract image from multiple possible locations
+          const venueImage = venue.images?.[0] || venue.coverImage || venue.image || null
+          
+          console.log('🖼️ Venue Image Debug:', {
+            venueId: venue._id || venue.id,
+            venueName: venue.name,
+            images: venue.images,
+            coverImage: venue.coverImage,
+            image: venue.image,
+            extractedImage: venueImage,
+            formattedImage: getImageUrl(venueImage)
+          })
+          
           return {
             id: booking._id || booking.id,
             bookingId: booking._id || booking.id,
       venue: {
               id: venue._id || venue.id,
               name: venue.name || 'Unnamed Venue',
-              image: getImageUrl(venue.coverImage || venue.image || venue.images?.[0]),
+              image: getImageUrl(venueImage),
               location: formatLocation(venue.location)
       },
             checkIn: checkInDate ? (typeof checkInDate === 'string' ? checkInDate.split('T')[0] : new Date(checkInDate).toISOString().split('T')[0]) : '',
@@ -394,7 +417,13 @@ function BookingHistory() {
                 return (
                   <div key={booking.id} className="booking-card">
                     <div className="booking-card-image">
-                      <img src={booking.venue.image} alt={booking.venue.name} />
+                      <img 
+                        src={booking.venue.image} 
+                        alt={booking.venue.name}
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                        }}
+                      />
                       <div className="status-badges-container">
                       <div className={`status-badge ${statusConfig.class}`}>
                         {statusConfig.label}

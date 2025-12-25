@@ -37,6 +37,9 @@ import {
   convertLeadToBooking,
   getPaymentConfig,
   updatePaymentConfig,
+  getEmailConfig,
+  updateEmailConfig,
+  testEmail,
   getGoogleMapsConfig,
   updateGoogleMapsConfig,
   getBanners,
@@ -74,7 +77,7 @@ import {
   deleteContact,
 } from '../../controllers/admin.controller.js';
 import Payout from '../../models/Payout.js';
-import { uploadBannerImage, uploadVideo, uploadVenueMedia, uploadStaffImage, handleUploadError } from '../../middlewares/upload.js';
+import { uploadBannerImage, uploadVideo, uploadVenueMedia, uploadStaffImage, uploadVendorCategoryImage, handleUploadError } from '../../middlewares/upload.js';
 import {
   createRole,
   getRoles,
@@ -96,11 +99,21 @@ import {
   updateReview,
   deleteReview
 } from '../../controllers/review.controller.js';
+import {
+  getVendorCategories,
+  getVendorCategoryById,
+  createVendorCategory,
+  updateVendorCategory,
+  deleteVendorCategory,
+  updateVendorCategoryForVendor,
+  getVendorCategoriesPublic
+} from '../../controllers/admin.controller.js';
 
 const router = Router();
 
-// Public route
+// Public routes (no authentication required)
 router.post('/login', adminLogin);
+router.get('/vendor-categories/public', getVendorCategoriesPublic); // Public endpoint for registration
 
 // Protected routes (require admin or staff role)
 router.use(requireAuth);
@@ -163,6 +176,9 @@ router.put('/profile', updateProfile);
 router.put('/change-password', changePassword);
 router.get('/payment-config', requirePermission('view_settings'), getPaymentConfig);
 router.put('/payment-config', requirePermission('edit_settings'), updatePaymentConfig);
+router.get('/email-config', requirePermission('view_settings'), getEmailConfig);
+router.put('/email-config', requirePermission('edit_settings'), updateEmailConfig);
+router.post('/email-config/test', requirePermission('edit_settings'), testEmail);
 router.get('/google-maps-config', requirePermission('view_settings'), getGoogleMapsConfig);
 router.put('/google-maps-config', requirePermission('edit_settings'), updateGoogleMapsConfig);
 
@@ -233,6 +249,14 @@ router.get('/reviews', requirePermission('view_reviews'), getReviews);
 router.get('/reviews/:id', requirePermission('view_reviews'), getReviewById);
 router.put('/reviews/:id', requirePermission('edit_reviews'), updateReview);
 router.delete('/reviews/:id', requirePermission('delete_reviews'), deleteReview);
+
+// Vendor Category routes (Admin only)
+router.get('/vendor-categories', requirePermission('view_vendors'), getVendorCategories);
+router.get('/vendor-categories/:id', requirePermission('view_vendors'), getVendorCategoryById);
+router.post('/vendor-categories', requirePermission('edit_vendors'), uploadVendorCategoryImage, handleUploadError, createVendorCategory);
+router.put('/vendor-categories/:id', requirePermission('edit_vendors'), uploadVendorCategoryImage, handleUploadError, updateVendorCategory);
+router.delete('/vendor-categories/:id', requirePermission('edit_vendors'), deleteVendorCategory);
+router.put('/vendors/:vendorId/category', requirePermission('edit_vendors'), updateVendorCategoryForVendor);
 
 export default router;
 

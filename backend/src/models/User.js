@@ -16,7 +16,12 @@ const userSchema = new mongoose.Schema(
       type: String, 
       enum: ['pending', 'approved', 'rejected'], 
       default: 'pending' 
-    } // Status for vendor approval (only relevant when role is 'vendor')
+    }, // Status for vendor approval (only relevant when role is 'vendor')
+    vendorCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VendorCategory',
+      default: null
+    } // Vendor category (only relevant when role is 'vendor')
   },
   { timestamps: true }
 );

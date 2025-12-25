@@ -11,6 +11,7 @@ import Payout from '../models/Payout.js';
 import Lead from '../models/Lead.js';
 import Ledger from '../models/Ledger.js';
 import PaymentConfig from '../models/PaymentConfig.js';
+import EmailConfig from '../models/EmailConfig.js';
 import AppConfig from '../models/AppConfig.js';
 import Banner from '../models/Banner.js';
 import Video from '../models/Video.js';
@@ -19,6 +20,7 @@ import FAQ from '../models/FAQ.js';
 import Company from '../models/Company.js';
 import LegalPage from '../models/LegalPage.js';
 import Contact from '../models/Contact.js';
+import VendorCategory from '../models/VendorCategory.js';
 
 // ==================== ADMIN CREATE (VENDORS / VENUES) ====================
 
@@ -151,6 +153,19 @@ export const createVendorByAdmin = async (req, res) => {
 
     if (typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    // Validate phone number if provided (10-15 digits)
+    if (phone) {
+      const phoneStr = String(phone).trim();
+      // Remove any non-digit characters for validation
+      const digitsOnly = phoneStr.replace(/\D/g, '');
+      
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+        return res.status(400).json({ 
+          message: 'Phone number must be between 10 and 15 digits' 
+        });
+      }
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -1293,6 +1308,7 @@ export const getVendors = async (req, res) => {
     // Get all vendors (exclude deleted ones - they are hard deleted now)
     const vendors = await User.find({ role: 'vendor', isDeleted: { $ne: true } })
       .select('-password')
+      .populate('vendorCategory', 'name description')
       .sort({ createdAt: -1 });
 
     // Calculate revenue for each vendor
@@ -1323,7 +1339,8 @@ export const getVendorById = async (req, res) => {
     const { id } = req.params;
     
     const vendor = await User.findById(id)
-      .select('-password');
+      .select('-password')
+      .populate('vendorCategory', 'name description');
     
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
@@ -1400,9 +1417,28 @@ export const approveVendor = async (req, res) => {
       { status: 'approved' }
     );
     
+    // Send approval email to vendor
+    let emailStatus = '';
+    try {
+      const { sendVendorApprovalEmail } = await import('../utils/emailService.js');
+      console.log('📧 Sending approval email to vendor:', vendor.email);
+      const emailResult = await sendVendorApprovalEmail(vendor);
+      if (emailResult.success) {
+        console.log('✅ Vendor approval email sent successfully to:', vendor.email);
+        emailStatus = ` Approval email sent to ${vendor.email}.`;
+      } else {
+        console.error('❌ Failed to send vendor approval email:', emailResult.error);
+        emailStatus = ` Warning: Failed to send approval email to ${vendor.email}.`;
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending vendor approval email:', emailError);
+      emailStatus = ` Warning: Failed to send approval email.`;
+      // Don't fail approval if email fails
+    }
+    
     res.json({
       success: true,
-      message: `Vendor approved successfully. ${updateResult.modifiedCount} venue(s) have been approved.`,
+      message: `Vendor approved successfully. ${updateResult.modifiedCount} venue(s) have been approved.${emailStatus}`,
       vendor: {
         _id: vendor._id,
         name: vendor.name,
@@ -1434,6 +1470,9 @@ export const rejectVendor = async (req, res) => {
       return res.status(400).json({ message: 'User is not a vendor' });
     }
     
+    // Store previous status before updating (to check if was approved)
+    const wasApproved = vendor.vendorStatus === 'approved';
+    
     vendor.vendorStatus = 'rejected';
     await vendor.save();
     
@@ -1443,9 +1482,30 @@ export const rejectVendor = async (req, res) => {
       { status: 'rejected' }
     );
     
+    // Send rejection email to vendor (pass previous status info)
+    let emailStatus = '';
+    try {
+      const { sendVendorRejectionEmail } = await import('../utils/emailService.js');
+      console.log('Sending rejection email to vendor:', vendor.email);
+      // Create vendor object with previous status for email
+      const vendorForEmail = { ...vendor.toObject(), vendorStatus: wasApproved ? 'approved' : vendor.vendorStatus };
+      const emailResult = await sendVendorRejectionEmail(vendorForEmail);
+      if (emailResult.success) {
+        console.log('✅ Vendor rejection email sent successfully to:', vendor.email);
+        emailStatus = ` Rejection email sent to ${vendor.email}.`;
+      } else {
+        console.error('❌ Failed to send vendor rejection email:', emailResult.error);
+        emailStatus = ` Warning: Failed to send rejection email to ${vendor.email}.`;
+      }
+    } catch (emailError) {
+      console.error('Error sending vendor rejection email:', emailError);
+      emailStatus = ` Warning: Failed to send rejection email.`;
+      // Don't fail rejection if email fails
+    }
+    
     res.json({
       success: true,
-      message: 'Vendor rejected successfully. All venues have been rejected.',
+      message: `Vendor rejected successfully. All venues have been rejected.${emailStatus}`,
       vendor: {
         _id: vendor._id,
         name: vendor.name,
@@ -2392,6 +2452,230 @@ export const updatePaymentConfig = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get Email Configuration (Admin Only)
+export const getEmailConfig = async (req, res) => {
+  try {
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    const config = await EmailConfig.getConfig();
+    
+    // Mask password for security
+    const maskedPassword = config.smtpPassword 
+      ? config.smtpPassword.substring(0, 4) + '****' + config.smtpPassword.substring(config.smtpPassword.length - 4)
+      : '';
+    
+    res.json({
+      success: true,
+      config: {
+        _id: config._id,
+        smtpUsername: config.smtpUsername,
+        smtpPassword: maskedPassword, // Masked for display
+        smtpHost: config.smtpHost,
+        mailDriver: config.mailDriver,
+        smtpPort: config.smtpPort,
+        smtpSecurity: config.smtpSecurity,
+        smtpAuthDomain: config.smtpAuthDomain,
+        smtpAddress: config.smtpAddress,
+        emailFromAddress: config.emailFromAddress,
+        emailFromName: config.emailFromName,
+        replyEmailAddress: config.replyEmailAddress,
+        replyEmailName: config.replyEmailName,
+        adminNotificationEmail: config.adminNotificationEmail || '',
+        createdAt: config.createdAt,
+        updatedAt: config.updatedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Get email config error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update Email Configuration (Admin Only)
+export const updateEmailConfig = async (req, res) => {
+  try {
+    const {
+      smtpUsername,
+      smtpPassword,
+      smtpHost,
+      mailDriver,
+      smtpPort,
+      smtpSecurity,
+      smtpAuthDomain,
+      smtpAddress,
+      emailFromAddress,
+      emailFromName,
+      replyEmailAddress,
+      replyEmailName,
+      adminNotificationEmail,
+    } = req.body;
+
+    // Validation
+    if (!smtpUsername || !smtpHost || !mailDriver || !smtpPort || !smtpSecurity || !emailFromAddress || !emailFromName) {
+      return res.status(400).json({ 
+        message: 'SMTP Username, Host, Driver, Port, Security, From Address, and From Name are required' 
+      });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Get existing config or create new one
+    let config = await EmailConfig.findOne();
+    
+    if (config) {
+      // Update existing config
+      config.smtpUsername = smtpUsername.trim();
+      // Only update password if provided (not masked)
+      if (smtpPassword && !smtpPassword.includes('****')) {
+        config.smtpPassword = smtpPassword.trim();
+      }
+      config.smtpHost = smtpHost.trim();
+      config.mailDriver = mailDriver.trim();
+      config.smtpPort = parseInt(smtpPort) || 465;
+      config.smtpSecurity = smtpSecurity.trim();
+      config.smtpAuthDomain = smtpAuthDomain || 'true';
+      config.smtpAddress = smtpAddress ? smtpAddress.trim() : '';
+      config.emailFromAddress = emailFromAddress.trim();
+      config.emailFromName = emailFromName.trim();
+      config.replyEmailAddress = replyEmailAddress ? replyEmailAddress.trim() : '';
+      config.replyEmailName = replyEmailName ? replyEmailName.trim() : '';
+      if (adminNotificationEmail !== undefined) {
+        config.adminNotificationEmail = adminNotificationEmail ? adminNotificationEmail.trim() : '';
+      }
+      await config.save();
+    } else {
+      // Create new config
+      if (!smtpPassword || smtpPassword.includes('****')) {
+        return res.status(400).json({ 
+          message: 'SMTP Password is required for new configuration' 
+        });
+      }
+      config = await EmailConfig.create({
+        smtpUsername: smtpUsername.trim(),
+        smtpPassword: smtpPassword.trim(),
+        smtpHost: smtpHost.trim(),
+        mailDriver: mailDriver.trim(),
+        smtpPort: parseInt(smtpPort) || 465,
+        smtpSecurity: smtpSecurity.trim(),
+        smtpAuthDomain: smtpAuthDomain || 'true',
+        smtpAddress: smtpAddress ? smtpAddress.trim() : '',
+        emailFromAddress: emailFromAddress.trim(),
+        emailFromName: emailFromName.trim(),
+        replyEmailAddress: replyEmailAddress ? replyEmailAddress.trim() : '',
+        replyEmailName: replyEmailName ? replyEmailName.trim() : '',
+        adminNotificationEmail: adminNotificationEmail ? adminNotificationEmail.trim() : '',
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Email configuration updated successfully',
+      config: {
+        _id: config._id,
+        smtpUsername: config.smtpUsername,
+        smtpHost: config.smtpHost,
+        mailDriver: config.mailDriver,
+        smtpPort: config.smtpPort,
+        smtpSecurity: config.smtpSecurity,
+        smtpAuthDomain: config.smtpAuthDomain,
+        smtpAddress: config.smtpAddress,
+        emailFromAddress: config.emailFromAddress,
+        emailFromName: config.emailFromName,
+        replyEmailAddress: config.replyEmailAddress,
+        replyEmailName: config.replyEmailName,
+        adminNotificationEmail: config.adminNotificationEmail || '',
+        updatedAt: config.updatedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Update email config error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Test Email (Admin Only)
+export const testEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        message: 'Email address is required for testing' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'Invalid email format' 
+      });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    // Send test email
+    const { sendTestEmail } = await import('../utils/emailService.js');
+    const result = await sendTestEmail(email);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Test email sent successfully to ${email}`,
+        messageId: result.messageId
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send test email',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
+    });
   }
 };
 
@@ -3614,6 +3898,358 @@ export const deleteContact = async (req, res) => {
     if (error.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid contact ID' });
     }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// ==================== VENDOR CATEGORY MANAGEMENT ====================
+
+// Get all vendor categories
+export const getVendorCategories = async (req, res) => {
+  try {
+    const { activeOnly } = req.query;
+    
+    let query = {};
+    if (activeOnly === 'true') {
+      query.isActive = true;
+    }
+    
+    const categories = await VendorCategory.find(query)
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: categories.length,
+      categories
+    });
+  } catch (error) {
+    console.error('Get vendor categories error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get vendor category by ID
+export const getVendorCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    const category = await VendorCategory.findById(id)
+      .populate('createdBy', 'name email');
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Vendor category not found' });
+    }
+    
+    res.json({
+      success: true,
+      category
+    });
+  } catch (error) {
+    console.error('Get vendor category error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Create vendor category
+export const createVendorCategory = async (req, res) => {
+  try {
+    // Handle both JSON and FormData
+    const name = req.body.name;
+    const description = req.body.description;
+    const isActive = req.body.isActive !== undefined 
+      ? (typeof req.body.isActive === 'string' ? req.body.isActive === 'true' : req.body.isActive)
+      : true;
+    const adminId = req.user.userId;
+
+    console.log('Create vendor category - req.body:', req.body);
+    console.log('Create vendor category - name:', name, 'type:', typeof name);
+
+    if (!name || (typeof name === 'string' && !name.trim())) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    // Check if category with same name already exists
+    const existingCategory = await VendorCategory.findOne({ 
+      name: name.trim() 
+    });
+    
+    if (existingCategory) {
+      return res.status(409).json({ 
+        message: 'Category with this name already exists' 
+      });
+    }
+
+    // Handle image - either from file upload or URL
+    let imageUrl = '';
+    if (req.file) {
+      // File uploaded
+      imageUrl = `/uploads/vendor-categories/${req.file.filename}`;
+    } else if (req.body.image) {
+      // Image URL provided
+      imageUrl = req.body.image;
+    }
+
+    const category = new VendorCategory({
+      name: typeof name === 'string' ? name.trim() : String(name).trim(),
+      description: description ? (typeof description === 'string' ? description.trim() : String(description).trim()) : '',
+      image: imageUrl,
+      createdBy: adminId,
+      isActive: isActive
+    });
+
+    await category.save();
+    
+    const populatedCategory = await VendorCategory.findById(category._id)
+      .populate('createdBy', 'name email');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Vendor category created successfully',
+      category: populatedCategory
+    });
+  } catch (error) {
+    console.error('Create vendor category error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        message: 'Category with this name already exists' 
+      });
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update vendor category
+export const updateVendorCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Handle both JSON and FormData
+    const name = req.body.name;
+    const description = req.body.description;
+    const isActive = req.body.isActive !== undefined 
+      ? (typeof req.body.isActive === 'string' ? req.body.isActive === 'true' : req.body.isActive)
+      : undefined;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    const category = await VendorCategory.findById(id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Vendor category not found' });
+    }
+
+    // Check if name is being changed and if new name already exists
+    if (name !== undefined && name !== null && name !== '') {
+      const nameValue = typeof name === 'string' ? name.trim() : String(name).trim();
+      if (nameValue && nameValue !== category.name) {
+        const existingCategory = await VendorCategory.findOne({ 
+          name: nameValue,
+          _id: { $ne: id }
+        });
+        
+        if (existingCategory) {
+          return res.status(409).json({ 
+            message: 'Category with this name already exists' 
+          });
+        }
+        category.name = nameValue;
+      }
+    }
+
+    if (description !== undefined) {
+      category.description = description ? (typeof description === 'string' ? description.trim() : String(description).trim()) : '';
+    }
+
+    if (isActive !== undefined) {
+      category.isActive = isActive;
+    }
+
+    // Handle image update
+    if (req.file) {
+      // New file uploaded - delete old image if exists
+      if (category.image && !category.image.includes('http')) {
+        const fs = (await import('fs')).default;
+        const path = (await import('path')).default;
+        const { fileURLToPath } = await import('url');
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const oldImagePath = path.join(__dirname, '../../', category.image);
+        try {
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        } catch (err) {
+          console.error('Error deleting old image:', err);
+        }
+      }
+      category.image = `/uploads/vendor-categories/${req.file.filename}`;
+    } else if (req.body.image !== undefined) {
+      // Image URL provided or cleared
+      if (req.body.image === null || req.body.image === '') {
+        // Remove image - delete old file if exists
+        if (category.image && !category.image.includes('http')) {
+          const fs = (await import('fs')).default;
+          const path = (await import('path')).default;
+          const { fileURLToPath } = await import('url');
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = path.dirname(__filename);
+          const oldImagePath = path.join(__dirname, '../../', category.image);
+          try {
+            if (fs.existsSync(oldImagePath)) {
+              fs.unlinkSync(oldImagePath);
+            }
+          } catch (err) {
+            console.error('Error deleting old image:', err);
+          }
+        }
+        category.image = '';
+      } else {
+        category.image = req.body.image;
+      }
+    }
+
+    await category.save();
+    
+    const populatedCategory = await VendorCategory.findById(category._id)
+      .populate('createdBy', 'name email');
+    
+    res.json({
+      success: true,
+      message: 'Vendor category updated successfully',
+      category: populatedCategory
+    });
+  } catch (error) {
+    console.error('Update vendor category error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(409).json({ 
+        message: 'Category with this name already exists' 
+      });
+    }
+    
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete vendor category
+export const deleteVendorCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    // Check if any vendor is using this category
+    const vendorsWithCategory = await User.countDocuments({ 
+      vendorCategory: id,
+      role: 'vendor'
+    });
+    
+    if (vendorsWithCategory > 0) {
+      return res.status(400).json({ 
+        message: `Cannot delete category. ${vendorsWithCategory} vendor(s) are using this category. Please update vendors first.` 
+      });
+    }
+
+    const category = await VendorCategory.findByIdAndDelete(id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Vendor category not found' });
+    }
+    
+    res.json({ 
+      success: true,
+      message: 'Vendor category deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Delete vendor category error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update vendor category for a specific vendor
+export const updateVendorCategoryForVendor = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const { categoryId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+      return res.status(400).json({ message: 'Invalid vendor ID' });
+    }
+
+    const vendor = await User.findById(vendorId);
+    
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found' });
+    }
+
+    if (vendor.role !== 'vendor') {
+      return res.status(400).json({ message: 'User is not a vendor' });
+    }
+
+    // If categoryId is provided, validate it
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return res.status(400).json({ message: 'Invalid category ID' });
+      }
+
+      const category = await VendorCategory.findById(categoryId);
+      
+      if (!category) {
+        return res.status(404).json({ message: 'Vendor category not found' });
+      }
+
+      if (!category.isActive) {
+        return res.status(400).json({ 
+          message: 'Cannot assign inactive category to vendor' 
+        });
+      }
+
+      vendor.vendorCategory = categoryId;
+    } else {
+      // Remove category if categoryId is null or empty
+      vendor.vendorCategory = null;
+    }
+
+    await vendor.save();
+    
+    const populatedVendor = await User.findById(vendor._id)
+      .populate('vendorCategory', 'name description')
+      .select('-password');
+    
+    res.json({
+      success: true,
+      message: 'Vendor category updated successfully',
+      vendor: populatedVendor
+    });
+  } catch (error) {
+    console.error('Update vendor category error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get all vendor categories (public - for vendor registration)
+export const getVendorCategoriesPublic = async (req, res) => {
+  try {
+    const categories = await VendorCategory.find({ isActive: true })
+      .select('name description image isActive')
+      .sort({ name: 1 });
+    
+    res.json({
+      success: true,
+      categories
+    });
+  } catch (error) {
+    console.error('Get vendor categories public error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
