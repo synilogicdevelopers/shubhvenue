@@ -456,7 +456,9 @@ export const getProfile = async (req, res) => {
     }
 
     // Handle regular user (vendor owner or customer) profile
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findById(userId)
+      .select('-password')
+      .populate('vendorCategory');
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -492,9 +494,17 @@ export const getProfile = async (req, res) => {
       }
     };
     
-    // Include vendorStatus for vendors
+    // Include vendorStatus and vendorCategory for vendors
     if (user.role === 'vendor') {
       responseData.user.vendorStatus = user.vendorStatus;
+      if (user.vendorCategory) {
+        responseData.user.vendorCategory = {
+          _id: user.vendorCategory._id,
+          name: user.vendorCategory.name,
+          description: user.vendorCategory.description,
+          formConfig: user.vendorCategory.formConfig || null
+        };
+      }
     }
     
     // Include permissions in response for vendors
@@ -995,13 +1005,8 @@ export const googleLogin = async (req, res) => {
       return res.status(403).json({ error: 'Your vendor account has been rejected. Please contact support.' });
     }
 
-    // Check if vendor is pending approval
-    if (user.role === 'vendor' && user.vendorStatus !== 'approved') {
-      console.log(`Google login attempt failed: Vendor account pending approval for email: ${user.email}`);
-      return res.status(403).json({ 
-        error: 'Your vendor account is pending admin approval. Please wait for approval before logging in.' 
-      });
-    }
+    // Note: Removed approval check for Google login - vendors can login immediately after registration
+    // Approval is only required for adding venues, not for login
 
     // Generate JWT token
     const token = jwt.sign(

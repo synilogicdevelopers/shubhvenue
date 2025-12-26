@@ -5,7 +5,7 @@ export const VENDOR_ALL_PERMISSIONS = [
   // Dashboard
   'vendor_view_dashboard',
   
-  // Calendar Management
+  // Management
   'vendor_view_calendar',
   'vendor_manage_calendar',
   

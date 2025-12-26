@@ -289,6 +289,11 @@ export default function Dashboard() {
       return 'past'
     }
 
+    // If no venues, all future dates are available
+    if (venues.length === 0) {
+      return 'available'
+    }
+
     // Check actual bookings for this date (most accurate - uses real-time data)
     const dateBookings = getDateBookings(date)
     if (dateBookings.length > 0) {
@@ -444,12 +449,15 @@ export default function Dashboard() {
   }
 
   const handleSaveEvent = async () => {
-    if (!eventDate || !eventTitle.trim()) return
+    if (!eventDate || !eventTitle.trim()) {
+      alert('Please fill all required fields (Date and Title)')
+      return
+    }
 
     try {
       const dateStr = format(eventDate, 'yyyy-MM-dd')
       const eventData = {
-        venueId: selectedVenue,
+        venueId: selectedVenue || null, // Allow null if no venue selected
         date: dateStr,
         title: eventTitle.trim(),
         type: eventType
@@ -476,7 +484,8 @@ export default function Dashboard() {
       setEventDate(null)
     } catch (error) {
       console.error('Failed to save event:', error)
-      alert('Failed to save event. Please try again.')
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save event. Please try again.'
+      alert(errorMessage)
     }
   }
 
@@ -750,7 +759,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Calendar Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Management</h1>
           <p className="text-gray-600 mt-1">Manage booked and blocked dates for your venues</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -800,7 +809,7 @@ export default function Dashboard() {
               <h2 className="calendar-title">Calendar View</h2>
               <p className="calendar-subtitle">View booked and blocked dates</p>
             </div>
-            {venues.length > 0 && (
+            {venues.length > 0 ? (
               <select
                 value={selectedVenue || 'all'}
                 onChange={(e) => {
@@ -816,16 +825,14 @@ export default function Dashboard() {
                   </option>
                 ))}
               </select>
+            ) : (
+              <div className="text-xs text-gray-500">
+                No venues available
+              </div>
             )}
           </div>
 
-          {venues.length === 0 ? (
-            <div className="empty-calendar">
-              <CalendarDays className="empty-calendar-icon" />
-              <p className="empty-calendar-text">No venues found. Add a venue to see calendar.</p>
-        </div>
-          ) : (
-            <>
+          <>
               {/* Calendar Header */}
               <div className="calendar-nav">
                 <button
@@ -994,9 +1001,7 @@ export default function Dashboard() {
                   ))
                 })()}
               </div>
-
-            </>
-          )}
+          </>
         </div>
 
         {/* Events List Modal */}

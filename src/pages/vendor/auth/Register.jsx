@@ -101,25 +101,14 @@ export default function Register() {
     
     if (result.success) {
       trackSignUp('email')
-      // If vendor requires approval for venue addition, show message
-      if (result.requiresApproval) {
-        // Show success message with approval pending info
-        const successMessage = result.message || 'Registration successful! You can now login. However, you need admin approval before you can add venues.'
-        setSuccess(successMessage)
-        // Clear form data
-        setFormData({
-          name: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-          phone: '',
-          vendorCategory: '',
-        })
-        // Don't auto-redirect - wait for user to click OK
-      } else {
-        // If already approved, go to dashboard
-        navigate('/vendor/')
-      }
+      // Registration successful - vendor can login immediately
+      // Auto-login and redirect to dashboard
+      // Show message that approval is needed for adding venues
+      navigate('/vendor/', { 
+        state: { 
+          message: 'Registration successful! You can now use your account. However, you need admin approval before you can add venues.' 
+        } 
+      })
     } else {
       setError(result.error || 'Registration failed. Please try again.')
       setLoading(false)

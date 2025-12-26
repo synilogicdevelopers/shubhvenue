@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { vendorAPI, categoryAPI, reviewAPI, menuAPI } from '../../services/vendor/api'
+import { vendorAPI, categoryAPI, reviewAPI, menuAPI, vendorCategoriesAPI } from '../../services/vendor/api'
+import { useAuth } from '../../contexts/vendor/AuthContext'
 import { 
   Plus, 
   Edit, 
@@ -29,10 +30,13 @@ import { Pagination } from '../../components/admin/ui/Pagination'
 export default function Venues() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuth()
   const isAddPage = location.pathname.startsWith('/vendor/venues/add')
 
   const [venues, setVenues] = useState([])
   const [categories, setCategories] = useState([])
+  const [vendorCategories, setVendorCategories] = useState([]) // Vendor categories for form config
+  const [selectedVendorCategoryId, setSelectedVendorCategoryId] = useState('') // Selected vendor category for form config
   const [menus, setMenus] = useState([])
   const [submenus, setSubmenus] = useState([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +48,37 @@ export default function Venues() {
   })
   const [showAddModal, setShowAddModal] = useState(isAddPage)
   const [editingVenue, setEditingVenue] = useState(null)
+  
+  // Get form configuration from selected vendor category or user's vendor category
+  // When editing, ignore formConfig to show all fields
+  // Use useMemo to recalculate when dependencies change
+  const formConfig = useMemo(() => {
+    if (editingVenue) return null
+    
+    // If vendor category is selected in dropdown, use that
+    if (selectedVendorCategoryId) {
+      const selectedCategory = vendorCategories.find(cat => cat._id === selectedVendorCategoryId)
+      console.log('Selected Category:', {
+        id: selectedVendorCategoryId,
+        name: selectedCategory?.name,
+        hasFormConfig: !!selectedCategory?.formConfig,
+        hasVenueConfig: !!selectedCategory?.formConfig?.venue,
+        formConfig: selectedCategory?.formConfig
+      })
+      if (selectedCategory?.formConfig?.venue) {
+        return selectedCategory.formConfig.venue
+      }
+    }
+    
+    // Otherwise use user's vendor category
+    const userFormConfig = user?.vendorCategory?.formConfig?.venue || null
+    console.log('Using user vendor category formConfig:', {
+      hasUserCategory: !!user?.vendorCategory,
+      hasFormConfig: !!user?.vendorCategory?.formConfig,
+      hasVenueConfig: !!userFormConfig
+    })
+    return userFormConfig
+  }, [editingVenue, selectedVendorCategoryId, vendorCategories, user?.vendorCategory?.formConfig?.venue])
   const [statusFilter, setStatusFilter] = useState('all') // Status filter
   const [formData, setFormData] = useState({
     name: '',
@@ -98,6 +133,7 @@ export default function Venues() {
   useEffect(() => {
     loadVenues()
     loadCategories()
+    loadVendorCategories()
     loadMenus()
     loadStates()
   }, [])
@@ -113,10 +149,18 @@ export default function Venues() {
       setCurrentStep(0)
       setShowAddModal(true)
       loadMenus()
+      loadVendorCategories()
     } else if (!editingVenue) {
       setShowAddModal(false)
     }
   }, [isAddPage])
+  
+  // Update selected category when user's vendor category changes
+  useEffect(() => {
+    if (user?.vendorCategory?._id && !selectedVendorCategoryId && vendorCategories.length > 0) {
+      setSelectedVendorCategoryId(user.vendorCategory._id)
+    }
+  }, [user?.vendorCategory?._id, vendorCategories.length])
 
   // Load reviews for all venues when venues are loaded
   useEffect(() => {
@@ -274,6 +318,22 @@ export default function Venues() {
     } catch (error) {
       console.error('Failed to load categories:', error)
       setCategories([]) // Set empty array on error
+    }
+  }
+
+  const loadVendorCategories = async () => {
+    try {
+      const response = await vendorCategoriesAPI.getPublic()
+      const vendorCategoriesData = response.data?.categories || response.data || []
+      setVendorCategories(Array.isArray(vendorCategoriesData) ? vendorCategoriesData : [])
+      
+      // Set default to user's vendor category if available
+      if (user?.vendorCategory?._id) {
+        setSelectedVendorCategoryId(user.vendorCategory._id)
+      }
+    } catch (error) {
+      console.error('Failed to load vendor categories:', error)
+      setVendorCategories([])
     }
   }
 
@@ -1471,74 +1531,132 @@ export default function Venues() {
               {currentStep === 0 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Venue Name *</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
                   
-                  {/* Location Fields */}
-                  <div className="mt-4">
-                    <h4 className="text-md font-semibold mb-4">Location *</h4>
+                  {/* Vendor Category Dropdown - Always show */}
+                  {!editingVenue && vendorCategories.length > 0 && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Venue Category <span className="text-xs text-gray-500">(Form fields will change based on selection)</span>
+                      </label>
+                      <select
+                        value={selectedVendorCategoryId}
+                        onChange={(e) => {
+                          setSelectedVendorCategoryId(e.target.value)
+                          // Reset form data when category changes
+                          setFormData(prev => ({
+                            ...prev,
+                            name: '',
+                            address: '',
+                            city: '',
+                            state: '',
+                            price: '',
+                            capacity: '',
+                            description: '',
+                            amenities: [],
+                            highlights: [],
+                            rooms: '',
+                            openTime: '',
+                            closeTime: '',
+                            openDays: []
+                          }))
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">Select Category (Default: Your Category)</option>
+                        {vendorCategories.map((category) => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedVendorCategoryId && (
+                        <p className="text-xs text-gray-600 mt-2">
+                          Form fields are now configured based on: <strong>{vendorCategories.find(c => c._id === selectedVendorCategoryId)?.name}</strong>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Venue Name - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.name !== false) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Venue Name *</label>
                       <input
                         type="text"
-                        name="address"
-                        value={formData.address}
+                        name="name"
+                        value={formData.name}
                         onChange={handleInputChange}
-                        placeholder="Street address, building name"
+                        required
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
-                        <select
-                          name="state"
-                          value={formData.state}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        >
-                          <option value="">Select State</option>
-                          {states.map((state) => (
-                            <option key={state} value={state}>
-                              {state}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                        <select
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          disabled={!formData.state || loadingCities}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        >
-                          <option value="">
-                            {!formData.state 
-                              ? 'Select State First' 
-                              : loadingCities 
-                              ? 'Loading Cities...' 
-                              : 'Select City'}
-                          </option>
-                          {cities.map((city) => (
-                            <option key={city} value={city}>
-                              {city}
-                            </option>
-                          ))}
-                        </select>
+                  )}
+                  
+                  {/* Location Fields - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.location?.enabled !== false) && (
+                    <div className="mt-4">
+                      <h4 className="text-md font-semibold mb-4">Location *</h4>
+                      {(formConfig === null || formConfig.location?.address !== false) && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                          <input
+                            type="text"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            placeholder="Street address, building name"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        {(formConfig === null || formConfig.location?.state !== false) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                            <select
+                              name="state"
+                              value={formData.state}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            >
+                              <option value="">Select State</option>
+                              {states.map((state) => (
+                                <option key={state} value={state}>
+                                  {state}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {(formConfig === null || formConfig.location?.city !== false) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                            <select
+                              name="city"
+                              value={formData.city}
+                              onChange={handleInputChange}
+                              disabled={!formData.state || loadingCities}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            >
+                              <option value="">
+                                {!formData.state 
+                                  ? 'Select State First' 
+                                  : loadingCities 
+                                  ? 'Loading Cities...' 
+                                  : 'Select City'}
+                              </option>
+                              {cities.map((city) => (
+                                <option key={city} value={city}>
+                                  {city}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
@@ -1551,17 +1669,19 @@ export default function Venues() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Capacity *</label>
-                      <input
-                        type="number"
-                        name="capacity"
-                        value={formData.capacity}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
+                    {(formConfig === null || formConfig.numberOfGuests !== false) && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Capacity (Number of Guests) *</label>
+                        <input
+                          type="number"
+                          name="capacity"
+                          value={formData.capacity}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
@@ -1578,9 +1698,12 @@ export default function Venues() {
 
               {currentStep === 1 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Images</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
+                  <h3 className="text-lg font-semibold mb-4">Images & Videos</h3>
+                  
+                  {/* Gallery Images - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.galleryImages !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
                     {editingVenue && existingGalleryUrls.length > 0 && (
                       <div className="mb-3">
                         <p className="text-xs text-gray-500 mb-2">Current Gallery Images (click X to remove):</p>
@@ -1640,12 +1763,16 @@ export default function Venues() {
                       </div>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Videos</label>
-                    <p className="text-xs text-gray-500 mb-2">Upload video files or add video URLs (max 5 videos, 100MB per file)</p>
-                    
-                    {/* Existing Videos Display */}
-                    {editingVenue && videoUrls.length > 0 && (
+                  )}
+                  
+                  {/* Videos - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.videos !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Videos</label>
+                      <p className="text-xs text-gray-500 mb-2">Upload video files or add video URLs (max 5 videos, 100MB per file)</p>
+                      
+                      {/* Existing Videos Display */}
+                      {editingVenue && videoUrls.length > 0 && (
                       <div className="mb-3">
                         <p className="text-xs text-gray-500 mb-2">Current Videos (click X to remove):</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1853,89 +1980,102 @@ export default function Venues() {
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
               )}
 
               {currentStep === 2 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Category & Amenities</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select
-                      name="categoryId"
-                      value={formData.categoryId}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="">No Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id || cat._id} value={cat.id || cat._id}>
-                          {cat.name}
+                  
+                  {/* Category - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.category !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                      <select
+                        name="categoryId"
+                        value={formData.categoryId}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="">No Category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Menu - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.menu !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Menu</label>
+                      <select
+                        name="menuId"
+                        value={String(formData.menuId || '')}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="">No Menu</option>
+                        {menus.map((menu) => {
+                          const menuId = String(menu._id || menu.id || '')
+                          return (
+                            <option key={menuId} value={menuId}>
+                              {menu.name}
+                            </option>
+                          )
+                        })}
+                      </select>
+                      {menus.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {loading ? 'Loading menus...' : 'No menus available. Please contact admin.'}
+                        </p>
+                      )}
+                      {/* Debug info - remove in production */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          Debug: {menus.length} menus loaded
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submenu - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.submenu !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Submenu</label>
+                      <select
+                        name="subMenuId"
+                        value={String(formData.subMenuId || '')}
+                        onChange={handleInputChange}
+                        disabled={!formData.menuId}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {!formData.menuId 
+                            ? 'Select Menu First' 
+                            : submenus.length === 0
+                            ? 'No Submenus Available'
+                            : 'Select Submenu'}
                         </option>
-                      ))}
-                    </select>
-                  </div>
+                        {submenus.map((submenu) => {
+                          const submenuId = String(submenu._id || submenu.id || '')
+                          return (
+                            <option key={submenuId} value={submenuId}>
+                              {submenu.name}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Menu</label>
-                    <select
-                      name="menuId"
-                      value={String(formData.menuId || '')}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="">No Menu</option>
-                      {menus.map((menu) => {
-                        const menuId = String(menu._id || menu.id || '')
-                        return (
-                          <option key={menuId} value={menuId}>
-                            {menu.name}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    {menus.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {loading ? 'Loading menus...' : 'No menus available. Please contact admin.'}
-                      </p>
-                    )}
-                    {/* Debug info - remove in production */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Debug: {menus.length} menus loaded
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Submenu</label>
-                    <select
-                      name="subMenuId"
-                      value={String(formData.subMenuId || '')}
-                      onChange={handleInputChange}
-                      disabled={!formData.menuId}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="">
-                        {!formData.menuId 
-                          ? 'Select Menu First' 
-                          : submenus.length === 0
-                          ? 'No Submenus Available'
-                          : 'Select Submenu'}
-                      </option>
-                      {submenus.map((submenu) => {
-                        const submenuId = String(submenu._id || submenu.id || '')
-                        return (
-                          <option key={submenuId} value={submenuId}>
-                            {submenu.name}
-                          </option>
-                        )
-                      })}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
+                  {/* Amenities - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.amenities !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
                     <div className="flex flex-wrap gap-2">
                       {availableAmenities.map((amenity) => (
                         <button
@@ -1953,66 +2093,78 @@ export default function Venues() {
                       ))}
                     </div>
                   </div>
+                  )}
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Highlights</label>
-                    <div className="space-y-2">
-                      {(formData.highlights || []).map((highlight, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={highlight}
-                            onChange={(e) => {
-                              const currentHighlights = formData.highlights || []
-                              const newHighlights = [...currentHighlights]
-                              newHighlights[index] = e.target.value
-                              setFormData({ ...formData, highlights: newHighlights })
-                            }}
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            placeholder="Enter highlight"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const currentHighlights = formData.highlights || []
-                              const newHighlights = currentHighlights.filter((_, i) => i !== index)
-                              setFormData({ ...formData, highlights: newHighlights })
-                            }}
-                            className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, highlights: [...(formData.highlights || []), ''] })}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                      >
-                        + Add Highlight
-                      </button>
+                  {/* Highlights - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.highlights !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Highlights</label>
+                      <div className="space-y-2">
+                        {(formData.highlights || []).map((highlight, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={highlight}
+                              onChange={(e) => {
+                                const currentHighlights = formData.highlights || []
+                                const newHighlights = [...currentHighlights]
+                                newHighlights[index] = e.target.value
+                                setFormData({ ...formData, highlights: newHighlights })
+                              }}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              placeholder="Enter highlight"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentHighlights = formData.highlights || []
+                                const newHighlights = currentHighlights.filter((_, i) => i !== index)
+                                setFormData({ ...formData, highlights: newHighlights })
+                              }}
+                              className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, highlights: [...(formData.highlights || []), ''] })}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                        >
+                          + Add Highlight
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Number of Rooms</label>
-                    <input
-                      type="number"
-                      name="rooms"
-                      value={formData.rooms}
-                      onChange={handleInputChange}
-                      min="0"
+                  {/* Number of Rooms - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.numberOfRooms !== false) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Number of Rooms</label>
+                      <input
+                        type="number"
+                        name="rooms"
+                        value={formData.rooms}
+                        onChange={handleInputChange}
+                        min="0"
                       placeholder="Enter number of rooms"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
+                  )}
                   
-                  {/* Availability Section */}
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <h4 className="text-md font-semibold mb-4">Availability & Timing</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Opening Time</label>
+                  {/* Availability Section - Show if timing or openDays enabled */}
+                  {((formConfig === null || formConfig.timing?.enabled !== false) || 
+                    (formConfig === null || formConfig.openDays?.enabled !== false)) && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h4 className="text-md font-semibold mb-4">Availability & Timing</h4>
+                    {/* Timing Fields - Show if enabled in formConfig or if no formConfig */}
+                    {(formConfig === null || formConfig.timing?.enabled !== false) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {(formConfig === null || formConfig.timing?.openTime !== false) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Opening Time</label>
                         <div className="flex items-center gap-2">
                           <select
                             name="openTimeHour"
@@ -2087,8 +2239,10 @@ export default function Venues() {
                           </select>
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Closing Time</label>
+                      )}
+                      {(formConfig === null || formConfig.timing?.closeTime !== false) && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Closing Time</label>
                         <div className="flex items-center gap-2">
                           <select
                             name="closeTimeHour"
@@ -2163,27 +2317,55 @@ export default function Venues() {
                           </select>
                         </div>
                       </div>
+                      )}
                     </div>
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Open Days</label>
-                      <div className="flex flex-wrap gap-2">
-                        {weekDays.map((day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => handleDayToggle(day)}
-                            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                              formData.openDays.includes(day)
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        ))}
+                    )}
+                    
+                    {/* Open Days - Show if enabled in formConfig or if no formConfig */}
+                    {(formConfig === null || formConfig.openDays?.enabled !== false) && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Open Days</label>
+                        {(formConfig === null || formConfig.openDays?.allowAllDays !== false) && (
+                          <div className="mb-3">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formData.openDays.length === weekDays.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({ ...formData, openDays: [...weekDays] })
+                                  } else {
+                                    setFormData({ ...formData, openDays: [] })
+                                  }
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">All Days Open</span>
+                            </label>
+                          </div>
+                        )}
+                        {!(formConfig?.openDays?.allowAllDays === false && formData.openDays.length === weekDays.length) && (
+                          <div className="flex flex-wrap gap-2">
+                            {weekDays.map((day) => (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => handleDayToggle(day)}
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                                  formData.openDays.includes(day)
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
+                    )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 

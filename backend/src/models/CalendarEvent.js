@@ -10,7 +10,7 @@ const calendarEventSchema = new mongoose.Schema(
     venueId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Venue',
-      required: true
+      required: false // Optional - allows events without venues
     },
     date: {
       type: Date,

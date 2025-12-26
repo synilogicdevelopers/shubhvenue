@@ -23,21 +23,31 @@ export default function Calendar() {
   }, [])
 
   useEffect(() => {
-    if (venues.length > 0) {
+    // Always load dates data if a venue is selected
+    if (selectedVenue) {
       loadDatesData()
+    } else {
+      // If no venue selected, set loading to false
+      setLoading(false)
+      setDatesData([])
     }
   }, [venues, selectedVenue])
 
   const loadVenues = async () => {
     try {
+      setLoading(true)
       const response = await vendorAPI.getVenues()
       const venuesData = response.data?.data || response.data || []
       setVenues(venuesData)
       if (venuesData.length > 0 && !selectedVenue) {
         setSelectedVenue(venuesData[0]._id || venuesData[0].id)
+      } else {
+        // No venues, set loading to false
+        setLoading(false)
       }
     } catch (error) {
       console.error('Failed to load venues:', error)
+      setLoading(false)
     }
   }
 
@@ -112,6 +122,14 @@ export default function Calendar() {
       return 'past'
     }
 
+    // If no venue selected, all future dates are available
+    if (!selectedVenue) {
+      if (selectedDates.includes(dateStr)) {
+        return 'selected'
+      }
+      return 'available'
+    }
+
     const venueData = datesData.find(d => 
       (d.venueId === selectedVenue) || 
       (d.venueId?._id === selectedVenue) || 
@@ -151,7 +169,7 @@ export default function Calendar() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-gray-900">Calendar Management</h1>
+          <h1 className="text-lg font-bold text-gray-900">Management</h1>
           <p className="text-xs text-gray-600">Manage booked and blocked dates</p>
         </div>
         <button
@@ -166,22 +184,29 @@ export default function Calendar() {
       {/* Venue Selector */}
       <div className="bg-white rounded-lg shadow-sm p-3">
         <label className="block text-xs font-medium text-gray-700 mb-1">
-          Select Venue
+          Select Venue {venues.length === 0 && <span className="text-gray-500">(No venues available)</span>}
         </label>
         <select
           value={selectedVenue || ''}
           onChange={(e) => {
-            setSelectedVenue(e.target.value)
+            setSelectedVenue(e.target.value || null)
             setSelectedDates([])
           }}
-          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          disabled={venues.length === 0}
+          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
+          <option value="">{venues.length === 0 ? 'No venues available' : 'All Venues'}</option>
           {venues.map((venue) => (
             <option key={venue._id || venue.id} value={venue._id || venue.id}>
               {venue.name}
             </option>
           ))}
         </select>
+        {venues.length === 0 && (
+          <p className="text-xs text-gray-500 mt-2">
+            Add a venue to manage its calendar dates.
+          </p>
+        )}
       </div>
 
       {/* Calendar */}
@@ -292,20 +317,25 @@ export default function Calendar() {
                 {selectedDates.slice(0, 3).join(', ')}
                 {selectedDates.length > 3 && ` +${selectedDates.length - 3} more`}
               </p>
+              {!selectedVenue && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Please select a venue to block/unblock dates
+                </p>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleBlockDates}
-                disabled={actionLoading}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 text-xs"
+                disabled={actionLoading || !selectedVenue}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-xs"
               >
                 <X className="w-3.5 h-3.5" />
                 <span>Block</span>
               </button>
               <button
                 onClick={handleUnblockDates}
-                disabled={actionLoading}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-xs"
+                disabled={actionLoading || !selectedVenue}
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-xs"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>Unblock</span>

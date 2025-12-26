@@ -1,5 +1,5 @@
-// Local server URL
-const API_BASE_URL = 'http://localhost:8030/api';
+// Server base URL - use localhost for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
 
 // Helper function to make API requests
 const apiRequest = async (endpoint, options = {}) => {

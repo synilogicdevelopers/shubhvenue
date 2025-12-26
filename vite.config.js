@@ -2,10 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Production server URL
-const API_URL = 'https://shubhvenue.com/api';
+// Server base URL - check environment variable first, then fallback to localhost
+const API_URL = process.env.VITE_API_URL || 'http://localhost:8030/api';
 // Extract base URL (remove /api suffix for proxy target)
-const API_BASE_URL = 'https://shubhvenue.com';
+const API_BASE_URL = API_URL.replace('/api', '');
 
 export default defineConfig({
   plugins: [react()],

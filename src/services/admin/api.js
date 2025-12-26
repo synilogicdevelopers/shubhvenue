@@ -2,8 +2,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Local server URL
-const API_URL = 'http://localhost:8030/api';
+// Server base URL - use localhost for development
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
 
 const api = axios.create({
   baseURL: API_URL,

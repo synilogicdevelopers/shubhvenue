@@ -8,8 +8,9 @@ import { Input } from '../../../components/admin/ui/Input';
 import { vendorCategoriesAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
+import { VendorCategoryFormEditor } from '../../../components/admin/VendorCategoryFormEditor';
 import toast from 'react-hot-toast';
-import { Plus, Edit, Trash2, Tag, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag, Image as ImageIcon, X, Settings } from 'lucide-react';
 
 export const VendorCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -27,6 +28,8 @@ export const VendorCategories = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [formEditorOpen, setFormEditorOpen] = useState(false);
+  const [formConfig, setFormConfig] = useState(null);
 
   useEffect(() => {
     fetchCategories();
@@ -70,9 +73,17 @@ export const VendorCategories = () => {
         hasImage: !!imageFile
       });
       
-      await vendorCategoriesAPI.create(formDataToSend);
+      const response = await vendorCategoriesAPI.create(formDataToSend);
       toast.success('Category created successfully');
       setCreateOpen(false);
+      
+      // Open form editor after creation
+      if (response.data?.category?._id) {
+        setSelectedCategory(response.data.category);
+        setFormConfig(response.data.category.formConfig || null);
+        setFormEditorOpen(true);
+      }
+      
       setFormData({ name: '', description: '', isActive: true, image: null });
       setImagePreview(null);
       setImageFile(null);
@@ -94,7 +105,63 @@ export const VendorCategories = () => {
     });
     setImagePreview(category.image ? getImageUrl(category.image) : null);
     setImageFile(null);
+    setFormConfig(category.formConfig || null);
     setEditOpen(true);
+  };
+
+  const handleOpenFormEditor = (category) => {
+    console.log('Opening form editor for category:', category);
+    setSelectedCategory(category);
+    // Ensure formConfig is properly set
+    if (category.formConfig) {
+      console.log('Loading existing formConfig:', category.formConfig);
+      setFormConfig(category.formConfig);
+    } else {
+      console.log('No formConfig found, will use defaults');
+      setFormConfig(null);
+    }
+    setFormEditorOpen(true);
+  };
+
+  const handleSaveFormConfig = async () => {
+    if (!selectedCategory) {
+      toast.error('No category selected');
+      return;
+    }
+    
+    if (!formConfig) {
+      toast.error('No form configuration to save');
+      return;
+    }
+    
+    try {
+      setFormLoading(true);
+      const formDataToSend = new FormData();
+      
+      // Ensure formConfig is properly stringified
+      const configString = typeof formConfig === 'string' 
+        ? formConfig 
+        : JSON.stringify(formConfig);
+      
+      formDataToSend.append('formConfig', configString);
+      
+      console.log('Saving form config:', {
+        categoryId: selectedCategory._id,
+        formConfig: formConfig
+      });
+      
+      await vendorCategoriesAPI.update(selectedCategory._id, formDataToSend);
+      toast.success('Form configuration saved successfully');
+      setFormEditorOpen(false);
+      setSelectedCategory(null);
+      setFormConfig(null);
+      fetchCategories();
+    } catch (error) {
+      console.error('Error saving form config:', error);
+      toast.error(error.response?.data?.message || 'Failed to save form configuration');
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const handleUpdate = async (e) => {
@@ -246,6 +313,16 @@ export const VendorCategories = () => {
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {hasPermission('edit_vendors') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenFormEditor(category)}
+                            title="Configure Forms"
+                          >
+                            <Settings className="w-4 h-4" />
                           </Button>
                         )}
                         {hasPermission('edit_vendors') && (
@@ -462,6 +539,51 @@ export const VendorCategories = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Form Editor Modal */}
+      <Modal
+        isOpen={formEditorOpen}
+        onClose={() => {
+          if (!formLoading) {
+            setFormEditorOpen(false);
+            setSelectedCategory(null);
+            setFormConfig(null);
+          }
+        }}
+        title={`Configure Forms - ${selectedCategory?.name || ''}`}
+        size="lg"
+      >
+        <VendorCategoryFormEditor
+          formConfig={formConfig}
+          onChange={(newConfig) => {
+            console.log('Form config changed:', newConfig);
+            setFormConfig(newConfig);
+          }}
+          onClose={() => {
+            if (!formLoading) {
+              setFormEditorOpen(false);
+            }
+          }}
+        />
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!formLoading) {
+                setFormEditorOpen(false);
+                setSelectedCategory(null);
+                setFormConfig(null);
+              }
+            }}
+            disabled={formLoading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSaveFormConfig} disabled={formLoading}>
+            {formLoading ? 'Saving...' : 'Save Configuration'}
+          </Button>
+        </div>
       </Modal>
 
       {/* Delete Confirmation Modal */}

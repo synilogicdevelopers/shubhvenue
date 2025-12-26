@@ -135,15 +135,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('vendor_user', JSON.stringify(user))
       setUser(user)
       
-      // Check if vendor needs approval for venue addition
-      if (user.role === 'vendor' && user.vendorStatus !== 'approved') {
-        return { 
-          success: true, 
-          requiresApproval: true,
-          message: 'Registration successful! You can now login. However, you need admin approval before you can add venues.'
-        }
-      }
-      
+      // Vendor can always login, approval only needed for venues
       return { success: true }
     } catch (error) {
       return {

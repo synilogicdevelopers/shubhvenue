@@ -24,6 +24,12 @@ const vendorCategorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
+    },
+    // Form configuration for venue and booking forms
+    // Using Mixed type to allow flexible JSON structure
+    formConfig: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
     }
   },
   { timestamps: true }

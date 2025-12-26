@@ -3994,12 +3994,25 @@ export const createVendorCategory = async (req, res) => {
       imageUrl = req.body.image;
     }
 
+    // Handle formConfig if provided
+    let formConfig = null;
+    if (req.body.formConfig) {
+      try {
+        formConfig = typeof req.body.formConfig === 'string' 
+          ? JSON.parse(req.body.formConfig) 
+          : req.body.formConfig;
+      } catch (e) {
+        console.error('Error parsing formConfig:', e);
+      }
+    }
+
     const category = new VendorCategory({
       name: typeof name === 'string' ? name.trim() : String(name).trim(),
       description: description ? (typeof description === 'string' ? description.trim() : String(description).trim()) : '',
       image: imageUrl,
       createdBy: adminId,
-      isActive: isActive
+      isActive: isActive,
+      formConfig: formConfig || undefined
     });
 
     await category.save();
@@ -4070,6 +4083,31 @@ export const updateVendorCategory = async (req, res) => {
 
     if (isActive !== undefined) {
       category.isActive = isActive;
+    }
+
+    // Handle formConfig update
+    if (req.body.formConfig !== undefined) {
+      try {
+        let formConfig = null;
+        if (req.body.formConfig && req.body.formConfig !== 'null' && req.body.formConfig !== '') {
+          formConfig = typeof req.body.formConfig === 'string' 
+            ? JSON.parse(req.body.formConfig) 
+            : req.body.formConfig;
+          
+          // Validate formConfig structure
+          if (formConfig && typeof formConfig === 'object') {
+            category.formConfig = formConfig;
+          } else {
+            console.warn('Invalid formConfig structure, ignoring');
+          }
+        } else {
+          // If formConfig is null or empty, remove it
+          category.formConfig = undefined;
+        }
+      } catch (e) {
+        console.error('Error parsing formConfig:', e);
+        // Don't fail the update if formConfig parsing fails
+      }
     }
 
     // Handle image update
@@ -4241,7 +4279,7 @@ export const updateVendorCategoryForVendor = async (req, res) => {
 export const getVendorCategoriesPublic = async (req, res) => {
   try {
     const categories = await VendorCategory.find({ isActive: true })
-      .select('name description image isActive')
+      .select('name description image isActive formConfig')
       .sort({ name: 1 });
     
     res.json({

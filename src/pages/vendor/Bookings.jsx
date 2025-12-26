@@ -34,17 +34,21 @@ export default function Bookings() {
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     venueId: '',
-    date: '',
-    dateFrom: '',
-    dateTo: '',
-    name: '',
+    venueName: '',
+    useManualVenue: false, // Toggle between selecting venue or entering manually
+    checkIn: '',
+    checkOut: '',
+    fullName: '',
     phone: '',
     email: '',
-    marriageFor: 'boy',
-    personName: '',
+    eventType: [],
+    customEventType: '',
     guests: '',
+    rooms: '',
     foodPreference: 'both',
-    totalAmount: ''
+    specialRequests: '',
+    totalAmount: '',
+    paymentStatus: 'paid'
   })
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [bookingToUpdate, setBookingToUpdate] = useState(null)
@@ -145,15 +149,58 @@ export default function Bookings() {
   }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    
+    if (name === 'eventType') {
+      // Handle checkbox for event types
+      setFormData(prev => {
+        const currentTypes = prev.eventType || []
+        if (checked) {
+          // Add to array if checked
+          return { ...prev, eventType: [...currentTypes, value] }
+        } else {
+          // Remove from array if unchecked
+          return { ...prev, eventType: currentTypes.filter(type => type !== value) }
+        }
+      })
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
+    }
   }
 
   const handleAddBooking = async (e) => {
     e.preventDefault()
     
-    if (!formData.venueId || !formData.date || !formData.name || !formData.phone || !formData.guests) {
+    // Validate venue - either venueId or venueName must be provided
+    if (!formData.useManualVenue && !formData.venueId) {
+      toast.error('Please select a venue or enter venue name manually')
+      return
+    }
+    
+    if (formData.useManualVenue && !formData.venueName.trim()) {
+      toast.error('Please enter the venue name')
+      return
+    }
+    
+    if (!formData.checkIn || !formData.fullName || !formData.phone || !formData.guests) {
       toast.error('Please fill all required fields')
+      return
+    }
+
+    // Validate event type selection
+    if (!formData.eventType || formData.eventType.length === 0) {
+      toast.error('Please select at least one event type')
+      return
+    }
+
+    // Validate custom event type if "other" is selected
+    if (formData.eventType.includes('other') && !formData.customEventType.trim()) {
+      toast.error('Please enter the custom event type name')
+      return
+    }
+
+    if (formData.checkOut && formData.checkIn && new Date(formData.checkOut) <= new Date(formData.checkIn)) {
+      toast.error('Check-out date must be after check-in date')
       return
     }
 
@@ -164,19 +211,40 @@ export default function Bookings() {
 
     try {
       setSubmitting(true)
+      // Build event type string - join selected types, add custom if provided
+      let eventTypeString = ''
+      if (formData.eventType && formData.eventType.length > 0) {
+        const eventTypes = [...formData.eventType]
+        // If "other" is selected and customEventType is provided, add it
+        if (eventTypes.includes('other') && formData.customEventType.trim()) {
+          const otherIndex = eventTypes.indexOf('other')
+          eventTypes[otherIndex] = formData.customEventType.trim()
+        } else if (eventTypes.includes('other') && !formData.customEventType.trim()) {
+          // Remove "other" if no custom name provided
+          eventTypes.splice(eventTypes.indexOf('other'), 1)
+        }
+        eventTypeString = eventTypes.join(', ')
+      } else {
+        eventTypeString = 'wedding' // Default
+      }
+
       const bookingData = {
-        venueId: formData.venueId,
-        date: formData.date,
-        dateFrom: formData.dateFrom || null,
-        dateTo: formData.dateTo || null,
-        name: formData.name,
+        venueId: formData.useManualVenue ? null : formData.venueId, // null if manual venue
+        venueName: formData.useManualVenue ? formData.venueName.trim() : null, // venue name if manual
+        date: formData.checkIn, // Use checkIn as primary date
+        dateFrom: formData.checkIn || null,
+        dateTo: formData.checkOut || null,
+        name: formData.fullName,
         phone: formData.phone,
         email: formData.email || null,
-        marriageFor: formData.marriageFor,
-        personName: formData.personName || null,
+        eventType: eventTypeString,
+        marriageFor: 'boy', // Default value
         guests: parseInt(formData.guests),
+        rooms: formData.rooms ? parseInt(formData.rooms) : 0,
         foodPreference: formData.foodPreference,
-        totalAmount: formData.totalAmount ? parseFloat(formData.totalAmount) : 0
+        specialRequests: formData.specialRequests || null,
+        totalAmount: formData.totalAmount ? parseFloat(formData.totalAmount) : 0,
+        paymentStatus: formData.paymentStatus || 'paid'
       }
 
       await vendorAPI.createBooking(bookingData)
@@ -184,17 +252,21 @@ export default function Bookings() {
       setShowAddForm(false)
       setFormData({
         venueId: venues.length > 0 ? (venues[0]._id || venues[0].id) : '',
-        date: '',
-        dateFrom: '',
-        dateTo: '',
-        name: '',
+        venueName: '',
+        useManualVenue: false,
+        checkIn: '',
+        checkOut: '',
+        fullName: '',
         phone: '',
         email: '',
-        marriageFor: 'boy',
-        personName: '',
+        eventType: [],
+        customEventType: '',
         guests: '',
+        rooms: '',
         foodPreference: 'both',
-        totalAmount: ''
+        specialRequests: '',
+        totalAmount: '',
+        paymentStatus: 'paid'
       })
       loadBookings()
     } catch (error) {
@@ -325,161 +397,198 @@ export default function Bookings() {
 
             <div className="overflow-y-auto flex-1">
             <form onSubmit={handleAddBooking} className="p-6 space-y-4">
-              {/* Venue Selection */}
+              {/* Venue Selection - Manual or from list */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
                   Venue <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="venueId"
-                  value={formData.venueId}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Select Venue</option>
-                  {venues.map((venue) => (
-                    <option key={venue._id || venue.id} value={venue._id || venue.id}>
-                      {venue.name}
-                    </option>
-                  ))}
-                </select>
+                
+                {/* Toggle between selecting venue or manual entry */}
+                <div className="flex items-center space-x-4 mb-3">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="useManualVenue"
+                      checked={!formData.useManualVenue}
+                      onChange={(e) => setFormData(prev => ({ ...prev, useManualVenue: false, venueName: '' }))}
+                      className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">Select from my venues</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="useManualVenue"
+                      checked={formData.useManualVenue}
+                      onChange={(e) => setFormData(prev => ({ ...prev, useManualVenue: true, venueId: '' }))}
+                      className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">Enter venue name manually</span>
+                  </label>
+                </div>
+
+                {/* Venue Dropdown - Show when not using manual entry */}
+                {!formData.useManualVenue && (
+                  <select
+                    name="venueId"
+                    value={formData.venueId}
+                    onChange={handleInputChange}
+                    required={!formData.useManualVenue}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Select Venue</option>
+                    {venues.map((venue) => (
+                      <option key={venue._id || venue.id} value={venue._id || venue.id}>
+                        {venue.name}
+                      </option>
+                    ))}
+                    {venues.length === 0 && (
+                      <option value="" disabled>No venues available. Use manual entry instead.</option>
+                    )}
+                  </select>
+                )}
+
+                {/* Manual Venue Name Input - Show when using manual entry */}
+                {formData.useManualVenue && (
+                  <input
+                    type="text"
+                    name="venueName"
+                    value={formData.venueName}
+                    onChange={handleInputChange}
+                    required={formData.useManualVenue}
+                    placeholder="Enter venue name (e.g., Grand Wedding Hall, Mumbai)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                )}
               </div>
 
-              {/* Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  required
-                  min={format(new Date(), 'yyyy-MM-dd')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              {/* Date Range (Optional) */}
+              {/* Date Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    From Date (Optional)
+                    Check-in Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
-                    name="dateFrom"
-                    value={formData.dateFrom}
+                    name="checkIn"
+                    value={formData.checkIn}
                     onChange={handleInputChange}
+                    required
                     min={format(new Date(), 'yyyy-MM-dd')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    To Date (Optional)
+                    Check-out Date
                   </label>
                   <input
                     type="date"
-                    name="dateTo"
-                    value={formData.dateTo}
+                    name="checkOut"
+                    value={formData.checkOut}
                     onChange={handleInputChange}
-                    min={formData.dateFrom || format(new Date(), 'yyyy-MM-dd')}
+                    min={formData.checkIn || format(new Date(), 'yyyy-MM-dd')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
 
-              {/* Customer Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+              {/* Guests and Rooms */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Guests <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="guests"
+                    value={formData.guests}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    placeholder="Enter number of guests"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Rooms
+                  </label>
+                  <input
+                    type="number"
+                    name="rooms"
+                    value={formData.rooms}
+                    onChange={handleInputChange}
+                    min="1"
+                    placeholder="Enter number of rooms"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
 
-              {/* Phone */}
+              {/* Event Type - Multiple Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Event Type (Select Multiple)
                 </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              {/* Marriage For */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Marriage For
-                </label>
-                <select
-                  name="marriageFor"
-                  value={formData.marriageFor}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="boy">Boy</option>
-                  <option value="girl">Girl</option>
-                </select>
-              </div>
-
-              {/* Person Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Person Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  name="personName"
-                  value={formData.personName}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              {/* Guests */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Guests <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="guests"
-                  value={formData.guests}
-                  onChange={handleInputChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'wedding', label: 'Wedding' },
+                    { value: 'party', label: 'Party' },
+                    { value: 'birthday party', label: 'Birthday Party' },
+                    { value: 'anniversary', label: 'Anniversary' },
+                    { value: 'engagement', label: 'Engagement' },
+                    { value: 'reception', label: 'Reception' },
+                    { value: 'mehndi', label: 'Mehndi' },
+                    { value: 'sangam', label: 'Sangam' },
+                    { value: 'haldi', label: 'Haldi' },
+                    { value: 'sangeet', label: 'Sangeet' },
+                    { value: 'bachelor party', label: 'Bachelor Party' },
+                    { value: 'bachelorette party', label: 'Bachelorette Party' },
+                    { value: 'baby shower', label: 'Baby Shower' },
+                    { value: 'naming ceremony', label: 'Naming Ceremony' },
+                    { value: 'house warming', label: 'House Warming' },
+                    { value: 'corporate event', label: 'Corporate Event' },
+                    { value: 'conference', label: 'Conference' },
+                    { value: 'seminar', label: 'Seminar' },
+                    { value: 'workshop', label: 'Workshop' },
+                    { value: 'exhibition', label: 'Exhibition' },
+                    { value: 'trade show', label: 'Trade Show' },
+                    { value: 'cultural event', label: 'Cultural Event' },
+                    { value: 'religious ceremony', label: 'Religious Ceremony' },
+                    { value: 'other', label: 'Other' }
+                  ].map((option) => (
+                    <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="eventType"
+                        value={option.value}
+                        checked={(formData.eventType || []).includes(option.value)}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+                
+                {/* Custom Event Type Input - Show when "other" is selected */}
+                {(formData.eventType || []).includes('other') && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Custom Event Type Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="customEventType"
+                      value={formData.customEventType}
+                      onChange={handleInputChange}
+                      required={(formData.eventType || []).includes('other')}
+                      placeholder="Enter custom event type name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Food Preference */}
@@ -493,16 +602,98 @@ export default function Bookings() {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
+                  <option value="both">Both (Veg & Non-Veg)</option>
                   <option value="veg">Vegetarian</option>
                   <option value="non-veg">Non-Vegetarian</option>
-                  <option value="both">Both</option>
                 </select>
               </div>
 
-              {/* Total Amount (Optional) */}
+              {/* Contact Information */}
+              <div className="pt-2 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact Information</h3>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Enter full name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="your.email@example.com"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="+91 98765 43210"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Requests */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Amount (Optional)
+                  Special Requests (Optional)
+                </label>
+                <textarea
+                  name="specialRequests"
+                  value={formData.specialRequests}
+                  onChange={handleInputChange}
+                  placeholder="Any special requests or additional information..."
+                  rows="3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              {/* Payment Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Status <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="paymentStatus"
+                  value={formData.paymentStatus}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                </select>
+              </div>
+
+              {/* Total Amount */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Total Amount
                 </label>
                 <input
                   type="number"
@@ -511,6 +702,7 @@ export default function Bookings() {
                   onChange={handleInputChange}
                   min="0"
                   step="0.01"
+                  placeholder="Enter total amount"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
@@ -562,7 +754,7 @@ export default function Bookings() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-gray-900 mb-1">
-                        {venue?.name || 'Venue'}
+                        {venue?.name || booking.venueName || 'Venue'}
                       </h3>
                       <p className="text-gray-600">{customerName}</p>
                     </div>

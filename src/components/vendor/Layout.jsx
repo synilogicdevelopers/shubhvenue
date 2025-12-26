@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  CalendarDays,
   ChevronDown,
   ChevronRight,
   BookOpen,
@@ -39,7 +38,6 @@ export default function Layout() {
       hasDropdown: true,
       dropdownItems: [
         { name: 'Overview', href: '/vendor/', icon: LayoutDashboard, permission: 'vendor_view_dashboard' },
-        { name: 'Calendar Management', href: '/vendor/calendar', icon: CalendarDays, permission: 'vendor_view_calendar' },
         { name: 'Ledger', href: '/vendor/ledger', icon: BookOpen, permission: 'vendor_view_ledger' },
       ]
     },
@@ -113,9 +111,9 @@ export default function Layout() {
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
-  // Auto-open dropdown if on calendar or ledger page
+  // Auto-open dropdown if on ledger page
   useEffect(() => {
-    if (location.pathname === '/vendor/calendar' || location.pathname === '/vendor/ledger') {
+    if (location.pathname === '/vendor/ledger') {
       setDashboardDropdownOpen(true)
     }
     if (location.pathname === '/vendor/staff' || location.pathname === '/vendor/roles') {

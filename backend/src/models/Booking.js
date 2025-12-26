@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 const bookingSchema = new mongoose.Schema(
   {
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-    venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', required: true },
+    venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', required: false }, // Optional if venueName is provided
+    venueName: { type: String, trim: true }, // Manual venue name (used when venueId is not provided)
     date: { type: Date, required: true },
     dateFrom: { type: Date }, // Marriage start date
     dateTo: { type: Date }, // Marriage end date
@@ -11,7 +12,7 @@ const bookingSchema = new mongoose.Schema(
     phone: { type: String, trim: true }, // Customer phone number
     marriageFor: { type: String, enum: ['boy', 'girl'], trim: true }, // Marriage for boy or girl
     personName: { type: String, trim: true }, // Name of the person (boy or girl)
-    eventType: { type: String, enum: ['wedding', 'party', 'birthday party', 'anniversary', 'engagement', 'reception', 'other'], default: 'wedding', trim: true }, // Event type
+    eventType: { type: String, default: 'wedding', trim: true }, // Event type (can be comma-separated for multiple types or custom values)
     guests: { type: Number, required: true },
     rooms: { type: Number, default: 0 }, // Number of rooms
     foodPreference: { type: String, enum: ['veg', 'non-veg', 'both'], default: 'both' }, // Veg or Non-veg

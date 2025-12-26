@@ -735,6 +735,7 @@ export const createVendorBooking = async (req, res) => {
 
     const { 
       venueId, 
+      venueName,
       date, 
       dateFrom, 
       dateTo,
@@ -743,14 +744,22 @@ export const createVendorBooking = async (req, res) => {
       email,
       marriageFor,
       personName,
-      guests, 
+      eventType,
+      guests,
+      rooms,
       foodPreference,
-      totalAmount
+      specialRequests,
+      totalAmount,
+      paymentStatus
     } = req.body;
 
-    // Validation
-    if (!venueId || !date || !guests) {
-      return res.status(400).json({ error: 'Venue ID, date, and guests are required' });
+    // Validation - venueId or venueName must be provided
+    if (!venueId && !venueName) {
+      return res.status(400).json({ error: 'Either Venue ID or Venue Name is required' });
+    }
+
+    if (!date || !guests) {
+      return res.status(400).json({ error: 'Date and guests are required' });
     }
 
     if (!name || !phone) {
@@ -759,6 +768,21 @@ export const createVendorBooking = async (req, res) => {
 
     if (guests <= 0) {
       return res.status(400).json({ error: 'Number of guests must be greater than 0' });
+    }
+
+    // Validate eventType if provided (can be comma-separated string for multiple types or custom values)
+    // We allow any string value since users can select "other" and provide custom event types
+    if (eventType && typeof eventType !== 'string') {
+      return res.status(400).json({ error: 'eventType must be a string' });
+    }
+    // Trim and clean the eventType string
+    if (eventType) {
+      eventType = eventType.trim();
+    }
+
+    // Validate paymentStatus if provided
+    if (paymentStatus && !['paid', 'unpaid'].includes(paymentStatus)) {
+      return res.status(400).json({ error: 'paymentStatus must be either "paid" or "unpaid"' });
     }
 
     // Check MongoDB connection
@@ -774,14 +798,17 @@ export const createVendorBooking = async (req, res) => {
       }
     }
 
-    // Check if venue belongs to vendor
-    const venue = await Venue.findById(venueId);
-    if (!venue) {
-      return res.status(404).json({ error: 'Venue not found' });
-    }
+    // Check if venue belongs to vendor (only if venueId is provided)
+    let venue = null;
+    if (venueId) {
+      venue = await Venue.findById(venueId);
+      if (!venue) {
+        return res.status(404).json({ error: 'Venue not found' });
+      }
 
-    if (venue.vendorId.toString() !== vendorId) {
-      return res.status(403).json({ error: 'You can only create bookings for your own venues' });
+      if (venue.vendorId.toString() !== vendorId) {
+        return res.status(403).json({ error: 'You can only create bookings for your own venues' });
+      }
     }
 
     // Parse date
@@ -853,77 +880,84 @@ export const createVendorBooking = async (req, res) => {
       return res.status(400).json({ error: 'dateFrom cannot be after dateTo' });
     }
 
-    // Check if date is blocked
-    const bookingDateStr = bookingDate.toISOString().split('T')[0];
-    const blockedDates = (venue.blockedDates || []).map(d => 
-      new Date(d).toISOString().split('T')[0]
-    );
-    
-    if (blockedDates.includes(bookingDateStr)) {
-      return res.status(409).json({ 
-        error: 'This date is blocked and not available for booking',
-        blockedDate: bookingDateStr
-      });
-    }
-
-    // Check if date range overlaps with blocked dates
-    if (parsedDateFrom && parsedDateTo) {
-      const dateFromStr = parsedDateFrom.toISOString().split('T')[0];
-      const dateToStr = parsedDateTo.toISOString().split('T')[0];
+    // Check if date is blocked (only if venue exists)
+    if (venue) {
+      const bookingDateStr = bookingDate.toISOString().split('T')[0];
+      const blockedDates = (venue.blockedDates || []).map(d => 
+        new Date(d).toISOString().split('T')[0]
+      );
       
-      const hasBlockedDate = blockedDates.some(blockedDate => {
-        return blockedDate >= dateFromStr && blockedDate <= dateToStr;
-      });
-      
-      if (hasBlockedDate) {
+      if (blockedDates.includes(bookingDateStr)) {
         return res.status(409).json({ 
-          error: 'Some dates in the selected range are blocked and not available for booking',
-          dateFrom: dateFromStr,
-          dateTo: dateToStr
+          error: 'This date is blocked and not available for booking',
+          blockedDate: bookingDateStr
         });
       }
-    }
 
-    // Check if date is already booked
-    const startOfDay = new Date(bookingDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(bookingDate);
-    endOfDay.setHours(23, 59, 59, 999);
+      // Check if date range overlaps with blocked dates
+      if (parsedDateFrom && parsedDateTo) {
+        const dateFromStr = parsedDateFrom.toISOString().split('T')[0];
+        const dateToStr = parsedDateTo.toISOString().split('T')[0];
+        
+        const hasBlockedDate = blockedDates.some(blockedDate => {
+          return blockedDate >= dateFromStr && blockedDate <= dateToStr;
+        });
+        
+        if (hasBlockedDate) {
+          return res.status(409).json({ 
+            error: 'Some dates in the selected range are blocked and not available for booking',
+            dateFrom: dateFromStr,
+            dateTo: dateToStr
+          });
+        }
+      }
 
-    const existingBooking = await Booking.findOne({
-      venueId,
-      date: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      },
-      status: { $in: ['pending', 'confirmed'] },
-      adminApproved: true
-    });
+      // Check if date is already booked (only for existing venues)
+      const startOfDay = new Date(bookingDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(bookingDate);
+      endOfDay.setHours(23, 59, 59, 999);
 
-    if (existingBooking) {
-      return res.status(409).json({ 
-        error: 'Venue is already booked for this date',
-        conflictingBooking: existingBooking._id
+      const existingBooking = await Booking.findOne({
+        venueId,
+        date: {
+          $gte: startOfDay,
+          $lte: endOfDay
+        },
+        status: { $in: ['pending', 'confirmed'] },
+        adminApproved: true
       });
+
+      if (existingBooking) {
+        return res.status(409).json({ 
+          error: 'Venue is already booked for this date',
+          conflictingBooking: existingBooking._id
+        });
+      }
     }
 
     // Create booking directly (no payment, no admin approval needed)
     const booking = new Booking({
       customerId: null, // No customer user account
-      venueId,
+      venueId: venueId || null, // Optional - can be null if venueName is provided
+      venueName: venueName ? venueName.trim() : null, // Venue name if venueId is not provided
       date: bookingDate,
       dateFrom: parsedDateFrom || null,
       dateTo: parsedDateTo || null,
       name: name.trim(),
       phone: phone.trim(),
+      email: email || null,
       marriageFor: marriageFor || 'boy',
       personName: personName || null,
+      eventType: eventType || 'wedding',
       guests: Number(guests),
+      rooms: rooms ? Number(rooms) : 0,
       foodPreference: foodPreference || 'both',
+      specialRequests: specialRequests || null,
       totalAmount: totalAmount ? Number(totalAmount) : 0,
       status: 'confirmed', // Directly confirmed
       paymentId: null, // No payment
-      paymentStatus: 'paid', // Mark as paid since vendor is adding directly
+      paymentStatus: paymentStatus === 'unpaid' ? 'pending' : 'paid', // Use paymentStatus from request, default to 'paid'
       adminApproved: true, // Auto-approved for vendor bookings
       deviceId: null
     });
@@ -1475,8 +1509,8 @@ export const createCalendarEvent = async (req, res) => {
     }
     const vendorId = accessCheck.vendorId;
 
-    if (!venueId || !date || !title) {
-      return res.status(400).json({ error: 'Venue ID, date, and title are required' });
+    if (!date || !title) {
+      return res.status(400).json({ error: 'Date and title are required' });
     }
 
     // Check MongoDB connection
@@ -1492,13 +1526,15 @@ export const createCalendarEvent = async (req, res) => {
       }
     }
 
-    // Verify venue belongs to vendor
-    const venue = await Venue.findById(venueId);
-    if (!venue) {
-      return res.status(404).json({ error: 'Venue not found' });
-    }
-    if (venue.vendorId.toString() !== vendorId) {
-      return res.status(403).json({ error: 'You can only create events for your own venues' });
+    // Verify venue belongs to vendor (only if venueId is provided)
+    if (venueId) {
+      const venue = await Venue.findById(venueId);
+      if (!venue) {
+        return res.status(404).json({ error: 'Venue not found' });
+      }
+      if (venue.vendorId.toString() !== vendorId) {
+        return res.status(403).json({ error: 'You can only create events for your own venues' });
+      }
     }
 
     // Parse and validate date
@@ -1510,10 +1546,10 @@ export const createCalendarEvent = async (req, res) => {
 
     // Allow multiple events per date - no duplicate check needed
 
-    // Create event
+    // Create event (venueId is optional - can be null if no venues available)
     const event = new CalendarEvent({
       vendorId: vendorId,
-      venueId: venueId,
+      venueId: venueId || null,
       date: eventDate,
       title: title.trim(),
       type: type || 'task'
