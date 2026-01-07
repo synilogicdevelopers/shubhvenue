@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from '../../components/customer/Footer'
 import { publicLegalPagesAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import SEO from '../../components/SEO'
 import './PrivacyPolicy.css'
 
 function PrivacyPolicy() {
@@ -67,6 +68,11 @@ function PrivacyPolicy() {
 
   return (
     <div className="privacy-page">
+      <SEO 
+        title="Privacy Policy | ShubhVenue"
+        description="Read ShubhVenue's Privacy Policy to understand how we collect, use, and protect your personal information when you use our venue booking services."
+        keywords="privacy policy, data privacy, personal information, privacy protection, data security, user privacy"
+      />
       <div className="privacy-container">
         <div className="privacy-hero">
           <h1 className="privacy-title">{pageData.title}</h1>

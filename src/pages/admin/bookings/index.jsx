@@ -193,6 +193,14 @@ export const Bookings = () => {
     }
   };
 
+  // Helper function to get first 3 words of vendor name
+  const getVendorNameFirstThreeWords = (booking) => {
+    const vendorName = booking.venueId?.vendorId?.name || booking.venueId?.vendorId || 'N/A';
+    if (vendorName === 'N/A' || !vendorName) return '';
+    const words = vendorName.trim().split(/\s+/).slice(0, 3);
+    return words.join(' ');
+  };
+
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
       booking._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -298,7 +306,16 @@ export const Bookings = () => {
                   paginatedBookings.map((booking, idx) => (
                     <TableRow key={booking._id}>
                       <TableCell className="text-center font-medium px-2 py-2">{startIndex + idx + 1}</TableCell>
-                      <TableCell className="font-mono text-xs md:text-sm break-words px-2 py-2">{booking._id?.slice(-8) || 'N/A'}</TableCell>
+                      <TableCell className="font-mono text-xs md:text-sm break-words px-2 py-2">
+                        <div className="space-y-1">
+                          <div>{booking.customBookingId || booking._id?.slice(-8) || 'N/A'}</div>
+                          {getVendorNameFirstThreeWords(booking) && (
+                            <div className="text-xs text-gray-500 font-normal">
+                              {getVendorNameFirstThreeWords(booking)}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="whitespace-normal break-words max-w-[9rem] px-2 py-2">
                         <div>
                           <div className="font-medium">
@@ -490,8 +507,13 @@ export const Bookings = () => {
               <div>
                 <label className="text-sm font-medium text-gray-500">Booking ID</label>
                 <p className="text-gray-900 dark:text-gray-100 font-mono text-sm">
-                  {selectedBooking._id}
+                  {selectedBooking.customBookingId || selectedBooking._id}
                 </p>
+                {getVendorNameFirstThreeWords(selectedBooking) && (
+                  <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
+                    Vendor: {getVendorNameFirstThreeWords(selectedBooking)}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Status</label>

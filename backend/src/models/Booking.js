@@ -21,7 +21,8 @@ const bookingSchema = new mongoose.Schema(
     paymentId: { type: String, trim: true }, // Payment ID from Razorpay
     paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
     adminApproved: { type: Boolean, default: false }, // Admin approval required before vendor can see
-    deviceId: { type: String, trim: true } // Device ID for tracking bookings
+    deviceId: { type: String, trim: true }, // Device ID for tracking bookings
+    customBookingId: { type: String, trim: true, unique: true, sparse: true } // Custom booking ID with vendor name
   },
   { timestamps: true }
 );

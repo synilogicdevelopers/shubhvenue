@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 
+// Force Helmet to update when title/description change
+let helmetUpdateCounter = 0
+
 // List of major Indian cities for location-based SEO
 const majorCities = [
   'Jaipur', 'Kota', 'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 
@@ -40,9 +43,49 @@ const SEO = ({
     ? `${location.toLowerCase()} venues, wedding venues in ${location.toLowerCase()}, ${location.toLowerCase()} wedding halls, ${location.toLowerCase()} banquet halls, ${location.toLowerCase()} marriage venues, ${location.toLowerCase()} event venues, ${location.toLowerCase()} party venues, best venues in ${location.toLowerCase()}, affordable venues ${location.toLowerCase()}, luxury venues ${location.toLowerCase()}, venues near ${location.toLowerCase()}, wedding booking ${location.toLowerCase()}, venue booking ${location.toLowerCase()}, wedding venues, venues, banquet halls, wedding halls, marriage venues, event venues, party venues`
     : 'wedding venues, venues, jaipur venues, kota venues, delhi venues, mumbai venues, banquet halls, wedding halls, marriage venues, event venues, party venues, hotel venues, palace venues, resort venues, convention centers, wedding booking, venue booking, best wedding venues, affordable wedding venues, luxury wedding venues, wedding venues near me, venues in jaipur, venues in kota, venues in delhi, venues in mumbai, venues in rajasthan, venues in india'
   
-  const finalTitle = title || defaultTitle
-  const finalDescription = description || defaultDescription
-  const finalKeywords = keywords || defaultKeywords
+  // DYNAMIC SEO: Use provided title/description from API/component if available
+  // Priority: Provided title/description > Default values
+  // Only use defaults if title/description are undefined, null, or empty string
+  const finalTitle = (title !== undefined && title !== null && typeof title === 'string' && title.trim() !== '') 
+    ? title.trim()  // Use provided title (from API metaTitle or component)
+    : defaultTitle  // Fallback to default
+  
+  const finalDescription = (description !== undefined && description !== null && typeof description === 'string' && description.trim() !== '') 
+    ? description.trim()  // Use provided description (from API metaDescription or component)
+    : defaultDescription  // Fallback to default
+  const finalKeywords = (keywords !== undefined && keywords !== null && typeof keywords === 'string' && keywords.trim() !== '') 
+    ? keywords.trim() 
+    : defaultKeywords
+  
+  // Debug logging to see what values are being used
+  console.log('🎯 SEO Component - Received Props:', {
+    title: title,
+    titleType: typeof title,
+    titleExists: title !== undefined && title !== null,
+    titleLength: title?.length,
+    description: description,
+    descriptionType: typeof description,
+    descriptionExists: description !== undefined && description !== null,
+    descriptionLength: description?.length
+  })
+  
+  console.log('🎯 SEO Component - Final Values:', {
+    finalTitle: finalTitle,
+    finalTitleLength: finalTitle?.length,
+    finalDescription: finalDescription,
+    finalDescriptionLength: finalDescription?.length,
+    usingDefaultTitle: finalTitle === defaultTitle,
+    usingDefaultDescription: finalDescription === defaultDescription,
+    defaultTitle: defaultTitle,
+    defaultDescription: defaultDescription
+  })
+  
+  // Log what will be rendered in HTML
+  console.log('📝 SEO Component - HTML Output:', {
+    titleTag: `<title>${finalTitle}</title>`,
+    metaTitleTag: `<meta name="title" content="${finalTitle}" />`,
+    metaDescriptionTag: `<meta name="description" content="${finalDescription}" />`
+  })
   
   // Generate structured data (JSON-LD) for better SEO
   const generateStructuredData = () => {
@@ -162,8 +205,18 @@ const SEO = ({
     }
   }
   
+  // Force re-render when title/description change
+  useEffect(() => {
+    helmetUpdateCounter++
+    console.log('🔄 Helmet Update Counter:', helmetUpdateCounter, {
+      finalTitle,
+      finalDescription,
+      timestamp: new Date().toISOString()
+    })
+  }, [finalTitle, finalDescription])
+  
   return (
-    <Helmet>
+    <Helmet key={`helmet-${finalTitle}-${finalDescription}`}>
       {/* Primary Meta Tags */}
       <title>{finalTitle}</title>
       <meta name="title" content={finalTitle} />

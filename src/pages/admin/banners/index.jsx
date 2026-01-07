@@ -5,15 +5,17 @@ import { Button } from '../../../components/admin/ui/Button';
 import { Badge } from '../../../components/admin/ui/Badge';
 import { Input } from '../../../components/admin/ui/Input';
 import { Modal } from '../../../components/admin/ui/Modal';
-import { bannersAPI } from '../../../services/admin/api';
+import { bannersAPI, bannerCategoriesAPI } from '../../../services/admin/api';
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import toast from 'react-hot-toast';
-import { Plus, Edit, Trash2, Search, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Image as ImageIcon, Tag } from 'lucide-react';
 
 export const Banners = () => {
   const [banners, setBanners] = useState([]);
+  const [bannerCategories, setBannerCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', categoryId, or 'null'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
   const [formData, setFormData] = useState({
@@ -21,6 +23,7 @@ export const Banners = () => {
     description: '',
     image: '',
     link: '',
+    categoryId: '',
     isActive: true,
     sortOrder: 0,
     startDate: '',
@@ -31,12 +34,26 @@ export const Banners = () => {
 
   useEffect(() => {
     fetchBanners();
-  }, []);
+    fetchBannerCategories();
+  }, [categoryFilter]);
+
+  const fetchBannerCategories = async () => {
+    try {
+      const response = await bannerCategoriesAPI.getAll({ active: 'all' });
+      setBannerCategories(response.data.categories || []);
+    } catch (error) {
+      console.error('Error fetching banner categories:', error);
+    }
+  };
 
   const fetchBanners = async () => {
     try {
       setLoading(true);
-      const response = await bannersAPI.getAll({ active: 'all' });
+      const params = { active: 'all' };
+      if (categoryFilter !== 'all') {
+        params.categoryId = categoryFilter;
+      }
+      const response = await bannersAPI.getAll(params);
       console.log('Banners API Response:', response.data);
       
       let bannersData = [];
@@ -74,6 +91,7 @@ export const Banners = () => {
         description: banner.description || '',
         image: banner.image || '',
         link: banner.link || '',
+        categoryId: banner.categoryId?._id || banner.categoryId || '',
         isActive: banner.isActive !== undefined ? banner.isActive : true,
         sortOrder: banner.sortOrder || 0,
         startDate: banner.startDate ? new Date(banner.startDate).toISOString().split('T')[0] : '',
@@ -90,6 +108,7 @@ export const Banners = () => {
         description: '',
         image: '',
         link: '',
+        categoryId: '',
         isActive: true,
         sortOrder: 0,
         startDate: '',
@@ -109,6 +128,7 @@ export const Banners = () => {
       description: '',
       image: '',
       link: '',
+      categoryId: '',
       isActive: true,
       sortOrder: 0,
       startDate: '',
@@ -152,6 +172,7 @@ export const Banners = () => {
       submitData.append('title', formData.title);
       submitData.append('description', formData.description || '');
       submitData.append('link', formData.link || '');
+      submitData.append('categoryId', formData.categoryId || 'null');
       submitData.append('isActive', formData.isActive);
       submitData.append('sortOrder', formData.sortOrder);
       
@@ -238,16 +259,33 @@ export const Banners = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search banners..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and Filter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search banners..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Categories</option>
+                <option value="null">Without Category</option>
+                {bannerCategories.map((category) => (
+                  <option key={category._id} value={category._id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Table */}
@@ -256,6 +294,7 @@ export const Banners = () => {
               <TableRow>
                 <TableHead>Image</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Link</TableHead>
                 <TableHead>Sort Order</TableHead>
@@ -266,26 +305,28 @@ export const Banners = () => {
             <TableBody>
               {filteredBanners.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
-                    <div className="flex flex-col items-center gap-4">
+                  <TableCell colSpan={8} className="text-center py-12" style={{ width: '100%' }}>
+                    <div className="flex flex-col items-center justify-center gap-4" style={{ margin: '0 auto', maxWidth: '100%' }}>
                       <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                         <ImageIcon className="w-8 h-8 text-gray-400" />
                       </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      <div className="text-center" style={{ width: '100%' }}>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1" style={{ textAlign: 'center' }}>
                           {searchTerm ? 'No banners match your search' : 'No banners yet'}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4" style={{ textAlign: 'center' }}>
                           {searchTerm 
                             ? 'Try adjusting your search terms'
                             : 'Create your first banner to promote your services'
                           }
                         </p>
                         {!searchTerm && (
-                          <Button onClick={() => handleOpenModal()} size="sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Your First Banner
-                          </Button>
+                          <div className="flex justify-center items-center" style={{ justifyContent: 'center' }}>
+                            <Button onClick={() => handleOpenModal()} size="sm">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Your First Banner
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -310,6 +351,16 @@ export const Banners = () => {
                     </TableCell>
                     <TableCell className="font-medium">
                       {banner.title}
+                    </TableCell>
+                    <TableCell>
+                      {banner.categoryId ? (
+                        <Badge variant="info" className="flex items-center gap-1 w-fit">
+                          <Tag className="w-3 h-3" />
+                          {banner.categoryId.name || 'Category'}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No Category</span>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
                       {banner.description || 'N/A'}
@@ -443,6 +494,27 @@ export const Banners = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Category
+            </label>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">No Category</option>
+              {bannerCategories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Select a category for this banner
+            </p>
           </div>
 
           <Input

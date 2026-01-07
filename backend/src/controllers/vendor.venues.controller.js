@@ -353,7 +353,29 @@ const formatVenueResponse = async (venue) => {
     about: venueObj.about || venueObj.description || '',
     amenities: [...(venueObj.amenities || []), ...(venueObj.facilities || [])], // Merge facilities into amenities
     highlights: venueObj.highlights || [],
-    rooms: venueObj.rooms || 0,
+    // Include metaTitle and metaDescription - preserve actual values (even if empty string)
+    // Use explicit check to avoid converting null/undefined to empty string incorrectly
+    metaTitle: (venueObj.metaTitle !== undefined && venueObj.metaTitle !== null) ? String(venueObj.metaTitle) : '',
+    metaDescription: (venueObj.metaDescription !== undefined && venueObj.metaDescription !== null) ? String(venueObj.metaDescription) : '',
+    rooms: (() => {
+      if (Array.isArray(venueObj.rooms)) {
+        // Convert to array of objects if needed (handle both strings and objects)
+        return venueObj.rooms.map(r => {
+          if (typeof r === 'string') {
+            return { name: r, count: 1 };
+          }
+          if (typeof r === 'object' && r !== null && r.name) {
+            return { name: r.name, count: r.count || 1 };
+          }
+          return { name: String(r), count: 1 };
+        });
+      }
+      if (venueObj.rooms) {
+        // Legacy: convert number or string to array
+        return [{ name: venueObj.rooms.toString(), count: 1 }];
+      }
+      return [];
+    })(),
     rating: {
       average: rating.average || venueObj.rating || 0,
       totalReviews: rating.totalReviews || 0,
@@ -369,6 +391,7 @@ const formatVenueResponse = async (venue) => {
       icon: venueObj.categoryId.icon,
       image: venueObj.categoryId.image
     } : null,
+    vendorCategoryId: venueObj.vendorCategoryId, // Vendor category used for formConfig
     menuId: venueObj.menuId,
     subMenuId: venueObj.subMenuId,
     status: venueObj.status,
@@ -847,8 +870,29 @@ export const getVenueById = async (req, res) => {
       }
     }
 
+    // Debug: Log metaTitle and metaDescription from database
+    console.log('🔍 Backend API - Venue Meta Data:', {
+      venueId: venue._id,
+      venueName: venue.name,
+      metaTitle: venue.metaTitle,
+      metaTitleType: typeof venue.metaTitle,
+      metaTitleExists: venue.metaTitle !== undefined && venue.metaTitle !== null,
+      metaDescription: venue.metaDescription,
+      metaDescriptionType: typeof venue.metaDescription,
+      metaDescriptionExists: venue.metaDescription !== undefined && venue.metaDescription !== null
+    });
+
     // Format response according to new structure
     const formattedVenue = await formatVenueResponse(venue);
+
+    // Debug: Log what's being sent in response
+    console.log('📤 Backend API - Formatted Venue Meta Data:', {
+      venueId: formattedVenue._id,
+      metaTitle: formattedVenue.metaTitle,
+      metaTitleType: typeof formattedVenue.metaTitle,
+      metaDescription: formattedVenue.metaDescription,
+      metaDescriptionType: typeof formattedVenue.metaDescription
+    });
 
     res.json({
       success: true,
@@ -954,16 +998,20 @@ export const createVenue = async (req, res) => {
       }
     }
 
-    const { 
+    // Destructure with let for menuId and subMenuId to allow reassignment
+    let { 
       name, 
       slug,
       description,
       about,
+      metaTitle,
+      metaDescription,
       price, // Legacy field
       pricePerPlate,
       pricingInfo,
       venueType,
       categoryId,
+      vendorCategoryId, // Vendor category used for formConfig
       menuId,
       subMenuId,
       location, 
@@ -994,7 +1042,9 @@ export const createVenue = async (req, res) => {
     }
 
     // Validate capacity - can be number or object
-    let capacityValue = capacity;
+    // Capacity is optional - if not provided, use default value 0
+    let capacityValue = 0; // Default value
+    if (capacity !== undefined && capacity !== null && capacity !== '') {
     if (typeof capacity === 'object' && capacity !== null) {
       if (!capacity.minGuests && !capacity.maxGuests) {
         return res.status(400).json({ error: 'Capacity must have minGuests or maxGuests' });
@@ -1008,14 +1058,17 @@ export const createVenue = async (req, res) => {
       if (capacity.minGuests && capacity.maxGuests && capacity.minGuests > capacity.maxGuests) {
         return res.status(400).json({ error: 'minGuests cannot be greater than maxGuests' });
       }
-    } else if (capacity !== undefined && capacity !== null) {
-      if (Number(capacity) <= 0) {
+        capacityValue = capacity; // Keep as object
+      } else {
+        // Handle string or number
+        const numCapacity = Number(capacity);
+        if (isNaN(numCapacity) || numCapacity <= 0) {
         return res.status(400).json({ error: 'Capacity must be greater than 0' });
       }
-      capacityValue = Number(capacity);
-    } else {
-      return res.status(400).json({ error: 'Capacity is required' });
+        capacityValue = numCapacity;
     }
+    }
+    // If capacity is not provided (undefined, null, or empty string), use default value 0
 
     // Validate pricePerPlate if provided
     if (pricePerPlate) {
@@ -1247,6 +1300,13 @@ export const createVenue = async (req, res) => {
     if (venueSlug) venueData.slug = venueSlug;
     if (description) venueData.description = description;
     if (about) venueData.about = about;
+    // Save metaTitle and metaDescription if provided (even if empty string, to allow clearing)
+    if (metaTitle !== undefined && metaTitle !== null) {
+      venueData.metaTitle = String(metaTitle).trim();
+    }
+    if (metaDescription !== undefined && metaDescription !== null) {
+      venueData.metaDescription = String(metaDescription).trim();
+    }
     if (price !== undefined) venueData.price = Number(price);
     
     // Handle pricingInfo
@@ -1281,19 +1341,29 @@ export const createVenue = async (req, res) => {
     
     if (venueType) venueData.venueType = venueType;
     if (categoryId) venueData.categoryId = categoryId;
+    // Save vendorCategoryId from "Select Venue Category" dropdown
+    // This is the category user selected when creating venue - will be shown when editing
+    if (vendorCategoryId && vendorCategoryId.trim() !== '') {
+      venueData.vendorCategoryId = vendorCategoryId;
+      console.log('💾 Saving venue with vendorCategoryId (from Select Venue Category dropdown):', vendorCategoryId);
+    } else {
+      // If not provided, set to null explicitly
+      venueData.vendorCategoryId = null;
+      console.log('⚠️ No vendorCategoryId provided - setting to null');
+    }
     // Save menuId and subMenuId if provided (null values are allowed)
     venueData.menuId = menuId || null;
     venueData.subMenuId = subMenuId || null;
-    console.log('💾 Saving venue with menuId:', venueData.menuId, 'subMenuId:', venueData.subMenuId);
+    console.log('💾 Saving venue with menuId:', venueData.menuId, 'subMenuId:', venueData.subMenuId, 'vendorCategoryId:', venueData.vendorCategoryId);
     
-    // Location is required - handle both string and object
-    if (!location || (typeof location === 'string' && !location.trim())) {
-      return res.status(400).json({ error: 'Location is required' });
-    }
-    
+    // Location is optional - if not provided, use default empty location
     // Handle location - can be object, JSON string (from FormData), or plain string
     let locationObj = location;
-    if (typeof location === 'string') {
+    
+    // If location is not provided, use default empty location object
+    if (!location || (typeof location === 'string' && !location.trim())) {
+      locationObj = { address: '', city: '', state: '' };
+    } else if (typeof location === 'string') {
       try {
         // Try to parse as JSON (from FormData)
         locationObj = JSON.parse(location);
@@ -1349,7 +1419,15 @@ export const createVenue = async (req, res) => {
     }
     
     // If it's an object after parsing, use it; otherwise use as string
-    venueData.location = typeof locationObj === 'object' && locationObj !== null ? locationObj : locationObj;
+    // Ensure location always has a value (default to empty object if not provided)
+    if (locationObj && (typeof locationObj === 'object' && locationObj !== null)) {
+      venueData.location = locationObj;
+    } else if (locationObj && typeof locationObj === 'string') {
+      venueData.location = locationObj;
+    } else {
+      // Default empty location if not provided
+      venueData.location = { address: '', city: '', state: '' };
+    }
     if (facilities) {
       venueData.facilities = Array.isArray(facilities) ? facilities : [facilities];
     }
@@ -1359,8 +1437,87 @@ export const createVenue = async (req, res) => {
     if (highlights) {
       venueData.highlights = Array.isArray(highlights) ? highlights : [highlights];
     }
+    
+    // Handle services - can be JSON string (from FormData) or array
+    let servicesArray = [];
+    if (req.body.services) {
+      if (typeof req.body.services === 'string') {
+        try {
+          servicesArray = JSON.parse(req.body.services);
+        } catch (e) {
+          // If parsing fails, treat as empty array
+          servicesArray = [];
+        }
+      } else if (Array.isArray(req.body.services)) {
+        servicesArray = req.body.services;
+      }
+    }
+    // Validate and clean services array
+    if (Array.isArray(servicesArray) && servicesArray.length > 0) {
+      venueData.services = servicesArray
+        .filter(service => service && service.name && service.name.trim())
+        .map(service => ({
+          name: String(service.name).trim(),
+          price: service.price !== null && service.price !== undefined && service.price !== '' 
+            ? Number(service.price) 
+            : null,
+          description: service.description ? String(service.description).trim() : undefined
+        }));
+    } else {
+      venueData.services = [];
+    }
+    
+    // Handle rooms - can be JSON string (array), array, number (legacy), or string
     if (rooms !== undefined) {
-      venueData.rooms = Number(rooms) || 0;
+      let roomsArray = [];
+      if (typeof rooms === 'string') {
+        try {
+          // Try to parse as JSON array
+          roomsArray = JSON.parse(rooms);
+        } catch (e) {
+          // If parsing fails, check if it's a number string or regular string
+          const numValue = Number(rooms);
+          if (!isNaN(numValue) && rooms.trim() !== '') {
+            // Legacy: if it's a number, convert to array with single item
+            roomsArray = [rooms.trim()];
+          } else if (rooms.trim() !== '') {
+            // If it's a non-empty string, use it as single room name
+            roomsArray = [rooms.trim()];
+          }
+        }
+      } else if (Array.isArray(rooms)) {
+        roomsArray = rooms;
+      } else if (typeof rooms === 'number') {
+        // Legacy: convert number to array
+        roomsArray = [rooms.toString()];
+      }
+      
+      // Filter and clean rooms array - support both objects { name, count } and strings
+      if (Array.isArray(roomsArray)) {
+        venueData.rooms = roomsArray
+          .filter(r => {
+            if (typeof r === 'string') return r !== null && r !== undefined && r.trim() !== '';
+            if (typeof r === 'object' && r !== null) return r.name && r.name.trim() && r.count > 0;
+            return false;
+          })
+          .map(r => {
+            if (typeof r === 'string') {
+              // Legacy format: convert string to object with count 1
+              return { name: r.trim(), count: 1 };
+            }
+            if (typeof r === 'object' && r !== null) {
+              // New format: ensure name and count are valid
+              return {
+                name: String(r.name || '').trim(),
+                count: r.count > 0 ? Number(r.count) : 1
+              };
+            }
+            return null;
+          })
+          .filter(r => r !== null);
+      } else {
+        venueData.rooms = [];
+      }
     }
     if (contact && typeof contact === 'object') {
       venueData.contact = {
@@ -1544,10 +1701,16 @@ export const updateVenue = async (req, res) => {
       });
     }
 
-    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, menuId, subMenuId, description, availability } = req.body;
+    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, vendorCategoryId, menuId, subMenuId, description, metaTitle, metaDescription, availability } = req.body;
 
     // Update fields if provided
-    if (name !== undefined) venue.name = name.trim();
+    // When updating, only name is required - all other fields are optional
+    if (name !== undefined) {
+      if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: 'Venue name is required' });
+      }
+      venue.name = name.trim();
+    }
     if (price !== undefined) {
       if (price <= 0) {
         return res.status(400).json({ error: 'Price must be greater than 0' });
@@ -1555,10 +1718,20 @@ export const updateVenue = async (req, res) => {
       venue.price = Number(price);
     }
     if (description !== undefined) venue.description = description;
+    if (metaTitle !== undefined) venue.metaTitle = metaTitle ? metaTitle.trim() : '';
+    if (metaDescription !== undefined) venue.metaDescription = metaDescription ? metaDescription.trim() : '';
+    
+    // Handle vendorCategoryId update (used for formConfig when editing)
+    if (vendorCategoryId !== undefined) {
+      venue.vendorCategoryId = vendorCategoryId || null;
+      console.log('💾 Updating venue vendorCategoryId:', vendorCategoryId);
+    }
     
     // Handle location update - can be string or JSON string (from FormData)
-    if (location !== undefined) {
-      if (!location || (typeof location === 'string' && !location.trim())) {
+    // Location is optional when updating - only validate if provided
+    if (location !== undefined && location !== null && location !== '') {
+      // If location is provided, it should not be empty
+      if (typeof location === 'string' && !location.trim()) {
         return res.status(400).json({ error: 'Location cannot be empty' });
       }
       let locationObj = location;
@@ -1617,11 +1790,58 @@ export const updateVenue = async (req, res) => {
       
       venue.location = typeof locationObj === 'object' && locationObj !== null ? locationObj : locationObj;
     }
-    if (capacity !== undefined) {
-      if (capacity <= 0) {
-        return res.status(400).json({ error: 'Capacity must be greater than 0' });
+    
+    // Handle capacity update - optional when updating
+    // Only validate if capacity is actually provided and is a valid positive number
+    if (capacity !== undefined && capacity !== null && capacity !== '') {
+      // Parse capacity - can be number or object
+      let capacityValue = capacity;
+      
+      if (typeof capacity === 'string') {
+        try {
+          // Try to parse as JSON (from FormData)
+          capacityValue = JSON.parse(capacity);
+        } catch (e) {
+          // If parsing fails, treat as number string
+          const numCapacity = Number(capacity);
+          if (!isNaN(numCapacity)) {
+            capacityValue = numCapacity;
+          }
+        }
       }
-      venue.capacity = Number(capacity);
+      
+      // Validate only if it's a number and greater than 0
+      // When updating, capacity is optional - only validate if a valid positive number is provided
+      if (typeof capacityValue === 'number') {
+        // If capacity is 0 or negative, don't update it (keep existing value)
+        // This allows updating other fields without touching capacity
+        if (capacityValue > 0) {
+          venue.capacity = capacityValue;
+        } else {
+          // Capacity is 0 or negative - don't update, keep existing value
+          console.log('⚠️ Capacity is 0 or negative, keeping existing capacity value');
+        }
+      } else if (typeof capacityValue === 'object' && capacityValue !== null) {
+        // Handle capacity object with minGuests/maxGuests
+        const minGuests = capacityValue.minGuests ?? capacityValue.min;
+        const maxGuests = capacityValue.maxGuests ?? capacityValue.max;
+        
+        if (minGuests && Number(minGuests) <= 0) {
+          return res.status(400).json({ error: 'minGuests must be greater than 0' });
+        }
+        if (maxGuests && Number(maxGuests) <= 0) {
+          return res.status(400).json({ error: 'maxGuests must be greater than 0' });
+      }
+        if (minGuests && maxGuests && Number(minGuests) > Number(maxGuests)) {
+          return res.status(400).json({ error: 'minGuests cannot be greater than maxGuests' });
+        }
+        
+        venue.capacity = {
+          minGuests: minGuests ? Number(minGuests) : undefined,
+          maxGuests: maxGuests ? Number(maxGuests) : undefined
+        };
+      }
+      // If capacity is empty string or invalid, don't update it (keep existing value)
     }
     if (amenities !== undefined) {
       venue.amenities = Array.isArray(amenities) ? amenities : [amenities];
@@ -1629,8 +1849,86 @@ export const updateVenue = async (req, res) => {
     if (highlights !== undefined) {
       venue.highlights = Array.isArray(highlights) ? highlights : [highlights];
     }
+    
+    // Handle services update - can be JSON string (from FormData) or array
+    if (req.body.services !== undefined) {
+      let servicesArray = [];
+      if (typeof req.body.services === 'string') {
+        try {
+          servicesArray = JSON.parse(req.body.services);
+        } catch (e) {
+          servicesArray = [];
+        }
+      } else if (Array.isArray(req.body.services)) {
+        servicesArray = req.body.services;
+      }
+      // Validate and clean services array
+      if (Array.isArray(servicesArray)) {
+        venue.services = servicesArray
+          .filter(service => service && service.name && service.name.trim())
+          .map(service => ({
+            name: String(service.name).trim(),
+            price: service.price !== null && service.price !== undefined && service.price !== '' 
+              ? Number(service.price) 
+              : null,
+            description: service.description ? String(service.description).trim() : undefined
+          }));
+      } else {
+        venue.services = [];
+      }
+    }
+    
+    // Handle rooms - can be JSON string (array), array, number (legacy), or string
     if (rooms !== undefined) {
-      venue.rooms = Number(rooms) || 0;
+      let roomsArray = [];
+      if (typeof rooms === 'string') {
+        try {
+          // Try to parse as JSON array
+          roomsArray = JSON.parse(rooms);
+        } catch (e) {
+          // If parsing fails, check if it's a number string or regular string
+          const numValue = Number(rooms);
+          if (!isNaN(numValue) && rooms.trim() !== '') {
+            // Legacy: if it's a number, convert to array with single item
+            roomsArray = [rooms.trim()];
+          } else if (rooms.trim() !== '') {
+            // If it's a non-empty string, use it as single room name
+            roomsArray = [rooms.trim()];
+          }
+        }
+      } else if (Array.isArray(rooms)) {
+        roomsArray = rooms;
+      } else if (typeof rooms === 'number') {
+        // Legacy: convert number to array
+        roomsArray = [rooms.toString()];
+      }
+      
+      // Filter and clean rooms array - support both objects { name, count } and strings
+      if (Array.isArray(roomsArray)) {
+        venue.rooms = roomsArray
+          .filter(r => {
+            if (typeof r === 'string') return r !== null && r !== undefined && r.trim() !== '';
+            if (typeof r === 'object' && r !== null) return r.name && r.name.trim() && r.count > 0;
+            return false;
+          })
+          .map(r => {
+            if (typeof r === 'string') {
+              // Legacy format: convert string to object with count 1
+              return { name: r.trim(), count: 1 };
+            }
+            if (typeof r === 'object' && r !== null) {
+              // New format: ensure name and count are valid
+              return {
+                name: String(r.name || '').trim(),
+                count: r.count > 0 ? Number(r.count) : 1
+              };
+            }
+            return null;
+          })
+          .filter(r => r !== null);
+      } else {
+        venue.rooms = [];
+      }
     }
     
     // Handle availability update

@@ -1,10 +1,16 @@
 import Footer from '../../components/customer/Footer'
+import SEO from '../../components/SEO'
 import '../../components/customer/HowItWorks.css'
 import './HowItWorksPage.css'
 
 function HowItWorks() {
   return (
     <div className="how-it-works-page">
+      <SEO 
+        title="How It Works | ShubhVenue - Simple 3-Step Booking Process"
+        description="Learn how ShubhVenue makes venue booking easy. Discover venues, create your shortlist, and book online at guaranteed lowest prices. Simple 3-step process for booking your perfect wedding venue."
+        keywords="how it works, venue booking process, how to book venue, venue booking steps, wedding venue booking guide, booking process"
+      />
       <div className="how-it-works-container">
         <h2 className="how-it-works-title">How it Works?</h2>
         <div className="steps-container">

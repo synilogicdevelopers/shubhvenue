@@ -1,9 +1,15 @@
 import Footer from '../../components/customer/Footer'
+import SEO from '../../components/SEO'
 import './Blog.css'
 
 function Blog() {
   return (
     <div className="blog-page">
+      <SEO 
+        title="Blog | ShubhVenue - Wedding Planning Tips & Venue Guides"
+        description="Discover expert wedding planning tips, venue selection guides, and inspiration for your perfect event. Stay updated with the latest trends in wedding venues and event planning."
+        keywords="wedding blog, wedding planning tips, venue selection guide, wedding inspiration, event planning blog, wedding trends, venue booking tips"
+      />
       <div className="blog-container">
         <div className="blog-hero">
           <h1 className="blog-title">Blog</h1>

@@ -271,7 +271,7 @@ import './VenueDetail.css'
 
       // Prepare booking data
       const bookingData = {
-        venueId: venue.id,
+        venueId: venue._id || venue.id, // Use _id if available (MongoDB ObjectId), otherwise use id
         date: bookingForm.checkIn,
         dateFrom: bookingForm.checkIn,
         dateTo: bookingForm.checkOut,
@@ -324,95 +324,48 @@ import './VenueDetail.css'
 
       if (orderResponse.data?.success && orderResponse.data?.order) {
         const order = orderResponse.data.order
+        const paymentMethod = orderResponse.data?.paymentMethod || 'microservice'
 
-        // Initialize Razorpay
-        if (window.Razorpay && razorpayKey) {
-          const options = {
-            key: razorpayKey,
-            amount: order.amount,
-            currency: order.currency,
-            name: 'Wedding Venue Booking',
-            description: `Booking for ${venue.name}`,
-            order_id: order.id,
-            prefill: {
-              name: bookingForm.fullName,
-              email: bookingForm.email,
-              contact: bookingForm.phone
-            },
-            handler: async function (response) {
-              try {
-                // Verify payment with booking data
-                const verifyResponse = await paymentAPI.verify({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  bookingData: bookingData // Include booking data in verification
-                })
-
-                if (verifyResponse.data?.success) {
-                  toast.success('Payment successful! Booking confirmed.')
-                  setProcessingPayment(false)
-                  setShowBookingModal(false)
-                  setBookingForm({
-                    checkIn: '',
-                    checkOut: '',
-                    guests: '',
-                    rooms: '',
-                    fullName: '',
-                    email: '',
-                    phone: '',
-                    eventType: '',
-                    foodPreference: 'both',
-                    specialRequests: ''
-                  })
-                  navigate('/booking-history')
-                } else {
-                  // Check if it's a date conflict error
-                  const errorMsg = verifyResponse.data?.error || verifyResponse.data?.message || 'Payment verification failed';
-                  if (errorMsg.includes('already booked') || 
-                      errorMsg.includes('not available') || 
-                      errorMsg.includes('blocked')) {
-                    toast.error(errorMsg + ' Please choose different dates.', { duration: 6000 });
-                  } else {
-                    toast.error(errorMsg);
-                  }
-                  setProcessingPayment(false);
-                }
-              } catch (error) {
-                console.error('Payment verification error:', error);
-                // Check if it's a date conflict error
-                const errorMsg = error.data?.error || error.data?.message || error.message || 'Payment verification failed';
-                if (errorMsg.includes('already booked') || 
-                    errorMsg.includes('not available') || 
-                    errorMsg.includes('blocked') ||
-                    error.status === 409) {
-                  toast.error(errorMsg + ' Please choose different dates.', { 
-                    duration: 6000,
-                    style: {
-                      background: '#ef4444',
-                      color: '#fff',
-                      fontSize: '16px',
-                      padding: '16px'
-                    }
-                  });
-                } else {
-                  toast.error(errorMsg);
-                }
-                setProcessingPayment(false);
-              }
-            },
-            modal: {
-              ondismiss: function() {
-                setProcessingPayment(false)
-                toast.error('Payment cancelled')
-              }
-            }
+        if (paymentMethod === 'razorpay_direct') {
+          // Razorpay Direct - Use Razorpay Checkout
+          const razorpayKeyId = orderResponse.data?.razorpayKeyId || razorpayKey
+          
+          if (!razorpayKeyId) {
+            toast.error('Razorpay Key ID is missing. Please contact support.')
+            setProcessingPayment(false)
+            return
           }
-
-          const razorpay = new window.Razorpay(options)
-          razorpay.open()
+          
+          // Wait for Razorpay to load if not already loaded
+          if (!window.Razorpay) {
+            // Try to load Razorpay script
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            
+            script.onload = () => {
+              console.log('✅ Razorpay script loaded, opening checkout...');
+              openRazorpayCheckout(razorpayKeyId, order, bookingData);
+            };
+            
+            script.onerror = () => {
+              toast.error('Failed to load Razorpay. Please refresh the page and try again.')
+              setProcessingPayment(false);
+            };
+            
+            document.body.appendChild(script);
+            return;
+          }
+          
+          // Razorpay is loaded, open checkout
+          openRazorpayCheckout(razorpayKeyId, order, bookingData);
         } else {
-          toast.error('Payment gateway not loaded. Please refresh the page.')
+          // Microservice - Redirect to hosted checkout
+          const returnUrl = `${window.location.origin}/venue/${venue.slug}`
+          const checkoutUrl = `https://payments.synilogic.in/pay/${order.id}?return_url=${encodeURIComponent(returnUrl)}`
+
+          console.log('🔁 Redirecting to hosted checkout:', checkoutUrl)
+          window.location.href = checkoutUrl
         }
       } else {
         const errorMessage = orderResponse.data?.error || orderResponse.data?.message || 'Failed to create payment order'
@@ -423,20 +376,107 @@ import './VenueDetail.css'
         } else {
           toast.error(errorMessage)
         }
+        setProcessingPayment(false)
       }
     } catch (error) {
       console.error('Booking error:', error)
-      const errorMessage = error.message || 'Failed to process booking'
-      if (errorMessage.includes('already booked') || 
-          errorMessage.includes('not available') || 
-          errorMessage.includes('blocked')) {
-        toast.error(errorMessage)
-      } else {
-        toast.error(errorMessage)
-      }
-    } finally {
+      toast.error(error.message || 'Failed to process booking')
       setProcessingPayment(false)
     }
+  }
+
+  // Helper function to open Razorpay checkout
+  const openRazorpayCheckout = (razorpayKeyId, order, bookingData) => {
+    if (!window.Razorpay) {
+      toast.error('Razorpay is not loaded. Please refresh the page.')
+      setProcessingPayment(false)
+      return
+    }
+
+    const options = {
+      key: razorpayKeyId,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'Wedding Venue Booking',
+      description: `Booking for ${venue.name}`,
+      order_id: order.id,
+      prefill: {
+        name: bookingForm.fullName,
+        email: bookingForm.email,
+        contact: bookingForm.phone
+      },
+      handler: async function (response) {
+        try {
+          // Verify payment with booking data
+          const verifyResponse = await paymentAPI.verify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            bookingData: bookingData // Include booking data in verification
+          })
+
+          if (verifyResponse.data?.success) {
+            toast.success('Payment successful! Booking confirmed.')
+            setProcessingPayment(false)
+            setShowBookingModal(false)
+            setBookingForm({
+              checkIn: '',
+              checkOut: '',
+              guests: '',
+              rooms: '',
+              fullName: '',
+              email: '',
+              phone: '',
+              eventType: '',
+              foodPreference: 'both',
+              specialRequests: ''
+            })
+            navigate('/booking-history')
+          } else {
+            // Check if it's a date conflict error
+            const errorMsg = verifyResponse.data?.error || verifyResponse.data?.message || 'Payment verification failed';
+            if (errorMsg.includes('already booked') || 
+                errorMsg.includes('not available') || 
+                errorMsg.includes('blocked')) {
+              toast.error(errorMsg + ' Please choose different dates.', { duration: 6000 });
+            } else {
+              toast.error(errorMsg);
+            }
+            setProcessingPayment(false);
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          // Check if it's a date conflict error
+          const errorMsg = error.data?.error || error.data?.message || error.message || 'Payment verification failed';
+          if (errorMsg.includes('already booked') || 
+              errorMsg.includes('not available') || 
+              errorMsg.includes('blocked') ||
+              error.status === 409) {
+            toast.error(errorMsg + ' Please choose different dates.', { 
+              duration: 6000,
+              style: {
+                background: '#ef4444',
+                color: '#fff',
+                fontSize: '16px',
+                padding: '16px'
+              }
+            });
+          } else {
+            toast.error(errorMsg);
+          }
+          setProcessingPayment(false);
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          setProcessingPayment(false)
+          toast.error('Payment cancelled')
+        }
+      }
+    }
+
+    const razorpay = new window.Razorpay(options)
+    razorpay.open()
   }
 
   // Handle Contact Venue (Booking without payment)
@@ -461,7 +501,7 @@ import './VenueDetail.css'
 
       // Create booking without payment (creates Lead)
       const bookingData = {
-        venueId: venue.id,
+        venueId: venue._id || venue.id, // Use _id if available (MongoDB ObjectId), otherwise use id
         date: bookingForm.checkIn,
         dateFrom: bookingForm.checkIn,
         dateTo: bookingForm.checkOut,
@@ -595,6 +635,12 @@ import './VenueDetail.css'
           console.log('Leads Button Enabled:', venueData.leadsButtonEnabled)
           console.log('Highlights from API:', venueData.highlights)
           console.log('Reviews with Replies from Venue API:', reviewsWithReplies)
+          console.log('📋 Meta Data from API:', {
+            metaTitle: venueData.metaTitle,
+            metaDescription: venueData.metaDescription,
+            hasMetaTitle: !!venueData.metaTitle && venueData.metaTitle.trim() !== '',
+            hasMetaDescription: !!venueData.metaDescription && venueData.metaDescription.trim() !== ''
+          })
           // Debug: Check if any review has reply
           reviewsWithReplies.forEach((review, idx) => {
             if (review.reply && review.reply.message) {
@@ -840,7 +886,9 @@ import './VenueDetail.css'
               return []
             })(),
             bookingButtonEnabled: venueData.bookingButtonEnabled !== undefined ? venueData.bookingButtonEnabled : true,
-            leadsButtonEnabled: venueData.leadsButtonEnabled !== undefined ? venueData.leadsButtonEnabled : true
+            leadsButtonEnabled: venueData.leadsButtonEnabled !== undefined ? venueData.leadsButtonEnabled : true,
+            metaTitle: venueData.metaTitle || '',
+            metaDescription: venueData.metaDescription || ''
           }
 
           // Ensure at least one image
@@ -887,6 +935,29 @@ import './VenueDetail.css'
 
     checkShotlistStatus()
   }, [venue?.id])
+
+  // Force SEO update when venue data changes (must be before early returns)
+  useEffect(() => {
+    if (venue && (venue.metaTitle || venue.metaDescription)) {
+      const venueLocation = venue?.location?.city || venue?.location?.state || null
+      const venueName = venue?.name || ''
+      const venueDescription = venue?.description || venue?.highlights?.join(', ') || ''
+      const seoTitle = (venue?.metaTitle && venue.metaTitle.trim() !== '') 
+        ? venue.metaTitle.trim() 
+        : (venue ? `${venueName} - Best Wedding Venue in ${venueLocation || 'India'} | ShubhVenue` : 'Venue Details | ShubhVenue')
+      const seoDescription = (venue?.metaDescription && venue.metaDescription.trim() !== '') 
+        ? venue.metaDescription.trim() 
+        : (venue ? `Book ${venueName} in ${venueLocation || 'India'} for your wedding. ${venueDescription.substring(0, 150)}... Best wedding venue with excellent facilities.` : 'Find the perfect wedding venue for your special day.')
+      
+      console.log('🔄 SEO Update Triggered:', {
+        venueId: venue._id || venue.id,
+        metaTitle: venue.metaTitle,
+        metaDescription: venue.metaDescription,
+        seoTitle: seoTitle,
+        seoDescription: seoDescription
+      })
+    }
+  }, [venue?._id, venue?.metaTitle, venue?.metaDescription])
 
   // Handle share functionality
   const handleShare = async () => {
@@ -1787,15 +1858,78 @@ import './VenueDetail.css'
   const venueName = venue?.name || ''
   const venueDescription = venue?.description || venue?.highlights?.join(', ') || ''
   const venueImage = venue?.images?.[0] ? getImageUrl(venue.images[0]) : 'https://shubhvenue.com/image/venuebook.png'
+  
+  // DYNAMIC SEO: Use metaTitle and metaDescription from API if available (and not empty)
+  // Priority: API metaTitle/metaDescription > Generated values
+  const seoTitle = venue && venue.metaTitle && typeof venue.metaTitle === 'string' && venue.metaTitle.trim() !== ''
+    ? venue.metaTitle.trim()  // Use API metaTitle
+    : venue
+      ? `${venueName} - Best Wedding Venue in ${venueLocation || 'India'} | ShubhVenue`  // Generated fallback
+      : 'Venue Details | ShubhVenue'  // Default when no venue
+  
+  const seoDescription = venue && venue.metaDescription && typeof venue.metaDescription === 'string' && venue.metaDescription.trim() !== ''
+    ? venue.metaDescription.trim()  // Use API metaDescription
+    : venue
+      ? `Book ${venueName} in ${venueLocation || 'India'} for your wedding. ${venueDescription.substring(0, 150)}... Best wedding venue with excellent facilities.`  // Generated fallback
+      : 'Find the perfect wedding venue for your special day.'  // Default when no venue
+  
+  // Debug logging - Enhanced to track metaTitle/metaDescription flow
+  console.log('🔍 SEO Data Check:', {
+    venueId: venue?._id || venue?.id,
+    venueName: venueName,
+    hasMetaTitle: !!venue?.metaTitle,
+    metaTitle: venue?.metaTitle,
+    metaTitleType: typeof venue?.metaTitle,
+    metaTitleLength: venue?.metaTitle?.length,
+    metaTitleTrimmed: venue?.metaTitle?.trim(),
+    hasMetaDescription: !!venue?.metaDescription,
+    metaDescription: venue?.metaDescription,
+    metaDescriptionType: typeof venue?.metaDescription,
+    metaDescriptionLength: venue?.metaDescription?.length,
+    metaDescriptionTrimmed: venue?.metaDescription?.trim(),
+    usingCustomTitle: (venue?.metaTitle && venue.metaTitle.trim() !== ''),
+    usingCustomDescription: (venue?.metaDescription && venue.metaDescription.trim() !== ''),
+    finalTitle: seoTitle,
+    finalDescription: seoDescription,
+    seoTitleType: typeof seoTitle,
+    seoDescriptionType: typeof seoDescription,
+    seoTitleLength: seoTitle?.length,
+    seoDescriptionLength: seoDescription?.length
+  })
+  
+  // Log the full venue object to see what's coming from API
+  if (venue) {
+    console.log('📦 Full Venue Object from API:', {
+      id: venue._id || venue.id,
+      name: venue.name,
+      metaTitle: venue.metaTitle,
+      metaDescription: venue.metaDescription,
+      location: venue.location,
+      allKeys: Object.keys(venue).filter(key => key.includes('meta') || key.includes('Meta'))
+    })
+  }
+  
+  // Log what's being passed to SEO component
+  console.log('📤 Passing to SEO Component:', {
+    title: venue ? seoTitle : undefined,
+    description: venue ? seoDescription : undefined,
+    titleType: typeof (venue ? seoTitle : undefined),
+    descriptionType: typeof (venue ? seoDescription : undefined),
+    titleLength: (venue ? seoTitle : undefined)?.length,
+    descriptionLength: (venue ? seoDescription : undefined)?.length
+  })
 
   return (
     <div className="venue-detail">
+      {/* DYNAMIC SEO: Always render SEO component with venue data from API */}
+      {/* Key includes metaTitle and metaDescription to force re-render when they change */}
       <SEO 
-        title={venue ? `${venueName} - Best Wedding Venue in ${venueLocation || 'India'} | ShubhVenue` : 'Venue Details | ShubhVenue'}
-        description={venue ? `Book ${venueName} in ${venueLocation || 'India'} for your wedding. ${venueDescription.substring(0, 150)}... Best wedding venue with excellent facilities.` : 'Find the perfect wedding venue for your special day.'}
-        keywords={venue ? `${venueName}, ${venueLocation} venues, wedding venue ${venueLocation}, ${venueLocation} wedding halls, ${venueLocation} banquet halls, wedding booking ${venueLocation}, venue booking` : 'wedding venues, venues, venue booking'}
-        location={venueLocation}
-        image={venueImage}
+        key={venue ? `venue-${venue._id || venue.id}-${venue.metaTitle || 'no-title'}-${venue.metaDescription || 'no-desc'}` : 'loading-seo'}
+        title={venue ? seoTitle : undefined}
+        description={venue ? seoDescription : undefined}
+        keywords={venue ? `${venueName}, ${venueLocation} venues, wedding venue ${venueLocation}, ${venueLocation} wedding halls, ${venueLocation} banquet halls, wedding booking ${venueLocation}, venue booking` : undefined}
+        location={venue ? venueLocation : undefined}
+        image={venue ? venueImage : undefined}
         type="website"
       />
       

@@ -545,6 +545,13 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     
     console.log('Navigating with menuId:', menuId, 'menuName:', menuName)
     
+    // Check if menu is "Decoration" - navigate to decoration page
+    if (menuName && menuName.toLowerCase() === 'decoration') {
+      navigate('/decoration')
+      setActiveMenuId(null)
+      return false
+    }
+    
     // Navigate immediately with URL params - only pass menuId, backend will filter for venues directly assigned to menu
     navigate(`/venues?menuId=${menuId}&menuName=${encodeURIComponent(menuName)}`, {
       state: {

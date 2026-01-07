@@ -3,17 +3,28 @@ import mongoose from 'mongoose';
 const paymentConfigSchema = new mongoose.Schema({
   razorpayKeyId: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
+    default: '',
   },
   razorpayKeySecret: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
+    default: '',
   },
   isActive: {
     type: Boolean,
     default: true,
+  },
+  // Payment method selection
+  enableRazorpayDirect: {
+    type: Boolean,
+    default: false,
+  },
+  enableMicroservice: {
+    type: Boolean,
+    default: true, // Default to microservice (current setup)
   },
 }, {
   timestamps: true,

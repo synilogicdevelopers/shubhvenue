@@ -552,7 +552,7 @@ export const VendorCategories = () => {
           }
         }}
         title={`Configure Forms - ${selectedCategory?.name || ''}`}
-        size="lg"
+        size="xl"
       >
         <VendorCategoryFormEditor
           formConfig={formConfig}

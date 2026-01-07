@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Footer from '../../components/customer/Footer'
 import { bookingAPI } from '../../services/customer/api'
+import SEO from '../../components/SEO'
 import './Booking.css'
 
 function ContactVenue() {
@@ -165,6 +166,11 @@ function ContactVenue() {
 
   return (
     <div className="booking-page">
+      <SEO 
+        title="Contact Venue | ShubhVenue - Send Inquiry to Venue"
+        description="Contact your preferred venue directly through ShubhVenue. Share your event details and requirements. The venue will contact you soon with availability and pricing."
+        keywords="contact venue, venue inquiry, send inquiry, venue contact form, event inquiry, venue booking inquiry"
+      />
       <button type="button" className="back-button" onClick={() => navigate(-1)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="15 18 9 12 15 6"></polyline>

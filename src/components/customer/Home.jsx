@@ -65,7 +65,12 @@ function Home() {
 
   return (
     <>
-      <SEO />
+      {/* SEO component will use default values for home page */}
+      <SEO 
+        title="Best Wedding Venues in India | Jaipur, Kota, Delhi, Mumbai | ShubhVenue"
+        description="Find the perfect wedding venue in Jaipur, Kota, Delhi, Mumbai, and all major cities in India. Book banquet halls, hotels, palaces, resorts, and convention centers for your special day. Best venues for weddings, parties, and events."
+        keywords="wedding venues, venues, jaipur venues, kota venues, delhi venues, mumbai venues, banquet halls, wedding halls, marriage venues, event venues, party venues, hotel venues, palace venues, resort venues, convention centers, wedding booking, venue booking, best wedding venues, affordable wedding venues, luxury wedding venues, wedding venues near me, venues in jaipur, venues in kota, venues in delhi, venues in mumbai, venues in rajasthan, venues in india"
+      />
       {showLoader && (
         <div className="home-page-loader">
           <div className="home-loader-content">

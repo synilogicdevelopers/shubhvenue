@@ -4,6 +4,7 @@ import { bookingAPI, paymentAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import Footer from '../../components/customer/Footer'
 import LoginModal from '../../components/customer/LoginModal'
+import SEO from '../../components/SEO'
 import './Booking.css'
 
 function Booking() {
@@ -71,8 +72,35 @@ function Booking() {
     }
   }, [])
 
-  // No need to load Razorpay script in frontend anymore.
-  // Payments are handled via hosted checkout on payments.synilogic.in
+  // Load Razorpay script if needed (for Razorpay Direct payment method)
+  useEffect(() => {
+    const loadRazorpay = () => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        return;
+      }
+      
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        return;
+      }
+      
+      // Load Razorpay script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => {
+        console.log('✅ Razorpay script loaded');
+      };
+      script.onerror = () => {
+        console.error('❌ Failed to load Razorpay script');
+      };
+      document.body.appendChild(script);
+    };
+
+    loadRazorpay();
+  }, []);
 
   // Generate device ID for tracking
   const getDeviceId = () => {
@@ -304,7 +332,7 @@ function Booking() {
       })
       
       const bookingData = {
-        venueId: venue.id,
+        venueId: venue._id || venue.id, // Use _id if available (MongoDB ObjectId), otherwise use id
         date: formData.checkIn,
         dateFrom: formData.checkIn,
         dateTo: formData.checkOut,
@@ -359,14 +387,49 @@ function Booking() {
 
       if (orderResponse.data?.success && orderResponse.data?.order) {
         const order = orderResponse.data.order
+        const paymentMethod = orderResponse.data?.paymentMethod || 'microservice'
 
-        // Redirect to hosted checkout on microservice domain
-        const returnUrl = `${window.location.origin}/booking-history`
-        const checkoutUrl = `https://payments.synilogic.in/pay/${order.id}?return_url=${encodeURIComponent(returnUrl)}`
+        if (paymentMethod === 'razorpay_direct') {
+          // Razorpay Direct - Use Razorpay Checkout
+          const razorpayKeyId = orderResponse.data?.razorpayKeyId
+          
+          if (!razorpayKeyId) {
+            toast.error('Razorpay Key ID is missing. Please contact support.')
+            setProcessingPayment(false)
+            return
+          }
+          
+          // Wait for Razorpay to load if not already loaded
+          if (!window.Razorpay) {
+            // Try to load Razorpay script
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            
+            script.onload = () => {
+              console.log('✅ Razorpay script loaded, opening checkout...');
+              openRazorpayCheckout(razorpayKeyId, order, bookingData);
+            };
+            
+            script.onerror = () => {
+              toast.error('Failed to load Razorpay. Please refresh the page and try again.')
+              setProcessingPayment(false);
+            };
+            
+            document.body.appendChild(script);
+            return;
+          }
+          
+          // Razorpay is loaded, open checkout
+          openRazorpayCheckout(razorpayKeyId, order, bookingData);
+        } else {
+          // Microservice - Redirect to hosted checkout
+          const returnUrl = `${window.location.origin}/booking-history`
+          const checkoutUrl = `https://payments.synilogic.in/pay/${order.id}?return_url=${encodeURIComponent(returnUrl)}`
 
-        console.log('🔁 Redirecting to hosted checkout:', checkoutUrl)
-        window.location.href = checkoutUrl
-        return
+          console.log('🔁 Redirecting to hosted checkout:', checkoutUrl)
+          window.location.href = checkoutUrl
+        }
       } else {
         const errorMessage = orderResponse.data?.error || orderResponse.data?.message || 'Failed to create payment order'
         if (errorMessage.includes('already booked') || 
@@ -385,11 +448,77 @@ function Booking() {
     }
   }
 
+  // Helper function to open Razorpay checkout
+  const openRazorpayCheckout = (razorpayKeyId, order, bookingData) => {
+    if (!window.Razorpay) {
+      toast.error('Razorpay is not loaded. Please refresh the page.')
+      setProcessingPayment(false)
+      return
+    }
+
+    const options = {
+      key: razorpayKeyId,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'Wedding Venue Booking',
+      description: `Booking for ${venue.name || 'Venue'}`,
+      order_id: order.id,
+      prefill: {
+        name: bookingData?.name || bookingData?.fullName || formData.fullName || '',
+        email: bookingData?.email || formData.email || '',
+        contact: bookingData?.phone || formData.phone || ''
+      },
+      handler: async function (response) {
+        try {
+          const verifyResponse = await paymentAPI.verify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            bookingData: bookingData
+          })
+
+          if (verifyResponse.data?.success) {
+            toast.success('Payment successful! Booking confirmed.')
+            window.location.href = '/booking-history'
+          } else {
+            toast.error(verifyResponse.data?.message || 'Payment verification failed')
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error)
+          const errorMsg = error.data?.error || error.data?.message || error.message || 'Payment verification failed';
+          if (errorMsg.includes('already booked') || 
+              errorMsg.includes('not available') || 
+              errorMsg.includes('blocked')) {
+            toast.error(errorMsg + ' Please choose different dates.', { duration: 6000 });
+          } else {
+            toast.error(errorMsg);
+          }
+        } finally {
+          setProcessingPayment(false);
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          setProcessingPayment(false)
+          toast.error('Payment cancelled')
+        }
+      }
+    }
+
+    const razorpay = new window.Razorpay(options)
+    razorpay.open()
+  }
+
   const nights = calculateNights()
   const total = calculateTotal()
 
   return (
     <>
+      <SEO 
+        title="Complete Your Booking | ShubhVenue - Secure Venue Reservation"
+        description="Complete your venue booking with ShubhVenue. Fill in your event details, dates, and guest information to secure your perfect wedding venue. Safe and secure booking process."
+        keywords="venue booking, complete booking, wedding venue reservation, book venue online, secure booking, venue booking form, event booking"
+      />
       <div className="booking-page">
         {/* Back Button */}
         <button 

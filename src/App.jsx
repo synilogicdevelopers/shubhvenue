@@ -21,6 +21,7 @@ import PrivacyPolicy from './pages/customer/PrivacyPolicy'
 import TermsOfService from './pages/customer/TermsOfService'
 import CookiePolicy from './pages/customer/CookiePolicy'
 import ContactUs from './pages/customer/ContactUs'
+import Decoration from './pages/customer/Decoration'
 import './App.css'
 
 // Admin Routes
@@ -38,6 +39,7 @@ import { Payouts as AdminPayouts } from './pages/admin/payouts'
 import { Analytics } from './pages/admin/analytics'
 import { Settings as AdminSettings } from './pages/admin/settings'
 import { Categories } from './pages/admin/categories'
+import { DecorationCategories } from './pages/admin/decoration-categories'
 import { Menus } from './pages/admin/menus'
 import { Videos as AdminVideos } from './pages/admin/videos'
 import { Testimonials } from './pages/admin/testimonials'
@@ -45,6 +47,7 @@ import { FAQs } from './pages/admin/faqs'
 import { Company } from './pages/admin/company'
 import { Contacts } from './pages/admin/contacts'
 import { Banners } from './pages/admin/banners'
+import { BannerCategories } from './pages/admin/banner-categories'
 import { Staff } from './pages/admin/staff'
 import { Roles } from './pages/admin/roles'
 import { Reviews as AdminReviews } from './pages/admin/reviews'
@@ -144,6 +147,7 @@ function CustomerRoutes() {
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/contact-us" element={<ContactUs />} />
+          <Route path="/decoration" element={<Decoration />} />
         </Routes>
       </main>
     </div>
@@ -276,6 +280,16 @@ function AdminRoutes() {
         }
       />
       <Route
+        path="decoration-categories"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <DecorationCategories />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
         path="menus"
         element={
           <AdminPrivateRoute>
@@ -341,6 +355,16 @@ function AdminRoutes() {
           <AdminPrivateRoute>
             <DashboardLayout>
               <Banners />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="banner-categories"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <BannerCategories />
             </DashboardLayout>
           </AdminPrivateRoute>
         }

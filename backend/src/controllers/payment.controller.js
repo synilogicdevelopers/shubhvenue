@@ -5,6 +5,7 @@ import Booking from '../models/Booking.js';
 import Venue from '../models/Venue.js';
 import Lead from '../models/Lead.js';
 import { callMicroservice } from '../utils/microserviceClient.js';
+import { generateCustomBookingId } from '../utils/bookingIdGenerator.js';
 
 // Create Payment Order
 export const createPaymentOrder = async (req, res) => {
@@ -134,54 +135,180 @@ export const createPaymentOrder = async (req, res) => {
     }
 
     // At this point, dates are valid and available.
-    // Instead of creating a Razorpay order directly, delegate to the
-    // central payments microservice.
-
-    console.log('📦 Creating microservice payment order...');
-    console.log('   Amount (paise):', amount);
-    console.log('   Currency:', currency);
-    console.log('   Booking ID:', bookingId);
+    // Check which payment method is enabled
+    const config = await PaymentConfig.getConfig();
     
-    // Build customer + notes payload for microservice
-    const customer = {
-      name: bookingData?.name || bookingData?.fullName || 'Guest User',
-      email: bookingData?.email || 'no-email@example.com',
-      contact: bookingData?.phone || '',
-    };
+    // Debug: Log current configuration
+    console.log('📋 Payment Config:', {
+      enableRazorpayDirect: config.enableRazorpayDirect,
+      enableMicroservice: config.enableMicroservice,
+      hasKeyId: !!config.razorpayKeyId,
+      hasSecret: !!config.razorpayKeySecret,
+    });
+    
+    // Determine which payment method to use
+    const useMicroservice = config.enableMicroservice === true || 
+                           (config.enableMicroservice !== false && config.enableRazorpayDirect !== true);
+    const useRazorpayDirect = config.enableRazorpayDirect === true && config.enableMicroservice === false;
+    
+    console.log('🎯 Selected Payment Method:', useRazorpayDirect ? 'Razorpay Direct' : 'Microservice');
 
-    const notes = {
-      source: 'Shubhvenue',
-      venue_id: bookingData?.venueId || null,
-      booking_id: bookingId || null,
-      booking_data: bookingData || null,
-    };
+    if (useRazorpayDirect) {
+      // Direct Razorpay Integration
+      console.log('📦 Creating Razorpay direct payment order...');
+      console.log('   Amount (paise):', amount);
+      console.log('   Currency:', currency);
 
-    const payload = {
-      amount: Math.round(Number(amount)), // already in paise
-      currency,
-      customer,
-      notes,
-    };
+      if (!config.razorpayKeyId || !config.razorpayKeySecret) {
+        return res.status(400).json({
+          error: 'Razorpay configuration error',
+          message: 'Razorpay Key ID and Secret are required for direct Razorpay integration. Please configure in admin settings.',
+        });
+      }
 
-    const microserviceResponse = await callMicroservice('/api/payment/order', 'POST', payload);
-    const orderData = microserviceResponse?.data || {};
+      // Create Razorpay order using Razorpay API
+      const axios = (await import('axios')).default;
+      const razorpayAuth = Buffer.from(`${config.razorpayKeyId}:${config.razorpayKeySecret}`).toString('base64');
 
-    if (!orderData.order_id || !orderData.key_id) {
-      return res.status(500).json({
-        error: 'Payment configuration error',
-        message: 'Microservice did not return a valid order. Please contact support.',
+      const razorpayOrderData = {
+        amount: Math.round(Number(amount)), // amount in paise
+        currency: currency,
+        receipt: `receipt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        notes: {
+          source: 'Shubhvenue',
+          venue_id: bookingData?.venueId || null,
+          booking_id: bookingId || null,
+        }
+      };
+
+      try {
+        const razorpayResponse = await axios.post(
+          'https://api.razorpay.com/v1/orders',
+          razorpayOrderData,
+          {
+            headers: {
+              'Authorization': `Basic ${razorpayAuth}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const razorpayOrder = razorpayResponse.data;
+
+        return res.json({
+          success: true,
+          paymentMethod: 'razorpay_direct',
+          order: {
+            id: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+          },
+          razorpayKeyId: config.razorpayKeyId, // Frontend needs this for Razorpay checkout
+        });
+      } catch (razorpayError) {
+        console.error('Razorpay order creation error:', razorpayError.response?.data || razorpayError.message);
+        return res.status(500).json({
+          error: 'Failed to create Razorpay order',
+          message: razorpayError.response?.data?.error?.description || razorpayError.message || 'Failed to create payment order',
+        });
+      }
+    } else {
+      // Microservice Integration (default)
+      console.log('📦 Creating microservice payment order...');
+      console.log('   Amount (paise):', amount);
+      console.log('   Currency:', currency);
+      console.log('   Booking ID:', bookingId);
+      
+      // Build customer + notes payload for microservice
+      const customer = {
+        name: bookingData?.name || bookingData?.fullName || 'Guest User',
+        email: bookingData?.email || 'no-email@example.com',
+        contact: bookingData?.phone || '',
+      };
+
+      const notes = {
+        source: 'Shubhvenue',
+        venue_id: bookingData?.venueId || null,
+        booking_id: bookingId || null,
+        booking_data: bookingData || null,
+      };
+
+      const payload = {
+        amount: Math.round(Number(amount)), // already in paise
+        currency,
+        customer,
+        notes,
+      };
+
+      let orderData;
+      try {
+        const microserviceResponse = await callMicroservice('/api/payment/order', 'POST', payload);
+        orderData = microserviceResponse?.data || {};
+
+        if (!orderData.order_id || !orderData.key_id) {
+          return res.status(500).json({
+            error: 'Payment configuration error',
+            message: 'Microservice did not return a valid order. Please contact support.',
+          });
+        }
+      } catch (microserviceError) {
+        console.error('❌ Microservice call error:', {
+          message: microserviceError.message,
+          stack: microserviceError.stack,
+        });
+        
+        // Check for specific error messages
+        if (microserviceError.message && (
+          microserviceError.message.includes('Invalid Project') ||
+          microserviceError.message.includes('Invalid project') ||
+          microserviceError.message.includes('invalid project')
+        )) {
+          return res.status(400).json({
+            error: 'Invalid Project Configuration',
+            message: microserviceError.message || 'Microservice project code or secret is incorrect. Please verify in admin settings → Payment Configuration.',
+          });
+        }
+        
+        if (microserviceError.message && microserviceError.message.includes('Missing Authentication')) {
+          return res.status(400).json({
+            error: 'Missing Authentication',
+            message: microserviceError.message || 'Microservice requires Project Code and Secret. Please configure them in admin settings → Payment Configuration.',
+          });
+        }
+        
+        if (microserviceError.message && microserviceError.message.includes('requires authentication')) {
+          return res.status(400).json({
+            error: 'Authentication Required',
+            message: microserviceError.message,
+          });
+        }
+        
+        if (microserviceError.message && microserviceError.message.includes('not configured')) {
+          return res.status(400).json({
+            error: 'Microservice Not Configured',
+            message: 'Please set MICROSERVICE_API_URL in backend .env file. Example: MICROSERVICE_API_URL=https://payments.synilogic.in',
+          });
+        }
+        
+        // Return detailed error for debugging
+        return res.status(500).json({
+          error: 'Microservice Error',
+          message: microserviceError.message || 'Failed to create payment order via microservice',
+          hint: 'Please check: 1) MICROSERVICE_API_URL is set in backend .env file, 2) Microservice server is running and accessible, 3) Backend server is restarted after .env changes',
+        });
+      }
+      
+      // Return order in the same shape the frontend expects
+      return res.json({
+        success: true,
+        paymentMethod: 'microservice',
+        order: {
+          id: orderData.order_id,
+          amount: orderData.amount,
+          currency: orderData.currency,
+        },
       });
     }
-    
-    // Return order in the same shape the frontend expects
-    return res.json({
-      success: true,
-      order: {
-        id: orderData.order_id,
-        amount: orderData.amount,
-        currency: orderData.currency,
-      },
-      });
   } catch (error) {
     console.error('Create payment order error (microservice):', error);
     const message = error.message || 'Failed to create payment order via microservice';
@@ -298,6 +425,14 @@ export const verifyPayment = async (req, res) => {
     // Validate marriageFor
     if (marriageFor && !['boy', 'girl'].includes(marriageFor)) {
       return res.status(400).json({ error: 'marriageFor must be either "boy" or "girl"' });
+    }
+
+    // Validate venueId format - must be a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(String(venueId))) {
+      return res.status(400).json({ 
+        error: 'Invalid venue ID format',
+        message: 'Venue ID must be a valid MongoDB ObjectId. Please refresh the page and try again.'
+      });
     }
 
     // Parse date
@@ -496,6 +631,22 @@ export const verifyPayment = async (req, res) => {
 
     await booking.save();
     
+    // Generate and set custom booking ID with vendor name
+    try {
+      booking.customBookingId = await generateCustomBookingId(venueId, booking._id);
+      await booking.save();
+    } catch (idError) {
+      console.error('Error setting custom booking ID:', idError);
+      // If uniqueness constraint fails, try with timestamp
+      try {
+        booking.customBookingId = await generateCustomBookingId(venueId, null);
+        await booking.save();
+      } catch (retryError) {
+        console.error('Error retrying custom booking ID:', retryError);
+        // Continue without custom ID if it fails
+      }
+    }
+    
     // Also create Lead for admin tracking
     const lead = new Lead({
       customerId: userId || null,
@@ -681,6 +832,20 @@ export const verifyPaymentForLead = async (req, res) => {
     });
     
     await booking.save();
+    
+    // Generate and set custom booking ID with vendor name
+    try {
+      booking.customBookingId = await generateCustomBookingId(lead.venueId._id, booking._id);
+      await booking.save();
+    } catch (idError) {
+      console.error('Error setting custom booking ID:', idError);
+      try {
+        booking.customBookingId = await generateCustomBookingId(lead.venueId._id, null);
+        await booking.save();
+      } catch (retryError) {
+        console.error('Error retrying custom booking ID:', retryError);
+      }
+    }
     
     // Update lead to link it with the booking
     lead.bookingId = booking._id;

@@ -75,6 +75,11 @@ const venueSchema = new mongoose.Schema(
       ref: 'Category',
       default: null
     },
+    vendorCategoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'VendorCategory',
+      default: null
+    },
     menuId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Menu',
@@ -106,9 +111,8 @@ const venueSchema = new mongoose.Schema(
       trim: true
     }],
     rooms: {
-      type: Number,
-      default: 0,
-      min: 0
+      type: mongoose.Schema.Types.Mixed, // Can be array of strings (legacy) or array of objects { name, count }
+      default: []
     },
     image: {
       type: String, // Legacy field for single image
@@ -276,7 +280,32 @@ const venueSchema = new mongoose.Schema(
     blockedDates: [{
       type: Date,
       required: true
-    }]
+    }],
+    services: [{
+      name: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      price: {
+        type: Number,
+        default: null, // null means price is optional/not set
+        min: 0
+      },
+      description: {
+        type: String,
+        trim: true
+      }
+    }],
+    // SEO fields for meta tags
+    metaTitle: {
+      type: String,
+      trim: true
+    },
+    metaDescription: {
+      type: String,
+      trim: true
+    }
   },
   {
     timestamps: true

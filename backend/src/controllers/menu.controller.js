@@ -301,9 +301,12 @@ export const createMenu = async (req, res) => {
       }
     }
 
+    // Normalize parentMenuId - convert string 'null' to actual null
+    const normalizedParentMenuId = (parentMenuId && parentMenuId !== 'null' && parentMenuId !== '') ? parentMenuId : null;
+    
     // Validate parentMenuId if provided
-    if (parentMenuId && parentMenuId !== 'null' && parentMenuId !== '') {
-      const parentMenuQuery = Menu.findById(parentMenuId).maxTimeMS(5000);
+    if (normalizedParentMenuId) {
+      const parentMenuQuery = Menu.findById(normalizedParentMenuId).maxTimeMS(5000);
       const parentMenu = await withTimeout(parentMenuQuery, 7000);
       
       if (!parentMenu) {
@@ -315,11 +318,11 @@ export const createMenu = async (req, res) => {
         return res.status(400).json({ error: 'Cannot create submenu of a submenu. Only main menus can have submenus.' });
       }
     }
-
+    
     // Check if menu already exists with timeout
     const existingMenuQuery = Menu.findOne({ 
       name: { $regex: new RegExp(`^${name}$`, 'i') },
-      parentMenuId: parentMenuId || null
+      parentMenuId: normalizedParentMenuId
     }).maxTimeMS(5000);
     
     const existingMenu = await withTimeout(existingMenuQuery, 7000);
@@ -347,7 +350,7 @@ export const createMenu = async (req, res) => {
       description: description || '',
       icon: icon || '',
       image: imagePath || '',
-      parentMenuId: parentMenuId && parentMenuId !== 'null' && parentMenuId !== '' ? parentMenuId : null,
+      parentMenuId: normalizedParentMenuId,
       isActive: isActive !== undefined ? isActive : true,
       sortOrder: sortOrder || 0
     });
@@ -362,6 +365,9 @@ export const createMenu = async (req, res) => {
     });
   } catch (error) {
     console.error('Create menu error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', req.body);
+    console.error('Request file:', req.file);
     
     // Handle duplicate key error
     if (error.code === 11000) {
@@ -372,7 +378,15 @@ export const createMenu = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Internal server error' });
+    // Return more detailed error in development
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? error.message 
+      : 'Internal server error';
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
   }
 };
 

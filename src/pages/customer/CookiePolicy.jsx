@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from '../../components/customer/Footer'
 import { publicLegalPagesAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import SEO from '../../components/SEO'
 import './CookiePolicy.css'
 
 function CookiePolicy() {
@@ -67,6 +68,11 @@ function CookiePolicy() {
 
   return (
     <div className="cookie-page">
+      <SEO 
+        title="Cookie Policy | ShubhVenue"
+        description="Read ShubhVenue's Cookie Policy to understand how we use cookies on our website to enhance your browsing experience and provide personalized services."
+        keywords="cookie policy, cookies, privacy, data protection, website cookies, cookie usage"
+      />
       <div className="cookie-container">
         <div className="cookie-hero">
           <h1 className="cookie-title">{pageData.title}</h1>

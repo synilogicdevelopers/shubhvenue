@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Footer from '../../components/customer/Footer'
 import { authAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import SEO from '../../components/SEO'
 import './Profile.css'
 
 function Profile() {
@@ -137,6 +138,11 @@ function Profile() {
 
   return (
     <>
+      <SEO 
+        title="My Profile | ShubhVenue - Manage Your Account"
+        description="Manage your ShubhVenue profile. Update your personal information, view booking history, and manage your account settings."
+        keywords="user profile, my profile, account settings, profile management, user account, update profile"
+      />
       <div className="profile-container">
         <div className="profile-background-decoration"></div>
         <div className="profile-wrapper">

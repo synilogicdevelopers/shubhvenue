@@ -288,10 +288,10 @@ export default function VendorRoles() {
             Back to Roles
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-3xl font-bold text-gray-900">
               {isCreateMode ? 'Create New Role' : 'Edit Role'}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-gray-600 mt-1">
               {isCreateMode ? 'Add a new role with permissions' : 'Update role details and permissions'}
             </p>
           </div>
@@ -315,7 +315,7 @@ export default function VendorRoles() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Enter role description"
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900"
                   rows="3"
                 />
               </div>
@@ -325,7 +325,7 @@ export default function VendorRoles() {
                   <select
                     value={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900"
                   >
                     <option value={true}>Active</option>
                     <option value={false}>Inactive</option>
@@ -363,9 +363,9 @@ export default function VendorRoles() {
                     const allSelected = categoryPerms.length > 0 && selectedCount === categoryPerms.length;
 
                     return (
-                      <div key={category} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div key={category} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                          <h3 className="font-semibold text-gray-900">
                             {getCategoryLabel(category)}
                           </h3>
                           <Button
@@ -387,14 +387,14 @@ export default function VendorRoles() {
                                 className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
                                   isSelected
                                     ? 'bg-primary/10 border-primary text-primary'
-                                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary/50'
+                                    : 'bg-gray-50 border-gray-200 hover:border-primary/50'
                                 }`}
                               >
                                 <div
                                   className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                                     isSelected
                                       ? 'bg-primary border-primary'
-                                      : 'border-gray-300 dark:border-gray-600'
+                                      : 'border-gray-300'
                                   }`}
                                 >
                                   {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -441,7 +441,7 @@ export default function VendorRoles() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => navigate('/vendor/roles')}
@@ -481,8 +481,8 @@ export default function VendorRoles() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Roles</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage user roles and permissions</p>
+          <h1 className="text-3xl font-bold text-gray-900">Roles</h1>
+          <p className="text-gray-600 mt-1">Manage user roles and permissions</p>
         </div>
         <Button onClick={() => navigate('/vendor/roles?mode=create')}>
           <Plus className="w-4 h-4 mr-2" />
@@ -509,7 +509,7 @@ export default function VendorRoles() {
             <select
               value={isActiveFilter}
               onChange={(e) => setIsActiveFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-900"
             >
               <option value="all">All Status</option>
               <option value="true">Active</option>
@@ -609,7 +609,7 @@ export default function VendorRoles() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-gray-700 dark:text-gray-200">
+          <p className="text-gray-700">
             Are you sure you want to delete {confirmAction?.name || 'this role'}? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
@@ -649,8 +649,8 @@ export default function VendorRoles() {
                   <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedRole.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-500">Name</p>
+                  <p className="font-semibold text-gray-900">{selectedRole.name || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -669,12 +669,12 @@ export default function VendorRoles() {
             </div>
             {selectedRole.description && (
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Description</p>
-                <p className="text-gray-900 dark:text-gray-100">{selectedRole.description}</p>
+                <p className="text-sm text-gray-500 mb-1">Description</p>
+                <p className="text-gray-900">{selectedRole.description}</p>
               </div>
             )}
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-sm text-gray-500 mb-2">
                 Permissions ({selectedRole.permissions?.length || 0})
               </p>
               <div className="flex flex-wrap gap-2">

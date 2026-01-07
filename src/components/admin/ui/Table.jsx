@@ -12,7 +12,7 @@ export const Table = ({ children, className }) => {
 
 export const TableHeader = ({ children }) => {
   return (
-    <thead className="bg-gray-100 dark:bg-gray-700">
+    <thead className="bg-gray-100">
       {children}
     </thead>
   );
@@ -20,7 +20,7 @@ export const TableHeader = ({ children }) => {
 
 export const TableBody = ({ children }) => {
   return (
-    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+    <tbody className="divide-y divide-gray-200">
       {children}
     </tbody>
   );
@@ -30,7 +30,7 @@ export const TableRow = ({ children, className, onClick }) => {
   return (
     <tr 
       className={cn(
-        'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
+        'hover:bg-gray-50 transition-colors',
         onClick && 'cursor-pointer',
         className
       )}
@@ -43,15 +43,15 @@ export const TableRow = ({ children, className, onClick }) => {
 
 export const TableHead = ({ children, className }) => {
   return (
-    <th className={cn('px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider', className)}>
+    <th className={cn('px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider', className)}>
       {children}
     </th>
   );
 };
 
-export const TableCell = ({ children, className }) => {
+export const TableCell = ({ children, className, colSpan }) => {
   return (
-    <td className={cn('px-4 py-3 text-sm text-gray-900 dark:text-gray-100', className)}>
+    <td colSpan={colSpan} className={cn('px-4 py-3 text-sm text-gray-900', className)}>
       {children}
     </td>
   );

@@ -5,6 +5,7 @@ import { createSlug } from '../../utils/customer/slug'
 import toast from 'react-hot-toast'
 import Footer from '../../components/customer/Footer'
 import LoginModal from '../../components/customer/LoginModal'
+import SEO from '../../components/SEO'
 import './BookingHistory.css'
 
 function BookingHistory() {
@@ -320,6 +321,11 @@ function BookingHistory() {
 
   return (
     <>
+      <SEO 
+        title="My Booking History | ShubhVenue - View All Your Venue Bookings"
+        description="View and manage all your venue bookings in one place. Check booking status, payment details, and manage your reservations with ShubhVenue."
+        keywords="booking history, my bookings, venue bookings, booking status, manage bookings, reservation history, booking management"
+      />
       <div className="booking-history-page">
         {/* Hero Section */}
         <div className="booking-history-hero">

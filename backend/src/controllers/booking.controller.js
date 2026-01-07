@@ -3,6 +3,7 @@ import Booking from '../models/Booking.js';
 import Venue from '../models/Venue.js';
 import Lead from '../models/Lead.js';
 import Ledger from '../models/Ledger.js';
+import { generateCustomBookingId } from '../utils/bookingIdGenerator.js';
 
 // Get bookings - role-aware
 // Customers: see their own bookings
@@ -94,7 +95,14 @@ export const getBookings = async (req, res) => {
 
     const bookings = await Booking.find(filter)
       .populate('customerId', 'name email phone')
-      .populate('venueId', 'name location price capacity rooms images coverImage image')
+      .populate({
+        path: 'venueId',
+        select: 'name location price capacity rooms images coverImage image vendorId',
+        populate: {
+          path: 'vendorId',
+          select: 'name'
+        }
+      })
       .sort({ createdAt: -1 });
 
     // Convert Mongoose documents to plain objects
@@ -618,6 +626,20 @@ export const createBooking = async (req, res) => {
 
     await booking.save();
     
+    // Generate and set custom booking ID with vendor name
+    try {
+      booking.customBookingId = await generateCustomBookingId(venueId, booking._id);
+      await booking.save();
+    } catch (idError) {
+      console.error('Error setting custom booking ID:', idError);
+      try {
+        booking.customBookingId = await generateCustomBookingId(venueId, null);
+        await booking.save();
+      } catch (retryError) {
+        console.error('Error retrying custom booking ID:', retryError);
+      }
+    }
+    
     // Also create Lead for admin tracking
     const lead = new Lead({
       customerId: userId || null,
@@ -756,6 +778,20 @@ export const convertLeadToBookingWithPayment = async (req, res) => {
     });
     
     await booking.save();
+    
+    // Generate and set custom booking ID with vendor name
+    try {
+      booking.customBookingId = await generateCustomBookingId(lead.venueId._id, booking._id);
+      await booking.save();
+    } catch (idError) {
+      console.error('Error setting custom booking ID:', idError);
+      try {
+        booking.customBookingId = await generateCustomBookingId(lead.venueId._id, null);
+        await booking.save();
+      } catch (retryError) {
+        console.error('Error retrying custom booking ID:', retryError);
+      }
+    }
     
     // Update lead to link it with the booking
     lead.bookingId = booking._id;

@@ -11,15 +11,39 @@ import PaymentConfig from '../models/PaymentConfig.js';
  * - MICROSERVICE_API_URL (env) => microservice base URL
  */
 export async function getMicroserviceConfig() {
+  // For microservice, we only need the API URL
+  // Project code and secret are optional - only needed if microservice requires authentication
   const config = await PaymentConfig.findOne();
 
   const apiUrl = (process.env.MICROSERVICE_API_URL || '').trim();
+  
+  // Optional: Get project code/secret if configured (for authenticated microservices)
   const projectId = (config?.razorpayKeyId || '').trim();
   const projectSecret = (config?.razorpayKeySecret || '').trim();
 
-  if (!apiUrl || !projectId || !projectSecret) {
+  console.log('🔍 Microservice Config Check:', {
+    hasApiUrl: !!apiUrl,
+    apiUrl: apiUrl ? apiUrl.substring(0, 50) + '...' : 'NOT SET',
+    hasProjectId: !!projectId,
+    projectIdLength: projectId ? projectId.length : 0,
+    projectIdPreview: projectId ? (projectId.substring(0, 10) + '...' + projectId.substring(projectId.length - 5)) : 'NOT SET',
+    hasProjectSecret: !!projectSecret,
+    projectSecretLength: projectSecret ? projectSecret.length : 0,
+    authMode: (projectId && projectSecret) ? 'With Auth' : 'URL Only (No Auth)',
+  });
+
+  // Only API URL is required for microservice
+  if (!apiUrl) {
     throw new Error(
-      'Microservice is not fully configured. Please set MICROSERVICE_API_URL and payment config (Key ID = project code, Key Secret = project secret) in admin settings.'
+      'Microservice is not configured. Please set MICROSERVICE_API_URL in backend environment variables (.env file).'
+    );
+  }
+
+  // Microservice requires authentication (project code and secret)
+  // If not provided, show helpful error
+  if (!projectId || !projectSecret) {
+    throw new Error(
+      'Microservice requires authentication. Please configure Project Code (Key ID) and Project Secret (Key Secret) in admin settings → Payment Configuration. These are your microservice project credentials from payments.synilogic.in admin panel.'
     );
   }
 
@@ -60,11 +84,21 @@ export async function callMicroservice(endpoint, method = 'GET', payload = null)
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-    'X-Project-Id': projectId,
   };
 
+  // Microservice requires authentication headers
+  headers['X-Project-Id'] = projectId;
   if (bodyString) {
-    headers['X-Project-Signature'] = generateMicroserviceSignature(bodyString, projectSecret);
+    const signature = generateMicroserviceSignature(bodyString, projectSecret);
+    headers['X-Project-Signature'] = signature;
+    
+    console.log('📤 Microservice Request:', {
+      url,
+      method,
+      projectId: projectId.substring(0, 10) + '...',
+      hasSignature: !!signature,
+      payloadKeys: Object.keys(payload || {}),
+    });
   }
 
   try {
@@ -95,10 +129,42 @@ export async function callMicroservice(endpoint, method = 'GET', payload = null)
   } catch (error) {
     if (error.response) {
       const { status, data } = error.response;
+      const errorMessage = data?.message || data?.error || JSON.stringify(data) || error.message;
+      
+      console.error('❌ Microservice Error Response:', {
+        status,
+        url,
+        error: errorMessage,
+        data: data,
+      });
+      
+      // Handle specific error cases
+      if (errorMessage.includes('Invalid project') || 
+          errorMessage.includes('invalid project') ||
+          errorMessage.includes('Invalid Project')) {
+        throw new Error(
+          `Invalid Project: Microservice project code or secret is incorrect. Please verify the Project Code (Key ID) and Project Secret (Key Secret) in admin settings → Payment Configuration. Get these from your microservice admin panel.`
+        );
+      }
+      
+      if (errorMessage.includes('Missing authentication') || 
+          errorMessage.includes('missing authentication')) {
+        throw new Error(
+          `Missing Authentication: Microservice requires Project Code and Secret. Please configure them in admin settings → Payment Configuration.`
+        );
+      }
+      
       throw new Error(
-        `Microservice HTTP ${status}: ${data?.message || data?.error || error.message}`
+        `Microservice HTTP ${status}: ${errorMessage}`
       );
     }
+    
+    console.error('❌ Microservice Request Error:', {
+      url,
+      error: error.message,
+      stack: error.stack,
+    });
+    
     throw error;
   }
 }

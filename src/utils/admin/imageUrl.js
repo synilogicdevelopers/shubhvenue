@@ -2,7 +2,7 @@
  * Get the base URL for images (without /api)
  */
 export const getImageBaseUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api';
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
   // Remove /api from the end if present
   return apiUrl.replace('/api', '');
 };

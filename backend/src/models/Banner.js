@@ -6,6 +6,11 @@ const bannerSchema = new mongoose.Schema(
     description: { type: String },
     image: { type: String, required: true }, // Banner image URL
     link: { type: String }, // Optional link/URL for banner
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BannerCategory',
+      default: null
+    }, // Banner category
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 }, // For ordering banners
     startDate: { type: Date }, // Optional: when banner should start showing

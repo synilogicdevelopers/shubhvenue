@@ -27,8 +27,8 @@ export async function connectToDatabase() {
       serverSelectionTimeoutMS: 3000, // 3 seconds to select server (reduced from 5)
       socketTimeoutMS: 8000, // 8 seconds for socket operations (reduced from 10)
       connectTimeoutMS: 5000, // 5 seconds to establish connection (reduced from 10)
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      minPoolSize: 2, // Maintain at least 2 socket connections
+      maxPoolSize: 100, // Maintain up to 100 socket connections (optimized for 100k users)
+      minPoolSize: 10, // Maintain at least 10 socket connections
       heartbeatFrequencyMS: 10000, // Send heartbeat every 10 seconds
       retryWrites: true,
       retryReads: true,

@@ -225,6 +225,45 @@ export const categoriesAPI = {
   delete: (id) => api.delete(`/categories/${id}`),
 };
 
+// Decoration Categories APIs
+export const decorationCategoriesAPI = {
+  getAll: (params) => api.get('/decoration-categories', { params }),
+  getById: (id) => api.get(`/decoration-categories/${id}`),
+  create: (data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.post('/decoration-categories', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.post('/decoration-categories', data);
+  },
+  update: (id, data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.put(`/decoration-categories/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.put(`/decoration-categories/${id}`, data);
+  },
+  delete: (id) => api.delete(`/decoration-categories/${id}`),
+};
+
+// Banner Categories APIs
+export const bannerCategoriesAPI = {
+  getAll: (params) => api.get('/admin/banner-categories', { params }),
+  getById: (id) => api.get(`/admin/banner-categories/${id}`),
+  create: (data) => api.post('/admin/banner-categories', data),
+  update: (id, data) => api.put(`/admin/banner-categories/${id}`, data),
+  delete: (id) => api.delete(`/admin/banner-categories/${id}`),
+  toggleActive: (id) => api.put(`/admin/banner-categories/${id}/toggle-active`),
+};
+
 // Banners APIs
 export const bannersAPI = {
   getAll: (params) => api.get('/admin/banners', { params }),

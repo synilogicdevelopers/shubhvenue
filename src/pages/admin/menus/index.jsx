@@ -223,18 +223,29 @@ export const Menus = () => {
       // Create or update main menu
       if (isSubmenu) {
         // This is a submenu, handle normally
-        const submitData = new FormData();
-        submitData.append('name', formData.name);
-        submitData.append('description', formData.description || '');
-        submitData.append('icon', formData.icon || '');
-        submitData.append('isActive', formData.isActive);
-        submitData.append('sortOrder', formData.sortOrder || 0);
-        submitData.append('parentMenuId', formData.parentMenuId);
+        let submitData;
         
+        // Use FormData only if there's a file to upload, otherwise use JSON
         if (imageFile) {
+          submitData = new FormData();
+          submitData.append('name', formData.name);
+          submitData.append('description', formData.description || '');
+          submitData.append('icon', formData.icon || '');
+          submitData.append('isActive', formData.isActive);
+          submitData.append('sortOrder', formData.sortOrder || 0);
+          submitData.append('parentMenuId', formData.parentMenuId);
           submitData.append('image', imageFile);
-        } else if (formData.image && !imageFile) {
-          submitData.append('image', formData.image);
+        } else {
+          // Use JSON when there's no file
+          submitData = {
+            name: formData.name,
+            description: formData.description || '',
+            icon: formData.icon || '',
+            isActive: formData.isActive,
+            sortOrder: formData.sortOrder || 0,
+            parentMenuId: formData.parentMenuId,
+            ...(formData.image && !imageFile ? { image: formData.image } : {})
+          };
         }
 
         if (editingMenu) {
@@ -246,18 +257,29 @@ export const Menus = () => {
         }
       } else {
         // This is a main menu, create/update it first
-        const submitData = new FormData();
-        submitData.append('name', formData.name);
-        submitData.append('description', formData.description || '');
-        submitData.append('icon', formData.icon || '');
-        submitData.append('isActive', formData.isActive);
-        submitData.append('sortOrder', formData.sortOrder || 0);
-        submitData.append('parentMenuId', 'null');
+        let submitData;
         
+        // Use FormData only if there's a file to upload, otherwise use JSON
         if (imageFile) {
+          submitData = new FormData();
+          submitData.append('name', formData.name);
+          submitData.append('description', formData.description || '');
+          submitData.append('icon', formData.icon || '');
+          submitData.append('isActive', formData.isActive);
+          submitData.append('sortOrder', formData.sortOrder || 0);
+          submitData.append('parentMenuId', 'null');
           submitData.append('image', imageFile);
-        } else if (formData.image && !imageFile) {
-          submitData.append('image', formData.image);
+        } else {
+          // Use JSON when there's no file
+          submitData = {
+            name: formData.name,
+            description: formData.description || '',
+            icon: formData.icon || '',
+            isActive: formData.isActive,
+            sortOrder: formData.sortOrder || 0,
+            parentMenuId: 'null',
+            ...(formData.image && !imageFile ? { image: formData.image } : {})
+          };
         }
 
         if (editingMenu) {
@@ -274,13 +296,15 @@ export const Menus = () => {
         if (submenus.length > 0 && mainMenuId) {
           for (let i = 0; i < submenus.length; i++) {
             const submenu = submenus[i];
-            const submenuData = new FormData();
-            submenuData.append('name', submenu.name);
-            submenuData.append('description', submenu.description || '');
-            submenuData.append('icon', submenu.icon || '');
-            submenuData.append('isActive', submenu.isActive);
-            submenuData.append('sortOrder', submenu.sortOrder || i);
-            submenuData.append('parentMenuId', mainMenuId);
+            // Submenus don't have images, so use JSON
+            const submenuData = {
+              name: submenu.name,
+              description: submenu.description || '',
+              icon: submenu.icon || '',
+              isActive: submenu.isActive,
+              sortOrder: submenu.sortOrder || i,
+              parentMenuId: mainMenuId
+            };
 
             if (submenu._id) {
               // Update existing submenu

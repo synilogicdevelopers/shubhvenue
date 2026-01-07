@@ -25,6 +25,7 @@ import {
   UserCog,
   Shield,
   Star,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { cn } from '../../../utils/admin/cn';
 import { getUserPermissions, isAdmin, hasPermission as checkPermission } from '../../../utils/admin/permissions';
@@ -36,9 +37,26 @@ const allMenuItems = [
   { path: '/admin/vendors', icon: Store, label: 'Vendors', permission: 'view_vendors' },
   { path: '/admin/vendor-categories', icon: Tag, label: 'Vendor Categories', permission: 'view_vendors' },
   { path: '/admin/venues', icon: MapPin, label: 'Venues', permission: 'view_venues' },
-  { path: '/admin/categories', icon: Tag, label: 'Categories', permission: 'view_categories' },
+  {
+    label: 'Categories',
+    icon: Tag,
+    permission: 'view_categories',
+    children: [
+      { path: '/admin/categories', label: 'Main Categories', icon: Tag, permission: 'view_categories' },
+      { path: '/admin/decoration-categories', label: 'Decoration Categories', icon: Tag, permission: 'view_categories' },
+    ],
+  },
   { path: '/admin/menus', icon: MenuIcon, label: 'Menus', permission: 'view_menus' },
   { path: '/admin/videos', icon: VideoIcon, label: 'Videos', permission: 'view_videos' },
+  {
+    label: 'Banners',
+    icon: ImageIcon,
+    permission: 'view_banners',
+    children: [
+      { path: '/admin/banner-categories', label: 'Banner Categories', icon: Tag, permission: 'view_banners' },
+      { path: '/admin/banners', label: 'Banners', icon: ImageIcon, permission: 'view_banners' },
+    ],
+  },
   { path: '/admin/leads', icon: UserPlus, label: 'Leads', permission: 'view_leads' },
   { path: '/admin/bookings', icon: Calendar, label: 'Bookings', permission: 'view_bookings' },
   { path: '/admin/payouts', icon: DollarSign, label: 'Payouts', permission: 'view_payouts' },

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from '../../components/customer/Footer'
 import { publicLegalPagesAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import SEO from '../../components/SEO'
 import './TermsOfService.css'
 
 function TermsOfService() {
@@ -67,6 +68,11 @@ function TermsOfService() {
 
   return (
     <div className="terms-page">
+      <SEO 
+        title="Terms of Service | ShubhVenue"
+        description="Read ShubhVenue's Terms of Service to understand the terms and conditions for using our venue booking platform and services."
+        keywords="terms of service, terms and conditions, user agreement, service terms, legal terms"
+      />
       <div className="terms-container">
         <div className="terms-hero">
           <h1 className="terms-title">{pageData.title}</h1>

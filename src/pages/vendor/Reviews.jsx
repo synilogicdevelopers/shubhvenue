@@ -19,7 +19,7 @@ import { format } from 'date-fns'
 import { getImageUrl } from '../../utils/vendor/imageUrl'
 import { Pagination } from '../../components/admin/ui/Pagination'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://shubhvenue.com/api')
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api'
 
 export default function Reviews() {
   const [reviews, setReviews] = useState([])
@@ -387,9 +387,9 @@ export default function Reviews() {
           </button>
           <button
             onClick={loadReviews}
-            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-900"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 text-gray-900" />
             <span>Refresh</span>
           </button>
         </div>
@@ -459,7 +459,7 @@ export default function Reviews() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Venue</label>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Filter by Venue</label>
             <select
               value={selectedVenue}
               onChange={(e) => setSelectedVenue(e.target.value)}
@@ -474,7 +474,7 @@ export default function Reviews() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Rating</label>
+            <label className="block text-sm font-medium text-gray-900 mb-2">Filter by Rating</label>
             <select
               value={selectedRating}
               onChange={(e) => setSelectedRating(e.target.value)}

@@ -209,7 +209,7 @@ export default function Settings() {
                 value={profileData.name}
                 onChange={handleProfileChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 placeholder="Enter your full name"
               />
             </div>
@@ -227,7 +227,7 @@ export default function Settings() {
                 value={profileData.email}
                 onChange={handleProfileChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 placeholder="Enter your email"
               />
             </div>
@@ -244,7 +244,7 @@ export default function Settings() {
                 name="phone"
                 value={profileData.phone}
                 onChange={handleProfileChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 placeholder="Enter your phone number"
               />
             </div>
@@ -283,7 +283,7 @@ export default function Settings() {
                   value={passwordData.currentPassword}
                   onChange={handlePasswordChange}
                   required
-                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                   placeholder="Enter current password"
                 />
                 <button
@@ -308,7 +308,7 @@ export default function Settings() {
                   onChange={handlePasswordChange}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                   placeholder="Enter new password (min 6 characters)"
                 />
                 <button
@@ -333,7 +333,7 @@ export default function Settings() {
                   onChange={handlePasswordChange}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                   placeholder="Confirm new password"
                 />
                 <button

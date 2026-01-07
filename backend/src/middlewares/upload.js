@@ -15,6 +15,7 @@ const videosUploadsDir = path.join(__dirname, '../../uploads/videos');
 const staffUploadsDir = path.join(__dirname, '../../uploads/staff');
 const vendorStaffUploadsDir = path.join(__dirname, '../../uploads/vendor-staff');
 const vendorCategoryUploadsDir = path.join(__dirname, '../../uploads/vendor-categories');
+const decorationCategoryUploadsDir = path.join(__dirname, '../../uploads/decoration-categories');
 if (!fs.existsSync(venuesUploadsDir)) {
   fs.mkdirSync(venuesUploadsDir, { recursive: true });
 }
@@ -23,6 +24,9 @@ if (!fs.existsSync(categoriesUploadsDir)) {
 }
 if (!fs.existsSync(vendorCategoryUploadsDir)) {
   fs.mkdirSync(vendorCategoryUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(decorationCategoryUploadsDir)) {
+  fs.mkdirSync(decorationCategoryUploadsDir, { recursive: true });
 }
 if (!fs.existsSync(menusUploadsDir)) {
   fs.mkdirSync(menusUploadsDir, { recursive: true });
@@ -82,6 +86,20 @@ const vendorCategoryStorage = multer.diskStorage({
   }
 });
 
+// Configure storage for decoration categories
+const decorationCategoryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, decorationCategoryUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
 // Configure storage for menus
 const menuStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -124,16 +142,13 @@ const videoStorage = multer.diskStorage({
   }
 });
 
-// File filter - only images
+// File filter - only images (all image types)
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (extname && mimetype) {
+  // Allow all image types by checking mimetype
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files (jpeg, jpg, png, gif, webp) are allowed!'), false);
+    cb(new Error('Only image files are allowed!'), false);
   }
 };
 
@@ -171,6 +186,15 @@ const categoryUpload = multer({
 // Configure multer for vendor categories
 const vendorCategoryUpload = multer({
   storage: vendorCategoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: fileFilter
+});
+
+// Configure multer for decoration categories
+const decorationCategoryUpload = multer({
+  storage: decorationCategoryStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -238,15 +262,10 @@ export const uploadVenueMedia = multer({
     fileSize: 100 * 1024 * 1024 // 100MB limit (for videos)
   },
   fileFilter: (req, file, cb) => {
-    // Allow both images and videos
+    // Allow both images and videos (all image types)
     if (file.mimetype.startsWith('image/')) {
-      const allowedTypes = /jpeg|jpg|png|gif|webp/;
-      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-      if (extname) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only image files (jpeg, jpg, png, gif, webp) are allowed!'), false);
-      }
+      // Allow all image types
+      cb(null, true);
     } else if (file.mimetype.startsWith('video/')) {
       const allowedTypes = /mp4|webm|ogg|mov|avi|mkv/;
       const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -271,8 +290,19 @@ export const uploadCategoryImage = categoryUpload.single('image');
 // Middleware for vendor category image upload
 export const uploadVendorCategoryImage = vendorCategoryUpload.single('image');
 
-// Middleware for menu image upload
-export const uploadMenuImage = menuUpload.single('image');
+// Middleware for decoration category image upload
+export const uploadDecorationCategoryImage = decorationCategoryUpload.single('image');
+
+// Middleware for menu image upload (optional - only processes if multipart/form-data)
+export const uploadMenuImage = (req, res, next) => {
+  // Only process if content-type is multipart/form-data
+  const contentType = req.get('content-type') || '';
+  if (contentType.includes('multipart/form-data')) {
+    return menuUpload.single('image')(req, res, next);
+  }
+  // If not multipart, skip multer and continue
+  next();
+};
 
 // Middleware for banner image upload
 export const uploadBannerImage = bannerUpload.single('image');

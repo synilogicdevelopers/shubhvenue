@@ -50,12 +50,10 @@ export default function Venues() {
   const [editingVenue, setEditingVenue] = useState(null)
   
   // Get form configuration from selected vendor category or user's vendor category
-  // When editing, ignore formConfig to show all fields
+  // When editing, also use formConfig if a category is selected (allows changing category when editing)
   // Use useMemo to recalculate when dependencies change
   const formConfig = useMemo(() => {
-    if (editingVenue) return null
-    
-    // If vendor category is selected in dropdown, use that
+    // If vendor category is selected in dropdown, use that (works for both Add and Edit)
     if (selectedVendorCategoryId) {
       const selectedCategory = vendorCategories.find(cat => cat._id === selectedVendorCategoryId)
       console.log('Selected Category:', {
@@ -63,14 +61,16 @@ export default function Venues() {
         name: selectedCategory?.name,
         hasFormConfig: !!selectedCategory?.formConfig,
         hasVenueConfig: !!selectedCategory?.formConfig?.venue,
-        formConfig: selectedCategory?.formConfig
+        formConfig: selectedCategory?.formConfig,
+        editing: !!editingVenue
       })
       if (selectedCategory?.formConfig?.venue) {
         return selectedCategory.formConfig.venue
       }
     }
     
-    // Otherwise use user's vendor category
+    // When editing, use selected category's formConfig if available, otherwise use user's default
+    // Don't return null - use user's formConfig as fallback so formConfig still applies
     const userFormConfig = user?.vendorCategory?.formConfig?.venue || null
     console.log('Using user vendor category formConfig:', {
       hasUserCategory: !!user?.vendorCategory,
@@ -79,6 +79,65 @@ export default function Venues() {
     })
     return userFormConfig
   }, [editingVenue, selectedVendorCategoryId, vendorCategories, user?.vendorCategory?.formConfig?.venue])
+  
+  // Helper functions to convert between 24-hour and 12-hour format
+  const convert24To12 = (time24) => {
+    if (!time24 || !time24.trim()) return { hour: '', minute: '', period: '' }
+    const match = time24.match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return { hour: '', minute: '', period: '' }
+    
+    let hour24 = parseInt(match[1], 10)
+    const minute = match[2]
+    let period = 'AM'
+    
+    if (hour24 === 0) {
+      hour24 = 12
+    } else if (hour24 === 12) {
+      period = 'PM'
+    } else if (hour24 > 12) {
+      hour24 = hour24 - 12
+      period = 'PM'
+    }
+    
+    return { hour: hour24.toString(), minute, period }
+  }
+  
+  const convert12To24 = (hour, minute, period) => {
+    if (!hour || !minute || !period) return ''
+    
+    let hour24 = parseInt(hour, 10)
+    if (period === 'PM' && hour24 !== 12) {
+      hour24 = hour24 + 12
+    } else if (period === 'AM' && hour24 === 12) {
+      hour24 = 0
+    }
+    
+    return `${hour24.toString().padStart(2, '0')}:${minute}`
+  }
+  
+  // Helper function to check if a field is enabled in formConfig
+  // Works for both Add and Edit mode - formConfig applies in both cases
+  const isFieldEnabled = (fieldPath) => {
+    // If no formConfig, all fields are enabled (backward compatibility)
+    if (formConfig === null) {
+      return true
+    }
+    
+    // Check field path (e.g., 'name', 'location.enabled', 'location.state')
+    const parts = fieldPath.split('.')
+    let config = formConfig
+    
+    for (const part of parts) {
+      if (config === null || config === undefined) {
+        return true
+      }
+      config = config[part]
+    }
+    
+    // Field is enabled if it's not explicitly set to false
+    return config !== false
+  }
+  
   const [statusFilter, setStatusFilter] = useState('all') // Status filter
   const [formData, setFormData] = useState({
     name: '',
@@ -88,15 +147,18 @@ export default function Venues() {
     price: '',
     capacity: '',
     description: '',
+    metaTitle: '',
+    metaDescription: '',
     categoryId: '',
     menuId: '',
     subMenuId: '',
     amenities: [],
     highlights: [],
-    rooms: '',
+    rooms: [], // Changed to array to support room names
     openTime: '',
     closeTime: '',
     openDays: [],
+    services: [], // Array of { name, price (optional), description (optional) }
   })
   const [selectedImage, setSelectedImage] = useState(null)
   const [existingImageUrl, setExistingImageUrl] = useState(null) // For showing existing image when editing
@@ -106,7 +168,8 @@ export default function Venues() {
   const [videoUrls, setVideoUrls] = useState([])
   const [playingVideo, setPlayingVideo] = useState(null) // Track which video is playing (object with url, title) (for modal)
   const [videoModalOpen, setVideoModalOpen] = useState(false) // Track if video modal is open
-  const [currentStep, setCurrentStep] = useState(0)
+  // Removed step-based navigation - using single step form
+  // const [currentStep, setCurrentStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [states, setStates] = useState([])
   const [cities, setCities] = useState([])
@@ -146,7 +209,7 @@ export default function Venues() {
     if (isAddPage) {
       resetForm()
       setEditingVenue(null)
-      setCurrentStep(0)
+      // setCurrentStep(0) // Removed step navigation
       setShowAddModal(true)
       loadMenus()
       loadVendorCategories()
@@ -156,11 +219,12 @@ export default function Venues() {
   }, [isAddPage])
   
   // Update selected category when user's vendor category changes
+  // BUT only if NOT editing (to preserve venue's saved vendorCategoryId when editing)
   useEffect(() => {
-    if (user?.vendorCategory?._id && !selectedVendorCategoryId && vendorCategories.length > 0) {
+    if (!editingVenue && user?.vendorCategory?._id && !selectedVendorCategoryId && vendorCategories.length > 0) {
       setSelectedVendorCategoryId(user.vendorCategory._id)
     }
-  }, [user?.vendorCategory?._id, vendorCategories.length])
+  }, [editingVenue, user?.vendorCategory?._id, vendorCategories.length, selectedVendorCategoryId])
 
   // Load reviews for all venues when venues are loaded
   useEffect(() => {
@@ -321,19 +385,24 @@ export default function Venues() {
     }
   }
 
-  const loadVendorCategories = async () => {
+  const loadVendorCategories = async (skipDefaultSet = false) => {
     try {
       const response = await vendorCategoriesAPI.getPublic()
       const vendorCategoriesData = response.data?.categories || response.data || []
-      setVendorCategories(Array.isArray(vendorCategoriesData) ? vendorCategoriesData : [])
+      const categoriesArray = Array.isArray(vendorCategoriesData) ? vendorCategoriesData : []
+      setVendorCategories(categoriesArray)
       
       // Set default to user's vendor category if available
-      if (user?.vendorCategory?._id) {
+      // BUT only if skipDefaultSet is false (to avoid overriding venue's saved category when editing)
+      if (!skipDefaultSet && user?.vendorCategory?._id && !selectedVendorCategoryId) {
         setSelectedVendorCategoryId(user.vendorCategory._id)
       }
+      
+      return categoriesArray
     } catch (error) {
       console.error('Failed to load vendor categories:', error)
       setVendorCategories([])
+      return []
     }
   }
 
@@ -506,6 +575,38 @@ export default function Venues() {
     })
   }
 
+  const handleAddCustomAmenity = () => {
+    const customAmenityInput = document.getElementById('customAmenityInput')
+    const customAmenity = customAmenityInput?.value?.trim()
+    
+    if (customAmenity && customAmenity.length > 0) {
+      // Check if amenity already exists (case-insensitive)
+      const amenityExists = formData.amenities.some(
+        a => a.toLowerCase() === customAmenity.toLowerCase()
+      )
+      
+      if (!amenityExists) {
+        setFormData({
+          ...formData,
+          amenities: [...formData.amenities, customAmenity],
+        })
+        // Clear input
+        if (customAmenityInput) {
+          customAmenityInput.value = ''
+        }
+      } else {
+        alert('This amenity is already added')
+      }
+    }
+  }
+
+  const handleRemoveAmenity = (amenityToRemove) => {
+    setFormData({
+      ...formData,
+      amenities: formData.amenities.filter(a => a !== amenityToRemove),
+    })
+  }
+
   const handleDayToggle = (day) => {
     setFormData({
       ...formData,
@@ -615,145 +716,283 @@ export default function Venues() {
     setSubmitting(true)
 
     try {
-      // Validation
-      if (!formData.name || !formData.name.trim()) {
-        alert('Venue name is required')
-        setSubmitting(false)
-        return
+      // isFieldEnabled function is now defined at component level
+
+      // Validation - Name is ALWAYS required, regardless of formConfig or edit mode
+        if (!formData.name || !formData.name.trim()) {
+          alert('Venue name is required')
+          setSubmitting(false)
+          return
+        }
+      
+      // When editing, only name is required - all other fields are optional
+      if (editingVenue) {
+        console.log('✅ Edit mode: Only name is required, all other fields are optional')
+        // Skip all other validations when editing
+      } else {
+        // When creating (not editing), validate enabled fields
+        // Other field validations - only validate enabled fields
+        
+        if (isFieldEnabled('numberOfGuests')) {
+          // Only validate if field is enabled AND has a value
+          // If field is disabled, skip validation entirely
+        if (!formData.capacity || formData.capacity <= 0) {
+            console.log('❌ Capacity validation failed:', {
+              capacity: formData.capacity,
+              numberOfGuestsEnabled: isFieldEnabled('numberOfGuests'),
+              formConfig: formConfig
+            })
+          alert('Capacity is required and must be greater than 0')
+          setSubmitting(false)
+          return
+        }
+        } else {
+          console.log('✅ Skipping capacity validation (field disabled in formConfig)')
       }
       
-      if (!formData.capacity || formData.capacity <= 0) {
-        alert('Capacity is required and must be greater than 0')
-        setSubmitting(false)
-        return
-      }
-      
-      // Location validation - state and city are required
-      if (!formData.state || !formData.state.trim()) {
-        alert('State is required')
-        setSubmitting(false)
-        return
-      }
-      if (!formData.city || !formData.city.trim()) {
-        alert('City is required')
-        setSubmitting(false)
-        return
+        // Location validation - only if location is enabled
+        if (isFieldEnabled('location.enabled')) {
+          if (isFieldEnabled('location.state')) {
+          if (!formData.state || !formData.state.trim()) {
+            alert('State is required')
+            setSubmitting(false)
+            return
+          }
+        }
+          if (isFieldEnabled('location.city')) {
+          if (!formData.city || !formData.city.trim()) {
+            alert('City is required')
+            setSubmitting(false)
+            return
+            }
+          }
+        }
       }
 
       const formDataToSend = new FormData()
       
-      // Required fields - always send these
-      formDataToSend.append('name', formData.name.trim())
-      formDataToSend.append('capacity', formData.capacity.toString())
-      
-      // Location - create location object with state and city (required)
-      const locationObj = {
-        address: formData.address || '',
-        city: formData.city || '',
-        state: formData.state || ''
+      // Name is ALWAYS required and sent, regardless of formConfig
+      const venueName = formData.name.trim()
+      if (!venueName) {
+        alert('Venue name is required')
+        setSubmitting(false)
+        return
       }
-      formDataToSend.append('location', JSON.stringify(locationObj))
+      formDataToSend.append('name', venueName)
       
-      // Optional basic fields - always send, even if empty (for updates)
+      console.log('📤 Sending venue data - Name:', venueName)
+      console.log('📤 FormConfig:', formConfig)
+      console.log('📤 numberOfGuests enabled?', isFieldEnabled('numberOfGuests'))
+      console.log('📤 location.enabled?', isFieldEnabled('location.enabled'))
+      
+      // Only send other fields that are enabled in formConfig
+      
+      // Capacity field - only send if enabled AND not editing (when editing, only send if value is provided)
+      if (editingVenue) {
+        // When editing, only send capacity if it has a value (optional field)
+        if (formData.capacity && formData.capacity.toString().trim() !== '' && formData.capacity > 0) {
+          console.log('📤 Adding capacity (edit mode):', formData.capacity)
+        formDataToSend.append('capacity', formData.capacity.toString())
+        } else {
+          console.log('📤 Skipping capacity (edit mode - no value provided)')
+        }
+      } else {
+        // When creating, send if enabled in formConfig
+        if (isFieldEnabled('numberOfGuests')) {
+          console.log('📤 Adding capacity:', formData.capacity)
+          formDataToSend.append('capacity', formData.capacity.toString())
+        } else {
+          console.log('📤 Skipping capacity (not enabled in formConfig)')
+        }
+      }
+      
+      // Location - only send if enabled
+      if (isFieldEnabled('location.enabled')) {
+        const locationObj = {}
+        if (isFieldEnabled('location.address')) {
+          locationObj.address = formData.address || ''
+        }
+        if (isFieldEnabled('location.city')) {
+          locationObj.city = formData.city || ''
+        }
+        if (isFieldEnabled('location.state')) {
+          locationObj.state = formData.state || ''
+        }
+        // Only send location if at least one field is enabled
+        if (Object.keys(locationObj).length > 0) {
+          formDataToSend.append('location', JSON.stringify(locationObj))
+        }
+      }
+      
+      // Price field
+      if (isFieldEnabled('price')) {
       formDataToSend.append('price', formData.price || '0')
-      formDataToSend.append('description', formData.description || '')
-      if (formData.categoryId) {
+      }
+      
+      // Description field
+      if (isFieldEnabled('description')) {
+        formDataToSend.append('description', formData.description || '')
+      }
+      
+      // SEO fields
+      if (isFieldEnabled('metaTitle')) {
+      formDataToSend.append('metaTitle', formData.metaTitle || '')
+      }
+      if (isFieldEnabled('metaDescription')) {
+      formDataToSend.append('metaDescription', formData.metaDescription || '')
+      }
+      
+      // Category field
+      if (isFieldEnabled('category')) {
+        if (formData.categoryId) {
         formDataToSend.append('categoryId', formData.categoryId)
       }
-      // Always send menuId and subMenuId (even if empty) so backend can clear them if needed
-      formDataToSend.append('menuId', formData.menuId || '')
-      formDataToSend.append('subMenuId', formData.subMenuId || '')
+      }
       
-      // Amenities array - always send, even if empty
-      if (formData.amenities && formData.amenities.length > 0) {
+      // Save "Select Venue Category" dropdown value - this is what user selected
+      // This will be used when editing to show the same category in dropdown
+      if (selectedVendorCategoryId && selectedVendorCategoryId.trim() !== '') {
+        formDataToSend.append('vendorCategoryId', selectedVendorCategoryId)
+        console.log('💾 Saving selected vendor category (from dropdown) with venue:', selectedVendorCategoryId)
+      } else {
+        console.log('⚠️ No vendor category selected in dropdown - vendorCategoryId will be null')
+      }
+      
+      // Menu fields - only send if enabled
+      if (isFieldEnabled('menu')) {
+        formDataToSend.append('menuId', formData.menuId || '')
+      }
+      if (isFieldEnabled('submenu')) {
+        formDataToSend.append('subMenuId', formData.subMenuId || '')
+      }
+      
+      // Amenities array - only send if enabled
+      if (isFieldEnabled('amenities')) {
+        if (formData.amenities && formData.amenities.length > 0) {
         formData.amenities.forEach(amenity => formDataToSend.append('amenities', amenity))
+        }
       }
       
-      // Highlights array - always send, even if empty
-      if (formData.highlights && formData.highlights.length > 0) {
+      // Highlights array - only send if enabled
+      if (isFieldEnabled('highlights')) {
+        if (formData.highlights && formData.highlights.length > 0) {
         formData.highlights.filter(h => h.trim()).forEach(highlight => formDataToSend.append('highlights', highlight.trim()))
+        }
       }
       
-      // Rooms - always send if defined
-      if (formData.rooms !== undefined && formData.rooms !== '') {
-        formDataToSend.append('rooms', formData.rooms.toString())
+      // Services array - only send if enabled (assuming there's a services field in formConfig)
+      // For now, always send if no formConfig, or check if services field exists
+      if (formConfig === null || formConfig.services !== false) {
+      if (formData.services && formData.services.length > 0) {
+        formDataToSend.append('services', JSON.stringify(formData.services))
+      } else {
+        formDataToSend.append('services', JSON.stringify([]))
+        }
+      }
+      
+      // Rooms - send as array of objects { name, count } or strings (for backward compatibility)
+        if (formData.rooms && Array.isArray(formData.rooms) && formData.rooms.length > 0) {
+          // Filter out empty entries and convert to proper format
+          const validRooms = formData.rooms
+            .filter(r => {
+              if (typeof r === 'string') return r && r.trim()
+              if (typeof r === 'object' && r !== null) return r.name && r.name.trim() && r.count > 0
+              return false
+            })
+            .map(r => {
+              if (typeof r === 'string') {
+                // Legacy format: convert string to object
+                return { name: r.trim(), count: 1 }
+              }
+              // New format: ensure count is valid
+              return { name: r.name.trim(), count: r.count > 0 ? r.count : 1 }
+            })
+          
+          if (validRooms.length > 0) {
+            formDataToSend.append('rooms', JSON.stringify(validRooms))
+          } else {
+            formDataToSend.append('rooms', JSON.stringify([]))
+          }
+        } else {
+          // Send empty array if no rooms
+          formDataToSend.append('rooms', JSON.stringify([]))
       }
       
       // Availability - always send if any field exists
-      // Convert 12-hour format to 24-hour format for backend
-      const availability = {
-        status: 'Open',
-        openTime: formData.openTime ? convertTo24Hour(formData.openTime) : '',
-        closeTime: formData.closeTime ? convertTo24Hour(formData.closeTime) : '',
+      // Time is already in 24-hour format (HH:MM)
+        const availability = {
+          status: 'Open',
+        openTime: formData.openTime || '',
+        closeTime: formData.closeTime || '',
         openDays: formData.openDays || []
-      }
-      formDataToSend.append('availability', JSON.stringify(availability))
+        }
+        formDataToSend.append('availability', JSON.stringify(availability))
       
       // Main Image field removed - not sending image field
       
       // Gallery images - handle both new uploads and existing (when editing)
-      if (editingVenue) {
-        // When editing: always send existing URLs as JSON string (even if empty) to avoid FormData conflict with files
-        // Backend will parse both files from req.files.gallery and URLs from req.body.existingGallery
-        // This ensures backend knows to update gallery even if all images are removed
-        const existingGalleryJson = JSON.stringify(existingGalleryUrls || [])
-        formDataToSend.append('existingGallery', existingGalleryJson)
-        console.log('📤 Sending gallery data:', {
-          existingUrls: existingGalleryUrls.length,
-          existingUrlsData: existingGalleryUrls,
-          newFiles: galleryImages?.length || 0,
-          existingGalleryJson
-        })
-        // Send new file uploads - these will be merged with existing
-        if (galleryImages && galleryImages.length > 0) {
-          galleryImages.forEach(file => {
-            console.log('📤 Adding gallery file:', file.name, file.type)
-            formDataToSend.append('gallery', file)
+        if (editingVenue) {
+          // When editing: always send existing URLs as JSON string (even if empty) to avoid FormData conflict with files
+          // Backend will parse both files from req.files.gallery and URLs from req.body.existingGallery
+          // This ensures backend knows to update gallery even if all images are removed
+          const existingGalleryJson = JSON.stringify(existingGalleryUrls || [])
+          formDataToSend.append('existingGallery', existingGalleryJson)
+          console.log('📤 Sending gallery data:', {
+            existingUrls: existingGalleryUrls.length,
+            existingUrlsData: existingGalleryUrls,
+            newFiles: galleryImages?.length || 0,
+            existingGalleryJson
           })
-        }
-      } else {
-        // When creating: only send new uploads as files
-        if (galleryImages && galleryImages.length > 0) {
-          console.log('📤 Creating venue - sending gallery files:', galleryImages.length)
-          galleryImages.forEach(file => {
-            console.log('📤 Adding gallery file:', file.name, file.type)
-            formDataToSend.append('gallery', file)
-          })
+          // Send new file uploads - these will be merged with existing
+          if (galleryImages && galleryImages.length > 0) {
+            galleryImages.forEach(file => {
+              console.log('📤 Adding gallery file:', file.name, file.type)
+              formDataToSend.append('gallery', file)
+            })
+          }
+        } else {
+          // When creating: only send new uploads as files
+          if (galleryImages && galleryImages.length > 0) {
+            console.log('📤 Creating venue - sending gallery files:', galleryImages.length)
+            galleryImages.forEach(file => {
+              console.log('📤 Adding gallery file:', file.name, file.type)
+              formDataToSend.append('gallery', file)
+            })
         }
       }
       
       // Videos - handle both new uploads and existing (when editing)
-      // Backend now replaces videos instead of merging, so we send the complete list we want to keep
-      if (editingVenue) {
-        // When editing: send existing video URLs (minus removed ones) via body
-        // Always send videos field when editing to allow updates/deletions
-        const totalVideos = videoUrls.length + (videoFiles?.length || 0)
-        
-        if (totalVideos === 0) {
-          // If all videos are removed, send a special marker to clear all videos
-          // Backend will interpret empty array as "clear all"
-          formDataToSend.append('clearVideos', 'true')
-        } else {
-          // Send existing video URLs
-          if (videoUrls.length > 0) {
-            videoUrls.forEach(url => {
-              formDataToSend.append('videos', url)
-            })
+        // Backend now replaces videos instead of merging, so we send the complete list we want to keep
+        if (editingVenue) {
+          // When editing: send existing video URLs (minus removed ones) via body
+          // Always send videos field when editing to allow updates/deletions
+          const totalVideos = videoUrls.length + (videoFiles?.length || 0)
+          
+          if (totalVideos === 0) {
+            // If all videos are removed, send a special marker to clear all videos
+            // Backend will interpret empty array as "clear all"
+            formDataToSend.append('clearVideos', 'true')
+          } else {
+            // Send existing video URLs
+            if (videoUrls.length > 0) {
+              videoUrls.forEach(url => {
+                formDataToSend.append('videos', url)
+              })
+            }
+            // Send new video file uploads
+            if (videoFiles && videoFiles.length > 0) {
+              videoFiles.forEach(file => formDataToSend.append('videos', file))
+            }
           }
-          // Send new video file uploads
+        } else {
+          // When creating: only send new videos
           if (videoFiles && videoFiles.length > 0) {
             videoFiles.forEach(file => formDataToSend.append('videos', file))
           }
-        }
-      } else {
-        // When creating: only send new videos
-        if (videoFiles && videoFiles.length > 0) {
-          videoFiles.forEach(file => formDataToSend.append('videos', file))
-        }
-        if (videoUrls && videoUrls.length > 0) {
-          videoUrls.forEach(url => {
-            formDataToSend.append('videos', url)
-          })
+          if (videoUrls && videoUrls.length > 0) {
+            videoUrls.forEach(url => {
+              formDataToSend.append('videos', url)
+            })
         }
       }
       
@@ -990,6 +1229,63 @@ export default function Venues() {
       }
       
       setEditingVenue(fullVenueData)
+      
+      // Wait for vendor categories to load first (if not already loaded)
+      // Pass skipDefaultSet=true to prevent loadVendorCategories from setting default
+      let currentVendorCategories = vendorCategories
+      if (currentVendorCategories.length === 0) {
+        currentVendorCategories = await loadVendorCategories(true) // Skip default set
+        setVendorCategories(currentVendorCategories)
+      }
+      
+      // When editing, show the same "Select Venue Category" that was selected when creating
+      // This value is stored in vendorCategoryId field (from "Select Venue Category" dropdown)
+      console.log('🔍 Editing venue - Checking saved "Select Venue Category" value:', {
+        savedVendorCategoryId: fullVenueData.vendorCategoryId,
+        vendorCategoriesCount: currentVendorCategories.length,
+        availableCategoryIds: currentVendorCategories.map(c => c._id || c.id)
+      })
+      
+      if (fullVenueData.vendorCategoryId) {
+        // Venue has vendorCategoryId stored (from "Select Venue Category" dropdown when created)
+        const savedCategoryId = typeof fullVenueData.vendorCategoryId === 'object' 
+          ? (fullVenueData.vendorCategoryId._id?.toString() || fullVenueData.vendorCategoryId.toString())
+          : fullVenueData.vendorCategoryId.toString()
+        
+        // Verify the saved category exists in available categories
+        const categoryExists = currentVendorCategories.some(cat => {
+          const catId = cat._id?.toString() || cat.id?.toString()
+          return catId === savedCategoryId
+        })
+        
+        if (categoryExists) {
+          // Set the dropdown to show the same category that was selected when creating
+          setSelectedVendorCategoryId(savedCategoryId)
+          const categoryName = currentVendorCategories.find(c => {
+            const catId = c._id?.toString() || c.id?.toString()
+            return catId === savedCategoryId
+          })?.name
+          console.log('✅ Setting "Select Venue Category" dropdown to saved value:', savedCategoryId, 'Category name:', categoryName)
+        } else {
+          console.warn('⚠️ Saved vendor category not found in available categories:', {
+            savedCategoryId,
+            availableIds: currentVendorCategories.map(c => c._id?.toString() || c.id?.toString())
+          })
+          // Fallback to user's default
+          if (user?.vendorCategory?._id) {
+            setSelectedVendorCategoryId(user.vendorCategory._id)
+            console.log('📝 Fallback: Setting vendor category from user default:', user.vendorCategory._id)
+          }
+        }
+      } else {
+        // No vendorCategoryId stored (old venue or no category was selected when creating)
+        console.log('📝 No saved vendor category in venue, using user default')
+        if (user?.vendorCategory?._id) {
+          setSelectedVendorCategoryId(user.vendorCategory._id)
+          console.log('📝 Setting vendor category from user default (no saved category):', user.vendorCategory._id)
+        }
+      }
+      
       // Wait for menus to load before setting formData to ensure menuId matches
       const loadedMenus = await loadMenus() // Reload menus when editing and get the data
       
@@ -1070,6 +1366,16 @@ export default function Venues() {
         }
       }
       
+      // Ensure services is always an array
+      let servicesArray = []
+      if (fullVenueData.services) {
+        if (Array.isArray(fullVenueData.services)) {
+          servicesArray = fullVenueData.services
+        } else {
+          servicesArray = []
+        }
+      }
+      
       // Get description - check multiple possible fields
       const description = fullVenueData.description || fullVenueData.about || ''
       
@@ -1081,16 +1387,38 @@ export default function Venues() {
         price: fullVenueData.price?.toString() || '',
         capacity: capacityValue,
         description: description,
+        metaTitle: fullVenueData.metaTitle || '',
+        metaDescription: fullVenueData.metaDescription || '',
         categoryId: categoryIdValue,
         menuId: menuIdValue,
         subMenuId: subMenuIdValue,
         amenities: amenitiesArray,
         highlights: highlightsArray,
-        rooms: fullVenueData.rooms?.toString() || '',
-        // Convert 24-hour time to 12-hour format for display
-        openTime: fullVenueData.availability?.openTime ? convertTo12Hour(fullVenueData.availability.openTime) : '',
-        closeTime: fullVenueData.availability?.closeTime ? convertTo12Hour(fullVenueData.availability.closeTime) : '',
+        // Handle rooms - can be number (legacy), array of strings, or array of objects { name, count }
+        rooms: (() => {
+          if (Array.isArray(fullVenueData.rooms)) {
+            // Convert array of strings to array of objects, or keep as is if already objects
+            return fullVenueData.rooms.map(r => {
+              if (typeof r === 'string') {
+                return { name: r, count: 1 }
+              }
+              if (typeof r === 'object' && r !== null && r.name) {
+                return { name: r.name, count: r.count || 1 }
+              }
+              return { name: String(r), count: 1 }
+            })
+          }
+          if (fullVenueData.rooms) {
+            // Legacy: convert number or string to array
+            return [{ name: fullVenueData.rooms.toString(), count: 1 }]
+          }
+          return []
+        })(),
+        // Time is already in 24-hour format (HH:MM) - use directly
+        openTime: fullVenueData.availability?.openTime || '',
+        closeTime: fullVenueData.availability?.closeTime || '',
         openDays: openDaysArray,
+        services: servicesArray,
       })
 
       // Submenus will be loaded automatically by useEffect when menuId is set
@@ -1178,7 +1506,7 @@ export default function Venues() {
       }
       
       setShowAddModal(true)
-      setCurrentStep(0)
+      // setCurrentStep(0) // Removed step navigation
     } catch (error) {
       console.error('Error loading venue for editing:', error)
       alert('Failed to load venue data. Please try again.')
@@ -1194,15 +1522,18 @@ export default function Venues() {
       price: '',
       capacity: '',
       description: '',
+      metaTitle: '',
+      metaDescription: '',
     categoryId: '',
     menuId: '',
     subMenuId: '',
     amenities: [],
     highlights: [],
-    rooms: '',
+    rooms: [], // Changed to array
       openTime: '',
       closeTime: '',
       openDays: [],
+      services: [],
     })
     setSelectedImage(null)
     setExistingImageUrl(null)
@@ -1211,7 +1542,7 @@ export default function Venues() {
     setVideoFiles([])
     setVideoUrls([])
     setPlayingVideo(null)
-    setCurrentStep(0)
+    // setCurrentStep(0) // Removed step navigation
     setEditingVenue(null)
     setSubmenus([])
   }
@@ -1284,9 +1615,9 @@ export default function Venues() {
             <div className="flex items-center space-x-3">
               <button
                 onClick={loadVenues}
-                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-900"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4 text-gray-900" />
                 <span>Refresh</span>
               </button>
               {hasVendorPermission('vendor_create_venues') && (
@@ -1303,11 +1634,11 @@ export default function Venues() {
 
           {/* Status Filter */}
           <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
+            <label className="text-sm font-medium text-gray-900">Filter by Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
             >
               <option value="all">All Venues</option>
               <option value="pending">Pending</option>
@@ -1496,7 +1827,7 @@ export default function Venues() {
           <div className={isAddPage ? 'bg-white rounded-2xl shadow-sm border border-gray-200 w-full my-6' : 'bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'}>
             <div className={`sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between ${isAddPage ? 'relative' : ''}`}>
               <h2 className="text-2xl font-bold text-gray-900">
-                {editingVenue ? 'Edit Venue' : 'Add New Venue'} ({currentStep + 1}/4)
+                {editingVenue ? 'Edit Venue' : 'Add New Venue'}
               </h2>
               <button
                 onClick={() => {
@@ -1513,27 +1844,17 @@ export default function Venues() {
               </button>
             </div>
 
-            {/* Step Indicator */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex space-x-2">
-                {[0, 1, 2, 3].map((step) => (
-                  <div
-                    key={step}
-                    className={`flex-1 h-2 rounded ${
-                      step <= currentStep ? 'bg-primary-600' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6">
-              {currentStep === 0 && (
+            <form onSubmit={handleSubmit} className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+              {/* Basic Information Section */}
+              <div className="space-y-6 mb-8">
+                <div className="border-b border-gray-200 pb-3">
+                  <h3 className="text-xl font-semibold text-gray-900">Basic Information</h3>
+                </div>
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
                   
-                  {/* Vendor Category Dropdown - Always show */}
-                  {!editingVenue && vendorCategories.length > 0 && (
+                  {/* Vendor Category Dropdown - Show for both Add and Edit */}
+                  {vendorCategories.length > 0 && (
                     <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Select Venue Category <span className="text-xs text-gray-500">(Form fields will change based on selection)</span>
@@ -1542,7 +1863,8 @@ export default function Venues() {
                         value={selectedVendorCategoryId}
                         onChange={(e) => {
                           setSelectedVendorCategoryId(e.target.value)
-                          // Reset form data when category changes
+                          // Only reset form data when category changes if NOT editing (to preserve existing data when editing)
+                          if (!editingVenue) {
                           setFormData(prev => ({
                             ...prev,
                             name: '',
@@ -1552,13 +1874,16 @@ export default function Venues() {
                             price: '',
                             capacity: '',
                             description: '',
+                            metaTitle: '',
+                            metaDescription: '',
                             amenities: [],
                             highlights: [],
-                            rooms: '',
+                            rooms: [], // Changed to array
                             openTime: '',
                             closeTime: '',
                             openDays: []
                           }))
+                          }
                         }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                       >
@@ -1669,7 +1994,8 @@ export default function Venues() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                     </div>
-                    {(formConfig === null || formConfig.numberOfGuests !== false) && (
+                    {/* Capacity field - use isFieldEnabled helper function */}
+                    {isFieldEnabled('numberOfGuests') ? (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Capacity (Number of Guests) *</label>
                         <input
@@ -1677,11 +2003,11 @@ export default function Venues() {
                           name="capacity"
                           value={formData.capacity}
                           onChange={handleInputChange}
-                          required
+                          required={!editingVenue}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
@@ -1693,12 +2019,60 @@ export default function Venues() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
+                  
+                  {/* SEO Fields */}
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-md font-semibold mb-3 text-gray-900">SEO Settings (Optional)</h4>
+                    <p className="text-xs text-gray-600 mb-4">Add custom meta title and description for better search engine visibility. If left empty, default values will be used.</p>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Meta Title
+                          <span className="text-xs text-gray-500 ml-2">(Recommended: 50-60 characters)</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="metaTitle"
+                          value={formData.metaTitle}
+                          onChange={handleInputChange}
+                          placeholder="e.g., Best Wedding Venue in Jaipur | ShubhVenue"
+                          maxLength={70}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formData.metaTitle.length}/70 characters
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Meta Description
+                          <span className="text-xs text-gray-500 ml-2">(Recommended: 150-160 characters)</span>
+                        </label>
+                        <textarea
+                          name="metaDescription"
+                          value={formData.metaDescription}
+                          onChange={handleInputChange}
+                          rows={3}
+                          placeholder="e.g., Book the perfect wedding venue in Jaipur. Best banquet halls, hotels, and resorts for your special day. Excellent facilities and affordable prices."
+                          maxLength={200}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formData.metaDescription.length}/200 characters
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
 
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Images & Videos</h3>
+              {/* Images & Videos Section */}
+              <div className="space-y-6 mb-8">
+                <div className="border-b border-gray-200 pb-3">
+                  <h3 className="text-xl font-semibold text-gray-900">Images & Videos</h3>
+                </div>
                   
                   {/* Gallery Images - Show if enabled in formConfig or if no formConfig */}
                   {(formConfig === null || formConfig.galleryImages !== false) && (
@@ -1981,12 +2355,13 @@ export default function Venues() {
                     </div>
                   </div>
                   )}
-                </div>
-              )}
+              </div>
 
-              {currentStep === 2 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Category & Amenities</h3>
+              {/* Category & Amenities Section */}
+              <div className="space-y-6 mb-8">
+                <div className="border-b border-gray-200 pb-3">
+                  <h3 className="text-xl font-semibold text-gray-900">Category & Amenities</h3>
+                </div>
                   
                   {/* Category - Show if enabled in formConfig or if no formConfig */}
                   {(formConfig === null || formConfig.category !== false) && (
@@ -2075,24 +2450,89 @@ export default function Venues() {
                   {/* Amenities - Show if enabled in formConfig or if no formConfig */}
                   {(formConfig === null || formConfig.amenities !== false) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableAmenities.map((amenity) => (
-                        <button
-                          key={amenity}
-                          type="button"
-                          onClick={() => handleAmenityToggle(amenity)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                            formData.amenities.includes(amenity)
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {amenity}
-                        </button>
-                      ))}
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Amenities
+                        <span className="text-xs text-gray-500 font-normal ml-2">(Select from list or add your own)</span>
+                      </label>
+                      
+                      {/* Predefined Amenities */}
+                      <div className="mb-4">
+                        <p className="text-xs text-gray-600 mb-2">Select from common amenities:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {availableAmenities.map((amenity) => (
+                            <button
+                              key={amenity}
+                              type="button"
+                              onClick={() => handleAmenityToggle(amenity)}
+                              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                                formData.amenities.includes(amenity)
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {amenity}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Add Custom Amenity */}
+                      <div className="mb-4">
+                        <p className="text-xs text-gray-600 mb-2">Or add your own amenity:</p>
+                        <div className="flex gap-2">
+                          <input
+                            id="customAmenityInput"
+                            type="text"
+                            placeholder="Enter custom amenity (e.g., Fireplace, Library, etc.)"
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleAddCustomAmenity()
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddCustomAmenity}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Selected Amenities Display */}
+                      {formData.amenities.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-600 mb-2">
+                            Selected Amenities ({formData.amenities.length}):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {formData.amenities.map((amenity, index) => {
+                              const isPredefined = availableAmenities.includes(amenity)
+                              return (
+                                <div
+                                  key={`${amenity}-${index}`}
+                                  className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-primary-600 text-white"
+                                >
+                                  <span>{amenity}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveAmenity(amenity)}
+                                    className="ml-1 hover:bg-primary-700 rounded-full p-0.5 transition"
+                                    title="Remove amenity"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
                   )}
                   
                   {/* Highlights - Show if enabled in formConfig or if no formConfig */}
@@ -2138,20 +2578,182 @@ export default function Venues() {
                     </div>
                   )}
                   
-                  {/* Number of Rooms - Show if enabled in formConfig or if no formConfig */}
+                  {/* Services - Custom services with optional pricing */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Services <span className="text-xs text-gray-500 font-normal">(Add your custom services with optional pricing)</span>
+                    </label>
+                    <div className="space-y-3">
+                      {(formData.services || []).map((service, index) => (
+                        <div key={index} className="p-4 border border-gray-300 rounded-lg bg-gray-50">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Service Name *</label>
+                              <input
+                                type="text"
+                                value={service.name || ''}
+                                onChange={(e) => {
+                                  const currentServices = formData.services || []
+                                  const newServices = [...currentServices]
+                                  newServices[index] = { ...service, name: e.target.value }
+                                  setFormData({ ...formData, services: newServices })
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                                placeholder="e.g., Photography, Catering, Decoration"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Price (₹) <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                              </label>
+                              <input
+                                type="number"
+                                value={service.price !== null && service.price !== undefined ? service.price : ''}
+                                onChange={(e) => {
+                                  const currentServices = formData.services || []
+                                  const newServices = [...currentServices]
+                                  const priceValue = e.target.value === '' ? null : parseFloat(e.target.value)
+                                  newServices[index] = { ...service, price: priceValue }
+                                  setFormData({ ...formData, services: newServices })
+                                }}
+                                min="0"
+                                step="0.01"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                                placeholder="Leave empty if no price"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentServices = formData.services || []
+                              const newServices = currentServices.filter((_, i) => i !== index)
+                              setFormData({ ...formData, services: newServices })
+                            }}
+                            className="mt-2 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm flex items-center gap-1"
+                          >
+                            <X className="w-3 h-3" />
+                            Remove Service
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, services: [...(formData.services || []), { name: '', price: null }] })}
+                        className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Service
+                      </button>
+                      {(!formData.services || formData.services.length === 0) && (
+                        <p className="text-xs text-gray-500 text-center py-2">
+                          No services added yet. Click "Add Service" to add your custom services.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Rooms - Show if enabled in formConfig or if no formConfig */}
                   {(formConfig === null || formConfig.numberOfRooms !== false) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Number of Rooms</label>
-                      <input
-                        type="number"
-                        name="rooms"
-                        value={formData.rooms}
-                        onChange={handleInputChange}
-                        min="0"
-                      placeholder="Enter number of rooms"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rooms
+                        <span className="text-xs text-gray-500 font-normal ml-2">(Add room name and count, e.g., "Bedroom" - 3 rooms, "Hall" - 2 rooms)</span>
+                      </label>
+                      <div className="space-y-3">
+                        {(formData.rooms || []).map((room, index) => {
+                          // Handle both old string format and new object format
+                          const roomName = typeof room === 'string' ? room : (room?.name || '')
+                          const roomCount = typeof room === 'object' && room?.count ? room.count : 1
+                          
+                          return (
+                            <div key={index} className="p-4 border border-gray-300 rounded-lg bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="md:col-span-2">
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Room Name *</label>
+                                  <input
+                                    type="text"
+                                    value={roomName}
+                                    onChange={(e) => {
+                                      const currentRooms = formData.rooms || []
+                                      const newRooms = [...currentRooms]
+                                      if (typeof newRooms[index] === 'object') {
+                                        newRooms[index] = { ...newRooms[index], name: e.target.value }
+                                      } else {
+                                        newRooms[index] = { name: e.target.value, count: 1 }
+                                      }
+                                      setFormData({ ...formData, rooms: newRooms })
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                                    placeholder="e.g., Bedroom, Hall, Kitchen, etc."
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Number of Rooms *</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={roomCount}
+                                    onChange={(e) => {
+                                      const currentRooms = formData.rooms || []
+                                      const newRooms = [...currentRooms]
+                                      const count = parseInt(e.target.value) || 1
+                                      if (typeof newRooms[index] === 'object') {
+                                        newRooms[index] = { ...newRooms[index], count: count }
+                                      } else {
+                                        newRooms[index] = { name: newRooms[index] || '', count: count }
+                                      }
+                                      setFormData({ ...formData, rooms: newRooms })
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                                    placeholder="Count"
+                                    required
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600">
+                                  {roomName && roomCount > 0 ? (
+                                    <span className="font-medium text-primary-700">
+                                      {roomCount} {roomName}{roomCount > 1 ? 's' : ''}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">Enter room name and count</span>
+                                  )}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentRooms = formData.rooms || []
+                                  const newRooms = currentRooms.filter((_, i) => i !== index)
+                                  setFormData({ ...formData, rooms: newRooms })
+                                }}
+                                className="mt-2 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm flex items-center gap-1"
+                              >
+                                <X className="w-3 h-3" />
+                                Remove
+                              </button>
+                            </div>
+                          )
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, rooms: [...(formData.rooms || []), { name: '', count: 1 }] })}
+                          className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Room Type
+                        </button>
+                      </div>
+                      {(!formData.rooms || formData.rooms.length === 0) && (
+                        <p className="text-xs text-gray-500 mt-2 text-center">
+                          No rooms added yet. Click "Add Room Type" to add room names and counts.
+                        </p>
+                      )}
+                    </div>
                   )}
                   
                   {/* Availability Section - Show if timing or openDays enabled */}
@@ -2168,68 +2770,53 @@ export default function Venues() {
                         <div className="flex items-center gap-2">
                           <select
                             name="openTimeHour"
-                            value={(() => {
-                              if (!formData.openTime) return 9
-                              const match = formData.openTime.match(/(\d{1,2}):/)
-                              return match ? parseInt(match[1]) : 9
-                            })()}
+                            value={convert24To12(formData.openTime).hour}
                             onChange={(e) => {
-                              const hour = parseInt(e.target.value)
-                              const currentTime = formData.openTime || '9:00 AM'
-                              const match = currentTime.match(/:(\d{2})\s*(AM|PM)/i)
-                              const minutes = match ? match[1] : '00'
-                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              const hour = e.target.value
+                              const { minute, period } = convert24To12(formData.openTime)
+                              const time24 = convert12To24(hour || '12', minute || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                openTime: `${hour}:${minutes} ${ampm}`
+                                openTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
+                            <option value="">HH</option>
+                            {Array.from({ length: 12 }, (_, i) => (i + 1).toString()).map(hour => (
                               <option key={hour} value={hour}>{hour}</option>
                             ))}
                           </select>
                           <span className="text-gray-600">:</span>
                           <select
                             name="openTimeMinute"
-                            value={(() => {
-                              if (!formData.openTime) return '00'
-                              const match = formData.openTime.match(/:(\d{2})\s*(AM|PM)/i)
-                              return match ? match[1] : '00'
-                            })()}
+                            value={convert24To12(formData.openTime).minute}
                             onChange={(e) => {
                               const minutes = e.target.value
-                              const currentTime = formData.openTime || '9:00 AM'
-                              const match = currentTime.match(/(\d{1,2}):/)
-                              const hour = match ? match[1] : '9'
-                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              const { hour, period } = convert24To12(formData.openTime)
+                              const time24 = convert12To24(hour || '12', minutes || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                openTime: `${hour}:${minutes} ${ampm}`
+                                openTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           >
+                            <option value="">MM</option>
                             {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
                               <option key={minute} value={minute}>{minute}</option>
                             ))}
                           </select>
                           <select
-                            name="openTimeAmPm"
-                            value={(() => {
-                              if (!formData.openTime) return 'AM'
-                              return formData.openTime.includes('PM') || formData.openTime.includes('pm') ? 'PM' : 'AM'
-                            })()}
+                            name="openTimePeriod"
+                            value={convert24To12(formData.openTime).period || 'AM'}
                             onChange={(e) => {
-                              const ampm = e.target.value
-                              const currentTime = formData.openTime || '9:00 AM'
-                              const match = currentTime.match(/(\d{1,2}):(\d{2})/)
-                              const hour = match ? match[1] : '9'
-                              const minutes = match ? match[2] : '00'
+                              const period = e.target.value
+                              const { hour, minute } = convert24To12(formData.openTime)
+                              const time24 = convert12To24(hour || '12', minute || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                openTime: `${hour}:${minutes} ${ampm}`
+                                openTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -2246,68 +2833,53 @@ export default function Venues() {
                         <div className="flex items-center gap-2">
                           <select
                             name="closeTimeHour"
-                            value={(() => {
-                              if (!formData.closeTime) return 6
-                              const match = formData.closeTime.match(/(\d{1,2}):/)
-                              return match ? parseInt(match[1]) : 6
-                            })()}
+                            value={convert24To12(formData.closeTime).hour}
                             onChange={(e) => {
-                              const hour = parseInt(e.target.value)
-                              const currentTime = formData.closeTime || '6:00 PM'
-                              const match = currentTime.match(/:(\d{2})\s*(AM|PM)/i)
-                              const minutes = match ? match[1] : '00'
-                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              const hour = e.target.value
+                              const { minute, period } = convert24To12(formData.closeTime)
+                              const time24 = convert12To24(hour || '12', minute || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                closeTime: `${hour}:${minutes} ${ampm}`
+                                closeTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(hour => (
+                            <option value="">HH</option>
+                            {Array.from({ length: 12 }, (_, i) => (i + 1).toString()).map(hour => (
                               <option key={hour} value={hour}>{hour}</option>
                             ))}
                           </select>
                           <span className="text-gray-600">:</span>
                           <select
                             name="closeTimeMinute"
-                            value={(() => {
-                              if (!formData.closeTime) return '00'
-                              const match = formData.closeTime.match(/:(\d{2})\s*(AM|PM)/i)
-                              return match ? match[1] : '00'
-                            })()}
+                            value={convert24To12(formData.closeTime).minute}
                             onChange={(e) => {
                               const minutes = e.target.value
-                              const currentTime = formData.closeTime || '6:00 PM'
-                              const match = currentTime.match(/(\d{1,2}):/)
-                              const hour = match ? match[1] : '6'
-                              const ampm = currentTime.includes('PM') || currentTime.includes('pm') ? 'PM' : 'AM'
+                              const { hour, period } = convert24To12(formData.closeTime)
+                              const time24 = convert12To24(hour || '12', minutes || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                closeTime: `${hour}:${minutes} ${ampm}`
+                                closeTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           >
+                            <option value="">MM</option>
                             {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
                               <option key={minute} value={minute}>{minute}</option>
                             ))}
                           </select>
                           <select
-                            name="closeTimeAmPm"
-                            value={(() => {
-                              if (!formData.closeTime) return 'PM'
-                              return formData.closeTime.includes('PM') || formData.closeTime.includes('pm') ? 'PM' : 'AM'
-                            })()}
+                            name="closeTimePeriod"
+                            value={convert24To12(formData.closeTime).period || 'AM'}
                             onChange={(e) => {
-                              const ampm = e.target.value
-                              const currentTime = formData.closeTime || '6:00 PM'
-                              const match = currentTime.match(/(\d{1,2}):(\d{2})/)
-                              const hour = match ? match[1] : '6'
-                              const minutes = match ? match[2] : '00'
+                              const period = e.target.value
+                              const { hour, minute } = convert24To12(formData.closeTime)
+                              const time24 = convert12To24(hour || '12', minute || '00', period || 'AM')
                               setFormData(prev => ({
                                 ...prev,
-                                closeTime: `${hour}:${minutes} ${ampm}`
+                                closeTime: time24
                               }))
                             }}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -2366,105 +2938,35 @@ export default function Venues() {
                     )}
                     </div>
                   )}
-                </div>
-              )}
+              </div>
 
-              {currentStep === 3 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold mb-4">Review & Submit</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Venue Name:</span>
-                      <span className="font-medium">{formData.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Location:</span>
-                      <span className="font-medium">
-                        {`${formData.address || ''}${formData.address && formData.city ? ', ' : ''}${formData.city || ''}${(formData.address || formData.city) && formData.state ? ', ' : ''}${formData.state || ''}`.trim() || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Price:</span>
-                      <span className="font-medium">₹{formData.price}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Capacity:</span>
-                      <span className="font-medium">{formData.capacity} guests</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Category:</span>
-                      <span className="font-medium">
-                        {formData.categoryId 
-                          ? categories.find(c => (c.id || c._id) === formData.categoryId)?.name || 'N/A'
-                          : 'No Category'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Amenities:</span>
-                      <span className="font-medium">{formData.amenities.length} selected</span>
-                    </div>
-                    {(formData.openTime || formData.closeTime) && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Timing:</span>
-                        <span className="font-medium">
-                          {formData.openTime || 'N/A'} - {formData.closeTime || 'N/A'}
-                        </span>
-                      </div>
-                    )}
-                    {formData.openDays.length > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Open Days:</span>
-                        <span className="font-medium">{formData.openDays.join(', ')}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Status:</span>
-                      <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                        <Clock className="w-3 h-3" />
-                        <span>Pending (Awaiting Admin Approval)</span>
-                      </span>
-                    </div>
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-xs text-blue-700">
-                        <strong>Note:</strong> Your venue will be submitted for admin approval. It will be visible to customers once approved.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Review Note Section */}
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> Your venue will be submitted for admin approval. It will be visible to customers once approved.
+                </p>
+              </div>
 
-              <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
-                    if (currentStep > 0) setCurrentStep(currentStep - 1)
-                    else {
-                      if (isAddPage) navigate('/vendor/venues')
-                      else setShowAddModal(false)
-                      resetForm()
-                    }
+                    if (isAddPage) navigate('/vendor/venues')
+                    else setShowAddModal(false)
+                    resetForm()
                   }}
                   className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  disabled={submitting}
                 >
-                  {currentStep === 0 ? 'Cancel' : 'Previous'}
+                  Cancel
                 </button>
-                {currentStep < 3 ? (
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(currentStep + 1)}
-                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
-                  >
-                    {submitting ? 'Submitting...' : editingVenue ? 'Update Venue' : 'Submit'}
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Submitting...' : editingVenue ? 'Update Venue' : 'Submit Venue'}
+                </button>
               </div>
             </form>
           </div>

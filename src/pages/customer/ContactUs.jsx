@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from '../../components/customer/Footer'
 import { publicCompanyAPI, publicContactAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import SEO from '../../components/SEO'
 import './ContactUs.css'
 
 function ContactUs() {
@@ -131,6 +132,11 @@ function ContactUs() {
 
   return (
     <div className="contact-us-page">
+      <SEO 
+        title="Contact Us | ShubhVenue - Get in Touch"
+        description="Get in touch with ShubhVenue. Contact us for venue booking inquiries, support, or any questions about our services. We're here to help you find your perfect venue."
+        keywords="contact shubhvenue, contact us, venue booking support, customer support, get in touch, venue inquiry, support contact"
+      />
       <div className="contact-us-container">
         <div className="contact-hero">
           <h1 className="contact-title">Contact Us</h1>

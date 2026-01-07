@@ -48,6 +48,12 @@ import {
   updateBanner,
   deleteBanner,
   toggleBannerActive,
+  getBannerCategories,
+  getBannerCategoryById,
+  createBannerCategory,
+  updateBannerCategory,
+  deleteBannerCategory,
+  toggleBannerCategoryActive,
   getVideos,
   getVideoById,
   createVideo,
@@ -181,6 +187,14 @@ router.put('/email-config', requirePermission('edit_settings'), updateEmailConfi
 router.post('/email-config/test', requirePermission('edit_settings'), testEmail);
 router.get('/google-maps-config', requirePermission('view_settings'), getGoogleMapsConfig);
 router.put('/google-maps-config', requirePermission('edit_settings'), updateGoogleMapsConfig);
+
+// Banner Category routes
+router.get('/banner-categories', requirePermission('view_banners'), getBannerCategories);
+router.get('/banner-categories/:id', requirePermission('view_banners'), getBannerCategoryById);
+router.post('/banner-categories', requirePermission('create_banners'), createBannerCategory);
+router.put('/banner-categories/:id', requirePermission('edit_banners'), updateBannerCategory);
+router.delete('/banner-categories/:id', requirePermission('delete_banners'), deleteBannerCategory);
+router.put('/banner-categories/:id/toggle-active', requirePermission('edit_banners'), toggleBannerCategoryActive);
 
 // Banner routes
 router.get('/banners', requirePermission('view_banners'), getBanners);

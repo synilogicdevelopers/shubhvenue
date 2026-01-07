@@ -2,10 +2,12 @@ module.exports = {
   apps: [{
     name: 'wedding-venue-backend',
     script: './server.js',
-    instances: 1,
-    exec_mode: 'fork',
+    instances: 'max', // Use all available CPU cores for cluster mode (recommended for 100k users)
+    // Alternative: Set specific number like 8 or 16 if you want to limit instances
+    // instances: 8, // Uncomment and set number if you prefer specific count
+    exec_mode: 'cluster', // Cluster mode - essential for handling high load
     watch: false,
-    max_memory_restart: '1G',
+    max_memory_restart: '2G', // Memory limit per instance
     env: {
       NODE_ENV: 'production',
       PORT: 8030

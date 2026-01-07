@@ -63,9 +63,9 @@ export default function Payouts() {
         </div>
         <button
           onClick={loadPayouts}
-          className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+          className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-900"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4 text-gray-900" />
           <span>Refresh</span>
         </button>
       </div>

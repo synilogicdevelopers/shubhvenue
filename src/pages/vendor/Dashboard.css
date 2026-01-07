@@ -45,6 +45,8 @@
   border: 1px solid #d1d5db;
   border-radius: 8px;
   outline: none;
+  background: white;
+  color: #111827;
 }
 
 .calendar-venue-select:focus {

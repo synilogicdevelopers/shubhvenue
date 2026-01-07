@@ -76,6 +76,16 @@ export default function Bookings() {
     }
   }
 
+  // Helper function to get image URL
+  const getImageUrl = (image) => {
+    if (!image) return null
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8030'
+    return `${baseUrl}${image.startsWith('/') ? image : `/${image}`}`
+  }
+
   const loadBookings = async () => {
     try {
       setLoading(true)
@@ -85,14 +95,78 @@ export default function Bookings() {
       }
       const response = await vendorAPI.getBookings(params)
       const bookingsData = response.data?.bookings || response.data?.data || response.data || []
-      // Ensure it's always an array
-      setBookings(Array.isArray(bookingsData) ? bookingsData : [])
+      
+      console.log('📦 Raw Bookings Data from API:', bookingsData)
+      console.log('📊 Total Bookings Count:', bookingsData.length)
+      
+      // Transform API response to component format (like customer BookingHistory)
+      const transformedBookings = (Array.isArray(bookingsData) ? bookingsData : []).map((booking) => {
+        const venue = booking.venueId || booking.venue || {}
+        const checkInDate = booking.dateFrom || booking.date
+        const checkOutDate = booking.dateTo || booking.date
+        
+        // Extract status - ensure we use the exact value from API
+        let bookingStatus = booking.status
+        if (booking.type === 'lead') {
+          bookingStatus = 'lead'
+        } else if (!bookingStatus || bookingStatus === '') {
+          bookingStatus = 'pending'
+        }
+        
+        // Extract payment status
+        let paymentStatus = booking.paymentStatus
+        if (!paymentStatus || paymentStatus === '') {
+          paymentStatus = 'pending'
+        }
+        
+        // Extract image from multiple possible locations
+        const venueImage = venue.images?.[0] || venue.coverImage || venue.image || null
+        
+        // Extract customer info
+        const customer = booking.customerId || booking.customer || {}
+        
+        return {
+          id: booking._id || booking.id,
+          bookingId: booking._id || booking.id,
+          venue: {
+            id: venue._id || venue.id,
+            name: venue.name || booking.venueName || 'Unnamed Venue',
+            image: getImageUrl(venueImage),
+            location: formatLocation(venue.location)
+          },
+          customer: {
+            id: customer._id || customer.id,
+            name: customer.name || booking.name || booking.customerName || 'N/A',
+            email: customer.email || booking.email || 'N/A',
+            phone: booking.phone || customer.phone || 'N/A'
+          },
+          checkIn: checkInDate ? (typeof checkInDate === 'string' ? checkInDate.split('T')[0] : new Date(checkInDate).toISOString().split('T')[0]) : '',
+          checkOut: checkOutDate ? (typeof checkOutDate === 'string' ? checkOutDate.split('T')[0] : new Date(checkOutDate).toISOString().split('T')[0]) : '',
+          guests: booking.guests || 0,
+          rooms: booking.rooms !== undefined && booking.rooms !== null ? Number(booking.rooms) : 0,
+          eventType: booking.eventType || 'Wedding',
+          foodPreference: booking.foodPreference || 'both',
+          specialRequests: booking.specialRequests || '',
+          totalAmount: booking.totalAmount || 0,
+          status: bookingStatus,
+          paymentStatus: paymentStatus,
+          type: booking.type || null,
+          bookingDate: booking.createdAt || booking.bookingDate || new Date().toISOString(),
+          // Keep original booking data for reference
+          _original: booking
+        }
+      })
+      
+      console.log('✅ Transformed Bookings:', transformedBookings)
+      console.log('📈 Transformed Count:', transformedBookings.length)
+      
+      setBookings(transformedBookings)
       
       // Update pagination from response
       if (response.data?.pagination) {
         setPagination(prev => ({
           ...prev,
-          total: response.data.pagination.total || response.data.totalCount || bookingsData.length,
+          total: response.data.pagination.total || response.data.totalCount || transformedBookings.length,
           pages: response.data.pagination.pages || response.data.totalPages || 1
         }))
       } else if (response.data?.totalCount) {
@@ -372,9 +446,9 @@ export default function Bookings() {
           </button>
           <button
             onClick={loadBookings}
-            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-900"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 text-gray-900" />
             <span>Refresh</span>
           </button>
         </div>
@@ -741,12 +815,15 @@ export default function Bookings() {
         <div className="space-y-4">
           {bookings.map((booking) => {
             const isExpanded = expandedBookings.has(booking.id || booking._id)
-            const venue = booking.venue || booking.venueId
-            const customer = booking.customer || booking.customerId
-            const customerName = booking.name || customer?.name || 'Customer'
-            const customerPhone = booking.phone || customer?.phone || 'N/A'
-            const customerEmail = customer?.email || 'N/A'
-            const eventDate = booking.eventDate || booking.date || booking.createdAt
+            // Use transformed data structure (like customer BookingHistory)
+            const venue = booking.venue || {}
+            const customer = booking.customer || {}
+            const customerName = customer.name || booking.name || 'Customer'
+            const customerPhone = customer.phone || booking.phone || 'N/A'
+            const customerEmail = customer.email || booking.email || 'N/A'
+            const eventDate = booking.checkIn || booking.eventDate || booking.date || booking.createdAt
+            const checkInDate = booking.checkIn || booking.dateFrom || booking.date
+            const checkOutDate = booking.checkOut || booking.dateTo
 
             return (
               <div key={booking.id || booking._id} className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -774,21 +851,21 @@ export default function Bookings() {
                       <p className="text-xs text-gray-600 mb-1">Event Date</p>
                       <div className="flex items-center text-sm font-semibold">
                         <Calendar className="w-4 h-4 mr-1 text-gray-400" />
-                        {eventDate ? format(new Date(eventDate), 'MMM dd, yyyy') : 'N/A'}
+                        {checkInDate ? format(new Date(checkInDate), 'MMM dd, yyyy') : 'N/A'}
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Guests</p>
                       <div className="flex items-center text-sm font-semibold">
                         <Users className="w-4 h-4 mr-1 text-gray-400" />
-                        {formatGuests(booking.guests || booking.capacity || 0)}
+                        {formatGuests(booking.guests || 0)}
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Amount</p>
                       <div className="flex items-center text-sm font-semibold text-primary-600">
                         <span className="text-lg font-bold mr-1">₹</span>
-                        {booking.totalAmount?.toLocaleString() || booking.amount?.toLocaleString() || 0}
+                        {(booking.totalAmount || 0).toLocaleString('en-IN')}
                       </div>
                     </div>
                   </div>
@@ -820,28 +897,28 @@ export default function Bookings() {
                       <div>
                         <h4 className="text-sm font-semibold text-gray-900 mb-3">Event Details</h4>
                         <div className="space-y-2 text-sm">
-                          {venue?.location && (
+                          {venue?.location && venue.location !== 'N/A' && (
                             <div className="flex items-center">
                               <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                               <span className="text-gray-600 w-24">Location:</span>
-                              <span className="font-medium">{formatLocation(venue.location)}</span>
+                              <span className="font-medium">{venue.location}</span>
                             </div>
                           )}
-                          {eventDate && (
+                          {checkInDate && (
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                              <span className="text-gray-600 w-24">Event Date:</span>
+                              <span className="text-gray-600 w-24">Check-in:</span>
                               <span className="font-medium">
-                                {format(new Date(eventDate), 'MMM dd, yyyy')}
+                                {format(new Date(checkInDate), 'MMM dd, yyyy')}
                               </span>
                             </div>
                           )}
-                          {booking.dateFrom && booking.dateTo && (
+                          {checkOutDate && (
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                              <span className="text-gray-600 w-24">Date Range:</span>
+                              <span className="text-gray-600 w-24">Check-out:</span>
                               <span className="font-medium">
-                                {format(new Date(booking.dateFrom), 'MMM dd')} - {format(new Date(booking.dateTo), 'MMM dd, yyyy')}
+                                {format(new Date(checkOutDate), 'MMM dd, yyyy')}
                               </span>
                             </div>
                           )}
@@ -851,16 +928,34 @@ export default function Bookings() {
                               <span className="font-medium capitalize">{booking.eventType}</span>
                             </div>
                           )}
-                          {booking.personName && (
+                          {booking.rooms > 0 && (
                             <div className="flex items-center">
-                              <span className="text-gray-600 w-24">Person Name:</span>
-                              <span className="font-medium">{booking.personName}</span>
+                              <span className="text-gray-600 w-24">Rooms:</span>
+                              <span className="font-medium">{booking.rooms}</span>
                             </div>
                           )}
                           {booking.foodPreference && (
                             <div className="flex items-center">
                               <span className="text-gray-600 w-24">Food:</span>
                               <span className="font-medium capitalize">{booking.foodPreference}</span>
+                            </div>
+                          )}
+                          {booking.specialRequests && (
+                            <div>
+                              <span className="text-gray-600 w-24">Special Requests:</span>
+                              <span className="font-medium">{booking.specialRequests}</span>
+                            </div>
+                          )}
+                          {venue?.image && (
+                            <div className="mt-2">
+                              <img 
+                                src={venue.image} 
+                                alt={venue.name} 
+                                className="w-32 h-32 object-cover rounded-lg"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                }}
+                              />
                             </div>
                           )}
                         </div>

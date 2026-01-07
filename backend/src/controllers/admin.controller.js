@@ -14,6 +14,7 @@ import PaymentConfig from '../models/PaymentConfig.js';
 import EmailConfig from '../models/EmailConfig.js';
 import AppConfig from '../models/AppConfig.js';
 import Banner from '../models/Banner.js';
+import BannerCategory from '../models/BannerCategory.js';
 import Video from '../models/Video.js';
 import Testimonial from '../models/Testimonial.js';
 import FAQ from '../models/FAQ.js';
@@ -472,6 +473,34 @@ export const createVenueByAdmin = async (req, res) => {
     if (facilities) venueData.facilities = facilities;
     if (highlights) venueData.highlights = highlights;
     if (tags) venueData.tags = tags.map(t => String(t).toLowerCase());
+    
+    // Handle services - can be JSON string (from FormData) or array
+    let servicesArray = [];
+    if (body.services) {
+      if (typeof body.services === 'string') {
+        try {
+          servicesArray = JSON.parse(body.services);
+        } catch (e) {
+          servicesArray = [];
+        }
+      } else if (Array.isArray(body.services)) {
+        servicesArray = body.services;
+      }
+    }
+    // Validate and clean services array
+    if (Array.isArray(servicesArray) && servicesArray.length > 0) {
+      venueData.services = servicesArray
+        .filter(service => service && service.name && service.name.trim())
+        .map(service => ({
+          name: String(service.name).trim(),
+          price: service.price !== null && service.price !== undefined && service.price !== '' 
+            ? Number(service.price) 
+            : null,
+          description: service.description ? String(service.description).trim() : undefined
+        }));
+    } else {
+      venueData.services = [];
+    }
 
     const rooms = body.rooms !== undefined && body.rooms !== null && body.rooms !== '' ? Number(body.rooms) : undefined;
     if (rooms !== undefined && !Number.isNaN(rooms)) venueData.rooms = rooms;
@@ -719,6 +748,47 @@ export const updateVenueByAdmin = async (req, res) => {
       }
     }
 
+    // Vendor Category ID (for formConfig - from "Select Venue Category" dropdown)
+    // Check if vendorCategoryId is in body (can be from FormData or JSON)
+    console.log('🔍 Admin updateVenue: Checking vendorCategoryId in body:', {
+      hasVendorCategoryId: 'vendorCategoryId' in body,
+      value: body.vendorCategoryId,
+      type: typeof body.vendorCategoryId,
+      isUndefined: body.vendorCategoryId === undefined,
+      isNull: body.vendorCategoryId === null
+    });
+    
+    if ('vendorCategoryId' in body) {
+      // Handle empty string from FormData or null/undefined
+      let vendorCategoryIdValue = body.vendorCategoryId;
+      
+      // Convert to string and trim if it's a string
+      if (typeof vendorCategoryIdValue === 'string') {
+        vendorCategoryIdValue = vendorCategoryIdValue.trim();
+      }
+      
+      // Handle null, undefined, or empty string
+      if (!vendorCategoryIdValue || vendorCategoryIdValue === '' || vendorCategoryIdValue === 'null' || vendorCategoryIdValue === 'undefined') {
+        venue.vendorCategoryId = null;
+        console.log('💾 Admin: Clearing venue vendorCategoryId (empty/null value)');
+      } else {
+        // Validate vendor category exists
+        const VendorCategory = (await import('../models/VendorCategory.js')).default;
+        const vendorCategory = await VendorCategory.findById(vendorCategoryIdValue);
+        if (!vendorCategory) {
+          console.error('❌ Admin: Invalid vendorCategoryId:', vendorCategoryIdValue);
+          return res.status(400).json({ message: 'Invalid vendorCategoryId' });
+        }
+        venue.vendorCategoryId = vendorCategoryIdValue;
+        console.log('💾 Admin: Setting venue vendorCategoryId to:', vendorCategoryIdValue, 'Category name:', vendorCategory.name);
+      }
+    } else {
+      console.log('⚠️ Admin: vendorCategoryId not in request body - keeping existing value');
+    }
+    
+    // Log before save
+    console.log('💾 Admin: About to save venue with vendorCategoryId:', venue.vendorCategoryId);
+
     let menuId = body.menuId;
     let subMenuId = body.subMenuId;
     if (menuId === '' || menuId === null || menuId === undefined) menuId = undefined;
@@ -778,6 +848,34 @@ export const updateVenueByAdmin = async (req, res) => {
     if (facilities !== undefined) venue.facilities = facilities;
     if (highlights !== undefined) venue.highlights = highlights;
     if (tags !== undefined) venue.tags = tags.map(t => String(t).toLowerCase());
+    
+    // Handle services update - can be JSON string (from FormData) or array
+    if (body.services !== undefined) {
+      let servicesArray = [];
+      if (typeof body.services === 'string') {
+        try {
+          servicesArray = JSON.parse(body.services);
+        } catch (e) {
+          servicesArray = [];
+        }
+      } else if (Array.isArray(body.services)) {
+        servicesArray = body.services;
+      }
+      // Validate and clean services array
+      if (Array.isArray(servicesArray)) {
+        venue.services = servicesArray
+          .filter(service => service && service.name && service.name.trim())
+          .map(service => ({
+            name: String(service.name).trim(),
+            price: service.price !== null && service.price !== undefined && service.price !== '' 
+              ? Number(service.price) 
+              : null,
+            description: service.description ? String(service.description).trim() : undefined
+          }));
+      } else {
+        venue.services = [];
+      }
+    }
 
     if (body.rooms !== undefined && body.rooms !== null && body.rooms !== '') {
       const rooms = Number(body.rooms);
@@ -919,7 +1017,10 @@ export const updateVenueByAdmin = async (req, res) => {
       }
     }
 
+    // Log before save
+    console.log('💾 Admin: About to save venue. Current vendorCategoryId:', venue.vendorCategoryId);
     await venue.save();
+    console.log('✅ Admin: Venue saved successfully. vendorCategoryId after save:', venue.vendorCategoryId);
     await venue.populate('vendorId', 'name email phone');
 
     // Cleanup removed local files (best-effort)
@@ -2355,6 +2456,8 @@ export const getPaymentConfig = async (req, res) => {
         razorpayKeyId: config.razorpayKeyId,
         razorpayKeySecret: maskedSecret, // Masked for display
         isActive: config.isActive,
+        enableRazorpayDirect: config.enableRazorpayDirect !== undefined ? config.enableRazorpayDirect : false,
+        enableMicroservice: config.enableMicroservice !== undefined ? config.enableMicroservice : true,
         createdAt: config.createdAt,
         updatedAt: config.updatedAt,
       }
@@ -2368,13 +2471,37 @@ export const getPaymentConfig = async (req, res) => {
 // Update Payment Configuration (Admin Only)
 export const updatePaymentConfig = async (req, res) => {
   try {
-    const { razorpayKeyId, razorpayKeySecret } = req.body;
+    const { 
+      razorpayKeyId, 
+      razorpayKeySecret, 
+      enableRazorpayDirect, 
+      enableMicroservice 
+    } = req.body;
 
-    // Validation
-    if (!razorpayKeyId || !razorpayKeySecret) {
+    // Validate payment method selection
+    // Check if both are explicitly set to true/false (handle undefined/null cases)
+    const isRazorpayEnabled = enableRazorpayDirect === true;
+    const isMicroserviceEnabled = enableMicroservice === true;
+    
+    if (isRazorpayEnabled && isMicroserviceEnabled) {
       return res.status(400).json({ 
-        message: 'Razorpay Key ID and Key Secret are required' 
+        message: 'Only one payment method can be enabled at a time. Please enable either Razorpay Direct OR Microservice, not both.' 
       });
+    }
+
+    if (!isRazorpayEnabled && !isMicroserviceEnabled) {
+      return res.status(400).json({ 
+        message: 'At least one payment method must be enabled. Please enable either Razorpay Direct OR Microservice.' 
+      });
+    }
+
+    // If Razorpay Direct is enabled, keys are required
+    if (enableRazorpayDirect === true) {
+      if (!razorpayKeyId || !razorpayKeySecret || !razorpayKeyId.trim() || !razorpayKeySecret.trim()) {
+        return res.status(400).json({ 
+          message: 'Razorpay Key ID and Key Secret are required when Razorpay Direct is enabled' 
+        });
+      }
     }
 
     // Check MongoDB connection
@@ -2390,20 +2517,25 @@ export const updatePaymentConfig = async (req, res) => {
       }
     }
 
-    // Validate key format
-    const trimmedKeyId = razorpayKeyId.trim();
-    const trimmedKeySecret = razorpayKeySecret.trim();
+    // Validate key format only if Razorpay Direct is enabled
+    let trimmedKeyId = '';
+    let trimmedKeySecret = '';
     
-    if (!trimmedKeyId.startsWith('rzp_')) {
-      return res.status(400).json({ 
-        message: 'Invalid Razorpay Key ID format. Key ID should start with "rzp_"' 
-      });
-    }
-    
-    if (trimmedKeySecret.length < 20) {
-      return res.status(400).json({ 
-        message: 'Invalid Razorpay Key Secret. Secret key seems too short.' 
-      });
+    if (enableRazorpayDirect === true && razorpayKeyId && razorpayKeySecret) {
+      trimmedKeyId = razorpayKeyId.trim();
+      trimmedKeySecret = razorpayKeySecret.trim();
+      
+      if (!trimmedKeyId.startsWith('rzp_')) {
+        return res.status(400).json({ 
+          message: 'Invalid Razorpay Key ID format. Key ID should start with "rzp_"' 
+        });
+      }
+      
+      if (trimmedKeySecret.length < 20) {
+        return res.status(400).json({ 
+          message: 'Invalid Razorpay Key Secret. Secret key seems too short.' 
+        });
+      }
     }
     
     // Get existing config or create new one
@@ -2411,23 +2543,39 @@ export const updatePaymentConfig = async (req, res) => {
     
     if (config) {
       // Update existing config
-      config.razorpayKeyId = trimmedKeyId;
-      config.razorpayKeySecret = trimmedKeySecret;
+      if (enableRazorpayDirect === true && trimmedKeyId && trimmedKeySecret) {
+        config.razorpayKeyId = trimmedKeyId;
+        config.razorpayKeySecret = trimmedKeySecret;
+      }
+      // Only update if new secret is provided (don't overwrite with empty)
+      else if (enableRazorpayDirect === true && razorpayKeySecret && razorpayKeySecret.trim().length > 0) {
+        config.razorpayKeyId = razorpayKeyId?.trim() || config.razorpayKeyId;
+        config.razorpayKeySecret = razorpayKeySecret.trim();
+      }
+      
+      config.enableRazorpayDirect = isRazorpayEnabled;
+      config.enableMicroservice = isMicroserviceEnabled;
       config.isActive = true;
       await config.save();
+      
       console.log('✅ Payment config updated successfully');
-      console.log('   Key ID:', trimmedKeyId.substring(0, 8) + '...');
-      console.log('   Key Secret length:', trimmedKeySecret.length);
+      console.log('   Razorpay Direct:', config.enableRazorpayDirect);
+      console.log('   Microservice:', config.enableMicroservice);
+      if (config.enableRazorpayDirect) {
+        console.log('   Key ID:', (config.razorpayKeyId || '').substring(0, 8) + '...');
+      }
     } else {
       // Create new config
       config = await PaymentConfig.create({
-        razorpayKeyId: trimmedKeyId,
-        razorpayKeySecret: trimmedKeySecret,
+        razorpayKeyId: trimmedKeyId || '',
+        razorpayKeySecret: trimmedKeySecret || '',
+        enableRazorpayDirect: isRazorpayEnabled,
+        enableMicroservice: isMicroserviceEnabled,
         isActive: true,
       });
       console.log('✅ Payment config created successfully');
-      console.log('   Key ID:', trimmedKeyId.substring(0, 8) + '...');
-      console.log('   Key Secret length:', trimmedKeySecret.length);
+      console.log('   Razorpay Direct:', config.enableRazorpayDirect);
+      console.log('   Microservice:', config.enableMicroservice);
     }
 
     // Mask secret for response
@@ -2443,6 +2591,8 @@ export const updatePaymentConfig = async (req, res) => {
         razorpayKeyId: config.razorpayKeyId,
         razorpayKeySecret: maskedSecret, // Masked for display
         isActive: config.isActive,
+        enableRazorpayDirect: config.enableRazorpayDirect,
+        enableMicroservice: config.enableMicroservice,
         updatedAt: config.updatedAt,
       }
     });
@@ -2807,14 +2957,25 @@ export const updateGoogleMapsConfig = async (req, res) => {
 // Get All Banners (Admin Only)
 export const getBanners = async (req, res) => {
   try {
-    const { active } = req.query;
+    const { active, categoryId } = req.query;
     let filter = {};
     
     if (active !== undefined && active !== 'all') {
       filter.isActive = active === 'true';
     }
     
+    // Filter by category if provided
+    if (categoryId) {
+      if (categoryId === 'null' || categoryId === '') {
+        // Get banners without category
+        filter.categoryId = null;
+      } else {
+        filter.categoryId = categoryId;
+      }
+    }
+    
     const banners = await Banner.find(filter)
+      .populate('categoryId', 'name description')
       .sort({ sortOrder: 1, createdAt: -1 });
     
     res.json({
@@ -2832,7 +2993,8 @@ export const getBanners = async (req, res) => {
 export const getBannerById = async (req, res) => {
   try {
     const { id } = req.params;
-    const banner = await Banner.findById(id);
+    const banner = await Banner.findById(id)
+      .populate('categoryId', 'name description');
     
     if (!banner) {
       return res.status(404).json({ message: 'Banner not found' });
@@ -2854,10 +3016,18 @@ export const getBannerById = async (req, res) => {
 // Create Banner (Admin Only)
 export const createBanner = async (req, res) => {
   try {
-    const { title, description, link, isActive, sortOrder, startDate, endDate } = req.body;
+    const { title, description, link, categoryId, isActive, sortOrder, startDate, endDate } = req.body;
     
     if (!title || !title.trim()) {
       return res.status(400).json({ message: 'Banner title is required' });
+    }
+    
+    // Validate category if provided
+    if (categoryId && categoryId !== 'null' && categoryId !== '') {
+      const category = await BannerCategory.findById(categoryId);
+      if (!category) {
+        return res.status(400).json({ message: 'Invalid banner category' });
+      }
     }
     
     // Handle image - either from file upload or URL
@@ -2877,6 +3047,7 @@ export const createBanner = async (req, res) => {
       description: description || '',
       image: imageUrl,
       link: link || '',
+      categoryId: categoryId && categoryId !== 'null' && categoryId !== '' ? categoryId : null,
       isActive: isActive !== undefined ? isActive : true,
       sortOrder: sortOrder ? parseInt(sortOrder) : 0,
     };
@@ -2885,6 +3056,7 @@ export const createBanner = async (req, res) => {
     if (endDate) bannerData.endDate = new Date(endDate);
     
     const banner = await Banner.create(bannerData);
+    await banner.populate('categoryId', 'name description');
     
     res.status(201).json({
       success: true,
@@ -2904,11 +3076,24 @@ export const createBanner = async (req, res) => {
 export const updateBanner = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, link, isActive, sortOrder, startDate, endDate } = req.body;
+    const { title, description, link, categoryId, isActive, sortOrder, startDate, endDate } = req.body;
     
     const banner = await Banner.findById(id);
     if (!banner) {
       return res.status(404).json({ message: 'Banner not found' });
+    }
+    
+    // Validate category if provided
+    if (categoryId !== undefined) {
+      if (categoryId && categoryId !== 'null' && categoryId !== '') {
+        const category = await BannerCategory.findById(categoryId);
+        if (!category) {
+          return res.status(400).json({ message: 'Invalid banner category' });
+        }
+        banner.categoryId = categoryId;
+      } else {
+        banner.categoryId = null;
+      }
     }
     
     // Update fields
@@ -2930,6 +3115,7 @@ export const updateBanner = async (req, res) => {
     }
     
     await banner.save();
+    await banner.populate('categoryId', 'name description');
     
     res.json({
       success: true,
@@ -2993,6 +3179,210 @@ export const toggleBannerActive = async (req, res) => {
     console.error('Toggle banner active error:', error);
     if (error.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid banner ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// ==================== BANNER CATEGORY CONTROLLERS ====================
+
+// Get All Banner Categories (Admin Only)
+export const getBannerCategories = async (req, res) => {
+  try {
+    const { active } = req.query;
+    let filter = {};
+    
+    if (active !== undefined && active !== 'all') {
+      filter.isActive = active === 'true';
+    }
+    
+    const categories = await BannerCategory.find(filter)
+      .sort({ sortOrder: 1, createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: categories.length,
+      categories: categories.map(category => category.toObject())
+    });
+  } catch (error) {
+    console.error('Get banner categories error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get Single Banner Category by ID (Admin Only)
+export const getBannerCategoryById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await BannerCategory.findById(id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Banner category not found' });
+    }
+    
+    res.json({
+      success: true,
+      category: category.toObject()
+    });
+  } catch (error) {
+    console.error('Get banner category by ID error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid banner category ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Create Banner Category (Admin Only)
+export const createBannerCategory = async (req, res) => {
+  try {
+    const { name, description, isActive, sortOrder } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Banner category name is required' });
+    }
+    
+    // Check if category with same name already exists
+    const existingCategory = await BannerCategory.findOne({ 
+      name: name.trim() 
+    });
+    
+    if (existingCategory) {
+      return res.status(400).json({ message: 'Banner category with this name already exists' });
+    }
+    
+    const categoryData = {
+      name: name.trim(),
+      description: description || '',
+      isActive: isActive !== undefined ? isActive : true,
+      sortOrder: sortOrder ? parseInt(sortOrder) : 0,
+    };
+    
+    const category = await BannerCategory.create(categoryData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Banner category created successfully',
+      category: category.toObject()
+    });
+  } catch (error) {
+    console.error('Create banner category error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Banner category with this name already exists' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update Banner Category (Admin Only)
+export const updateBannerCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, isActive, sortOrder } = req.body;
+    
+    const category = await BannerCategory.findById(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Banner category not found' });
+    }
+    
+    // Check if name is being changed and if it conflicts with existing category
+    if (name && name.trim() !== category.name) {
+      const existingCategory = await BannerCategory.findOne({ 
+        name: name.trim(),
+        _id: { $ne: id }
+      });
+      
+      if (existingCategory) {
+        return res.status(400).json({ message: 'Banner category with this name already exists' });
+      }
+    }
+    
+    // Update fields
+    if (name !== undefined) category.name = name.trim();
+    if (description !== undefined) category.description = description;
+    if (isActive !== undefined) category.isActive = isActive;
+    if (sortOrder !== undefined) category.sortOrder = parseInt(sortOrder) || 0;
+    
+    await category.save();
+    
+    res.json({
+      success: true,
+      message: 'Banner category updated successfully',
+      category: category.toObject()
+    });
+  } catch (error) {
+    console.error('Update banner category error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid banner category ID' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Banner category with this name already exists' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete Banner Category (Admin Only)
+export const deleteBannerCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if any banners are using this category
+    const bannersWithCategory = await Banner.countDocuments({ categoryId: id });
+    
+    if (bannersWithCategory > 0) {
+      return res.status(400).json({ 
+        message: `Cannot delete category. ${bannersWithCategory} banner(s) are using this category. Please remove or reassign banners first.` 
+      });
+    }
+    
+    const category = await BannerCategory.findByIdAndDelete(id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Banner category not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Banner category deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete banner category error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid banner category ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Toggle Banner Category Active Status (Admin Only)
+export const toggleBannerCategoryActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await BannerCategory.findById(id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Banner category not found' });
+    }
+    
+    category.isActive = !category.isActive;
+    await category.save();
+    
+    res.json({
+      success: true,
+      message: `Banner category ${category.isActive ? 'activated' : 'deactivated'} successfully`,
+      category: category.toObject()
+    });
+  } catch (error) {
+    console.error('Toggle banner category active error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid banner category ID' });
     }
     res.status(500).json({ message: 'Internal server error' });
   }

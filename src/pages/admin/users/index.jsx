@@ -15,7 +15,7 @@ export const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all'); // 'all' means all users except vendors
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
@@ -30,9 +30,14 @@ export const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const params = roleFilter !== 'all' ? { role: roleFilter } : {};
+      // Users section should only show customers, not vendors
+      // Vendors should be managed in the Vendors section
+      const params = roleFilter !== 'all' ? { role: roleFilter } : { role: 'customer' };
+      // Always exclude vendors from Users section
       const response = await usersAPI.getAll(params);
-      setUsers(response.data || []);
+      // Filter out vendors just in case API returns them
+      const filteredUsers = (response.data || []).filter(user => user.role !== 'vendor');
+      setUsers(filteredUsers);
     } catch (error) {
       toast.error('Failed to load users');
     } finally {
@@ -129,11 +134,19 @@ export const Users = () => {
   };
 
   const filteredUsers = users.filter(user => {
+    // Always exclude vendors from Users section - vendors should be in Vendors section
+    if (user.role === 'vendor') {
+      return false;
+    }
+    
     const matchesSearch = 
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phone?.includes(searchTerm);
-    return matchesSearch;
+    
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
   });
 
   // Pagination logic
@@ -196,11 +209,11 @@ export const Users = () => {
               onChange={(e) => setRoleFilter(e.target.value)}
               className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
             >
-              <option value="all">All Roles</option>
+              <option value="all">All Users</option>
               <option value="customer">Customer</option>
-              <option value="vendor">Vendor</option>
               <option value="affiliate">Affiliate</option>
               <option value="admin">Admin</option>
+              {/* Vendor option removed - vendors should be managed in Vendors section */}
             </select>
           </div>
 

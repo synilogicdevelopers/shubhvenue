@@ -174,9 +174,9 @@ export default function Calendar() {
         </div>
         <button
           onClick={loadDatesData}
-          className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm"
+          className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm text-gray-900"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-3.5 h-3.5 text-gray-900" />
           <span>Refresh</span>
         </button>
       </div>

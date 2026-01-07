@@ -235,5 +235,14 @@ export const shotlistAPI = {
   },
 };
 
+// Public Banners APIs (no auth required)
+export const publicBannersAPI = {
+  getAll: (params) => {
+    const queryString = params ? new URLSearchParams(params).toString() : '';
+    return apiRequest(`/banners${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => apiRequest(`/banners/${id}`),
+};
+
 export default { apiRequest };
 

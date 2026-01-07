@@ -295,9 +295,9 @@ export default function Ledger() {
           )}
           <button
             onClick={loadLedger}
-            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition text-gray-900"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4 text-gray-900" />
             <span>Refresh</span>
           </button>
         </div>
@@ -370,7 +370,7 @@ export default function Ledger() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center space-x-2">
             <Filter className="w-5 h-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter:</span>
+            <span className="text-sm font-medium text-gray-900">Filter:</span>
           </div>
           <button
             onClick={() => setFilter('all')}

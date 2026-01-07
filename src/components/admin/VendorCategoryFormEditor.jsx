@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '../admin/ui/Button';
 import { Input } from '../admin/ui/Input';
-import { X, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  X, Plus, Trash2, ChevronDown, ChevronUp, 
+  MapPin, DollarSign, Users, Home, Utensils, 
+  Star, Clock, Calendar, Tag, Image as ImageIcon, 
+  Video, Menu, FileText, Search, Check
+} from 'lucide-react';
 
 const defaultFormConfig = {
   venue: {
@@ -300,583 +305,532 @@ export const VendorCategoryFormEditor = ({ formConfig: initialConfig, onChange, 
     });
   };
 
+  // Custom Checkbox Component with better styling
+  const CustomCheckbox = ({ checked, onChange, label, icon: Icon, description, className = "" }) => (
+    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
+      checked 
+        ? 'border-primary bg-primary/5 dark:bg-primary/10' 
+        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+    } ${className}`}>
+      <div className="relative flex-shrink-0 mt-0.5">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          className="sr-only"
+        />
+        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+          checked
+            ? 'bg-primary border-primary'
+            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+        }`}>
+          {checked && <Check className="w-3.5 h-3.5 text-white" />}
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className={`w-4 h-4 flex-shrink-0 ${checked ? 'text-primary' : 'text-gray-400'}`} />}
+          <span className={`text-sm font-medium ${checked ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
+            {label}
+          </span>
+        </div>
+        {description && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+        )}
+      </div>
+    </label>
+  );
+
+  // Nested Field Group Component
+  const NestedFieldGroup = ({ parentChecked, onParentChange, parentLabel, parentIcon: ParentIcon, children, description }) => (
+    <div className="space-y-2">
+      <CustomCheckbox
+        checked={parentChecked}
+        onChange={onParentChange}
+        label={parentLabel}
+        icon={ParentIcon}
+        description={description}
+      />
+      {parentChecked && (
+        <div className="ml-8 space-y-2 border-l-2 border-primary/20 dark:border-primary/30 pl-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+    <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
       {/* Venue Form Configuration */}
-      <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+      <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
         <div 
-          className="flex items-center justify-between cursor-pointer"
+          className="flex items-center justify-between cursor-pointer mb-4 pb-3 border-b border-gray-200 dark:border-gray-700"
           onClick={() => toggleSection('venue')}
         >
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Venue Form Configuration
-          </h3>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Home className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                Venue Form Configuration
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Configure fields for venue registration form
+              </p>
+            </div>
+          </div>
           {expandedSections.venue ? (
-            <ChevronUp className="w-5 h-5" />
+            <ChevronUp className="w-5 h-5 text-gray-500" />
           ) : (
-            <ChevronDown className="w-5 h-5" />
+            <ChevronDown className="w-5 h-5 text-gray-500" />
           )}
         </div>
 
         {expandedSections.venue && (
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-3">
             {/* Basic Fields */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.name}
-                  onChange={(e) => updateConfig('venue.name', e.target.checked)}
-                  className="w-4 h-4"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Name */}
+              <CustomCheckbox
+                checked={formConfig.venue.name}
+                onChange={(e) => updateConfig('venue.name', e.target.checked)}
+                label="Name"
+                icon={FileText}
+                description="Venue name field"
+              />
+
+              {/* Number of Guests */}
+              <CustomCheckbox
+                checked={formConfig.venue.numberOfGuests}
+                onChange={(e) => updateConfig('venue.numberOfGuests', e.target.checked)}
+                label="Number of Guests"
+                icon={Users}
+                description="Maximum guest capacity"
+              />
+
+              {/* Number of Rooms */}
+              <CustomCheckbox
+                checked={formConfig.venue.numberOfRooms}
+                onChange={(e) => updateConfig('venue.numberOfRooms', e.target.checked)}
+                label="Number of Rooms"
+                icon={Home}
+                description="Total number of rooms"
+              />
+
+              {/* Amenities */}
+              <CustomCheckbox
+                checked={formConfig.venue.amenities}
+                onChange={(e) => updateConfig('venue.amenities', e.target.checked)}
+                label="Amenities"
+                icon={Star}
+                description="List of available amenities"
+              />
+
+              {/* Category */}
+              <CustomCheckbox
+                checked={formConfig.venue.category}
+                onChange={(e) => updateConfig('venue.category', e.target.checked)}
+                label="Category"
+                icon={Tag}
+                description="Venue category selection"
+              />
+
+              {/* Videos */}
+              <CustomCheckbox
+                checked={formConfig.venue.videos}
+                onChange={(e) => updateConfig('venue.videos', e.target.checked)}
+                label="Videos"
+                icon={Video}
+                description="Video uploads"
+              />
+
+              {/* Gallery Images */}
+              <CustomCheckbox
+                checked={formConfig.venue.galleryImages}
+                onChange={(e) => updateConfig('venue.galleryImages', e.target.checked)}
+                label="Gallery Images"
+                icon={ImageIcon}
+                description="Image gallery upload"
+              />
+
+              {/* Highlights */}
+              <CustomCheckbox
+                checked={formConfig.venue.highlights}
+                onChange={(e) => updateConfig('venue.highlights', e.target.checked)}
+                label="Highlights"
+                icon={Star}
+                description="Key highlights and features"
+              />
+
+              {/* Menu */}
+              <CustomCheckbox
+                checked={formConfig.venue.menu}
+                onChange={(e) => updateConfig('venue.menu', e.target.checked)}
+                label="Menu"
+                icon={Menu}
+                description="Menu items and pricing"
+              />
+
+              {/* Submenu */}
+              <CustomCheckbox
+                checked={formConfig.venue.submenu}
+                onChange={(e) => updateConfig('venue.submenu', e.target.checked)}
+                label="Submenu"
+                icon={Menu}
+                description="Submenu categories"
+              />
+
+              {/* Gender */}
+              <CustomCheckbox
+                checked={formConfig.venue.gender}
+                onChange={(e) => updateConfig('venue.gender', e.target.checked)}
+                label="Gender"
+                icon={Users}
+                description="Gender-specific options"
+              />
+            </div>
+
+            {/* Location - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.location?.enabled}
+              onParentChange={(e) => updateConfig('venue.location.enabled', e.target.checked)}
+              parentLabel="Location"
+              parentIcon={MapPin}
+              description="Venue location details"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <CustomCheckbox
+                  checked={formConfig.venue.location?.city}
+                  onChange={(e) => updateConfig('venue.location.city', e.target.checked)}
+                  label="City"
                 />
-                <span className="text-sm font-medium">Name</span>
-              </label>
-
-              {/* Location */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.location?.enabled}
-                    onChange={(e) => updateConfig('venue.location.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Location</span>
-                </label>
-                {formConfig.venue.location?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.location?.city}
-                        onChange={(e) => updateConfig('venue.location.city', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">City</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.location?.state}
-                        onChange={(e) => updateConfig('venue.location.state', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">State</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.location?.address}
-                        onChange={(e) => updateConfig('venue.location.address', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Address</span>
-                    </label>
-                  </div>
-                )}
+                <CustomCheckbox
+                  checked={formConfig.venue.location?.state}
+                  onChange={(e) => updateConfig('venue.location.state', e.target.checked)}
+                  label="State"
+                />
+                <CustomCheckbox
+                  checked={formConfig.venue.location?.address}
+                  onChange={(e) => updateConfig('venue.location.address', e.target.checked)}
+                  label="Address"
+                />
               </div>
+            </NestedFieldGroup>
 
-              {/* Price Type */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.priceType?.enabled}
-                    onChange={(e) => updateConfig('venue.priceType.enabled', e.target.checked)}
-                    className="w-4 h-4"
+            {/* Price Type - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.priceType?.enabled}
+              onParentChange={(e) => updateConfig('venue.priceType.enabled', e.target.checked)}
+              parentLabel="Price Type"
+              parentIcon={DollarSign}
+              description="Select available pricing types"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {priceTypeOptions.map(option => (
+                  <CustomCheckbox
+                    key={option.value}
+                    checked={formConfig.venue.priceType?.types?.includes(option.value)}
+                    onChange={() => toggleArrayItem('venue.priceType.types', option.value)}
+                    label={option.label}
                   />
-                  <span className="text-sm font-medium">Price Type</span>
-                </label>
-                {formConfig.venue.priceType?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    {priceTypeOptions.map(option => (
-                      <label key={option.value} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={formConfig.venue.priceType?.types?.includes(option.value)}
-                          onChange={() => toggleArrayItem('venue.priceType.types', option.value)}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
+            </NestedFieldGroup>
 
-              {/* Type */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.type?.enabled}
-                    onChange={(e) => updateConfig('venue.type.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Type</span>
-                </label>
-                {formConfig.venue.type?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.type?.allowCustom}
-                        onChange={(e) => updateConfig('venue.type.allowCustom', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Allow Custom Types</span>
-                    </label>
+            {/* Type - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.type?.enabled}
+              onParentChange={(e) => updateConfig('venue.type.enabled', e.target.checked)}
+              parentLabel="Type"
+              parentIcon={Tag}
+              description="Venue type options"
+            >
+              <div className="space-y-3">
+                <CustomCheckbox
+                  checked={formConfig.venue.type?.allowCustom}
+                  onChange={(e) => updateConfig('venue.type.allowCustom', e.target.checked)}
+                  label="Allow Custom Types"
+                  description="Users can add custom venue types"
+                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Type Options:</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={addTypeOption}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Option
+                    </Button>
+                  </div>
+                  {formConfig.venue.type?.options?.length > 0 ? (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Type Options:</span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={addTypeOption}
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                      {formConfig.venue.type?.options?.map((option, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-2 rounded">
-                          <span className="text-sm flex-1">{option}</span>
+                      {formConfig.venue.type.options.map((option, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-sm flex-1 font-medium text-gray-900 dark:text-gray-100">{option}</span>
                           <Button
                             type="button"
                             size="sm"
                             variant="ghost"
                             onClick={() => removeTypeOption(idx)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                           >
-                            <Trash2 className="w-3 h-3 text-red-600" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+                      No type options added yet. Click "Add Option" to add one.
+                    </p>
+                  )}
+                </div>
               </div>
+            </NestedFieldGroup>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.numberOfGuests}
-                  onChange={(e) => updateConfig('venue.numberOfGuests', e.target.checked)}
-                  className="w-4 h-4"
+            {/* Food - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.food?.enabled}
+              onParentChange={(e) => updateConfig('venue.food.enabled', e.target.checked)}
+              parentLabel="Food"
+              parentIcon={Utensils}
+              description="Food options and preferences"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <CustomCheckbox
+                  checked={formConfig.venue.food?.options?.includes('veg')}
+                  onChange={() => toggleArrayItem('venue.food.options', 'veg')}
+                  label="Vegetarian"
                 />
-                <span className="text-sm font-medium">Number of Guests</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.numberOfRooms}
-                  onChange={(e) => updateConfig('venue.numberOfRooms', e.target.checked)}
-                  className="w-4 h-4"
+                <CustomCheckbox
+                  checked={formConfig.venue.food?.options?.includes('non_veg')}
+                  onChange={() => toggleArrayItem('venue.food.options', 'non_veg')}
+                  label="Non-Vegetarian"
                 />
-                <span className="text-sm font-medium">Number of Rooms</span>
-              </label>
-
-              {/* Food */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.food?.enabled}
-                    onChange={(e) => updateConfig('venue.food.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Food</span>
-                </label>
-                {formConfig.venue.food?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.food?.options?.includes('veg')}
-                        onChange={() => toggleArrayItem('venue.food.options', 'veg')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Veg</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.food?.options?.includes('non_veg')}
-                        onChange={() => toggleArrayItem('venue.food.options', 'non_veg')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Non-Veg</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.food?.options?.includes('both')}
-                        onChange={() => toggleArrayItem('venue.food.options', 'both')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Both</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.food?.allowIndividualItems}
-                        onChange={(e) => updateConfig('venue.food.allowIndividualItems', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Allow Individual Food Items</span>
-                    </label>
-                  </div>
-                )}
+                <CustomCheckbox
+                  checked={formConfig.venue.food?.options?.includes('both')}
+                  onChange={() => toggleArrayItem('venue.food.options', 'both')}
+                  label="Both"
+                />
               </div>
+              <CustomCheckbox
+                checked={formConfig.venue.food?.allowIndividualItems}
+                onChange={(e) => updateConfig('venue.food.allowIndividualItems', e.target.checked)}
+                label="Allow Individual Food Items"
+                description="Enable individual food item selection"
+              />
+            </NestedFieldGroup>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.amenities}
-                  onChange={(e) => updateConfig('venue.amenities', e.target.checked)}
-                  className="w-4 h-4"
+            {/* Timing - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.timing?.enabled}
+              onParentChange={(e) => updateConfig('venue.timing.enabled', e.target.checked)}
+              parentLabel="Timing"
+              parentIcon={Clock}
+              description="Venue operating hours"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <CustomCheckbox
+                  checked={formConfig.venue.timing?.openTime}
+                  onChange={(e) => updateConfig('venue.timing.openTime', e.target.checked)}
+                  label="Open Time"
                 />
-                <span className="text-sm font-medium">Amenities</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.highlights}
-                  onChange={(e) => updateConfig('venue.highlights', e.target.checked)}
-                  className="w-4 h-4"
+                <CustomCheckbox
+                  checked={formConfig.venue.timing?.closeTime}
+                  onChange={(e) => updateConfig('venue.timing.closeTime', e.target.checked)}
+                  label="Close Time"
                 />
-                <span className="text-sm font-medium">Highlights</span>
-              </label>
-
-              {/* Timing */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.timing?.enabled}
-                    onChange={(e) => updateConfig('venue.timing.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Timing</span>
-                </label>
-                {formConfig.venue.timing?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.timing?.openTime}
-                        onChange={(e) => updateConfig('venue.timing.openTime', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Open Time</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.timing?.closeTime}
-                        onChange={(e) => updateConfig('venue.timing.closeTime', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Close Time</span>
-                    </label>
-                  </div>
-                )}
               </div>
+            </NestedFieldGroup>
 
-              {/* Open Days */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.venue.openDays?.enabled}
-                    onChange={(e) => updateConfig('venue.openDays.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Open Days</span>
-                </label>
-                {formConfig.venue.openDays?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.venue.openDays?.allowAllDays}
-                        onChange={(e) => updateConfig('venue.openDays.allowAllDays', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Allow All Days</span>
-                    </label>
-                    {!formConfig.venue.openDays?.allowAllDays && (
-                      <div className="space-y-1">
-                        {daysOfWeek.map(day => (
-                          <label key={day.value} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={formConfig.venue.openDays?.days?.includes(day.value)}
-                              onChange={() => toggleArrayItem('venue.openDays.days', day.value)}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">{day.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.gender}
-                  onChange={(e) => updateConfig('venue.gender', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Gender</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.category}
-                  onChange={(e) => updateConfig('venue.category', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Category</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.menu}
-                  onChange={(e) => updateConfig('venue.menu', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Menu</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.submenu}
-                  onChange={(e) => updateConfig('venue.submenu', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Submenu</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.videos}
-                  onChange={(e) => updateConfig('venue.videos', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Videos</span>
-              </label>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.venue.galleryImages}
-                  onChange={(e) => updateConfig('venue.galleryImages', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Gallery Images</span>
-              </label>
-            </div>
+            {/* Open Days - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.venue.openDays?.enabled}
+              onParentChange={(e) => updateConfig('venue.openDays.enabled', e.target.checked)}
+              parentLabel="Open Days"
+              parentIcon={Calendar}
+              description="Days when venue is open"
+            >
+              <CustomCheckbox
+                checked={formConfig.venue.openDays?.allowAllDays}
+                onChange={(e) => updateConfig('venue.openDays.allowAllDays', e.target.checked)}
+                label="Allow All Days"
+                description="Venue is open all days of the week"
+              />
+              {!formConfig.venue.openDays?.allowAllDays && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                  {daysOfWeek.map(day => (
+                    <CustomCheckbox
+                      key={day.value}
+                      checked={formConfig.venue.openDays?.days?.includes(day.value)}
+                      onChange={() => toggleArrayItem('venue.openDays.days', day.value)}
+                      label={day.label}
+                    />
+                  ))}
+                </div>
+              )}
+            </NestedFieldGroup>
           </div>
         )}
       </div>
 
       {/* Booking Form Configuration */}
-      <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+      <div className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
         <div 
-          className="flex items-center justify-between cursor-pointer"
+          className="flex items-center justify-between cursor-pointer mb-4 pb-3 border-b border-gray-200 dark:border-gray-700"
           onClick={() => toggleSection('booking')}
         >
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Booking Form Configuration
-          </h3>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Calendar className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                Booking Form Configuration
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Configure fields for booking form
+              </p>
+            </div>
+          </div>
           {expandedSections.booking ? (
-            <ChevronUp className="w-5 h-5" />
+            <ChevronUp className="w-5 h-5 text-gray-500" />
           ) : (
-            <ChevronDown className="w-5 h-5" />
+            <ChevronDown className="w-5 h-5 text-gray-500" />
           )}
         </div>
 
         {expandedSections.booking && (
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.booking.date}
-                  onChange={(e) => updateConfig('booking.date', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Date</span>
-              </label>
+          <div className="mt-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Date */}
+              <CustomCheckbox
+                checked={formConfig.booking.date}
+                onChange={(e) => updateConfig('booking.date', e.target.checked)}
+                label="Date"
+                icon={Calendar}
+                description="Booking date selection"
+              />
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.booking.numberOfGuests}
-                  onChange={(e) => updateConfig('booking.numberOfGuests', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Number of Guests</span>
-              </label>
+              {/* Number of Guests */}
+              <CustomCheckbox
+                checked={formConfig.booking.numberOfGuests}
+                onChange={(e) => updateConfig('booking.numberOfGuests', e.target.checked)}
+                label="Number of Guests"
+                icon={Users}
+                description="Guest count for booking"
+              />
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.booking.numberOfRooms}
-                  onChange={(e) => updateConfig('booking.numberOfRooms', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Number of Rooms</span>
-              </label>
+              {/* Number of Rooms */}
+              <CustomCheckbox
+                checked={formConfig.booking.numberOfRooms}
+                onChange={(e) => updateConfig('booking.numberOfRooms', e.target.checked)}
+                label="Number of Rooms"
+                icon={Home}
+                description="Room count for booking"
+              />
 
-              {/* Type */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.booking.type?.enabled}
-                    onChange={(e) => updateConfig('booking.type.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Type</span>
-                </label>
-                {formConfig.booking.type?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="typeSource"
-                        checked={formConfig.booking.type?.source === 'venue'}
-                        onChange={() => updateConfig('booking.type.source', 'venue')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">From Venue</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="typeSource"
-                        checked={formConfig.booking.type?.source === 'custom'}
-                        onChange={() => updateConfig('booking.type.source', 'custom')}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Custom</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Food Price */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.booking.foodPrice?.enabled}
-                    onChange={(e) => updateConfig('booking.foodPrice.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Food Price</span>
-                </label>
-                {formConfig.booking.foodPrice?.enabled && (
-                  <label className="ml-6 flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formConfig.booking.foodPrice?.autoCalculate}
-                      onChange={(e) => updateConfig('booking.foodPrice.autoCalculate', e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">Auto Calculate from Venue</span>
-                  </label>
-                )}
-              </div>
-
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formConfig.booking.gender}
-                  onChange={(e) => updateConfig('booking.gender', e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm font-medium">Gender</span>
-              </label>
-
-              {/* Pickup/Drop */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.booking.pickupDrop?.enabled}
-                    onChange={(e) => updateConfig('booking.pickupDrop.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Pickup/Drop</span>
-                </label>
-                {formConfig.booking.pickupDrop?.enabled && (
-                  <div className="ml-6 space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.booking.pickupDrop?.pickup}
-                        onChange={(e) => updateConfig('booking.pickupDrop.pickup', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Pickup</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formConfig.booking.pickupDrop?.drop}
-                        onChange={(e) => updateConfig('booking.pickupDrop.drop', e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Drop</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Date Selection */}
-              <div className="ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formConfig.booking.dateSelection?.enabled}
-                    onChange={(e) => updateConfig('booking.dateSelection.enabled', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Date Selection</span>
-                </label>
-                {formConfig.booking.dateSelection?.enabled && (
-                  <label className="ml-6 flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formConfig.booking.dateSelection?.allowMultipleDates}
-                      onChange={(e) => updateConfig('booking.dateSelection.allowMultipleDates', e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">Allow Multiple Dates</span>
-                  </label>
-                )}
-              </div>
+              {/* Gender */}
+              <CustomCheckbox
+                checked={formConfig.booking.gender}
+                onChange={(e) => updateConfig('booking.gender', e.target.checked)}
+                label="Gender"
+                icon={Users}
+                description="Gender-specific booking options"
+              />
             </div>
+
+            {/* Type - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.booking.type?.enabled}
+              onParentChange={(e) => updateConfig('booking.type.enabled', e.target.checked)}
+              parentLabel="Type"
+              parentIcon={Tag}
+              description="Booking type source"
+            >
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+                  <input
+                    type="radio"
+                    name="typeSource"
+                    checked={formConfig.booking.type?.source === 'venue'}
+                    onChange={() => updateConfig('booking.type.source', 'venue')}
+                    className="w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">From Venue</span>
+                </label>
+                <label className="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+                  <input
+                    type="radio"
+                    name="typeSource"
+                    checked={formConfig.booking.type?.source === 'custom'}
+                    onChange={() => updateConfig('booking.type.source', 'custom')}
+                    className="w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom</span>
+                </label>
+              </div>
+            </NestedFieldGroup>
+
+            {/* Food Price - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.booking.foodPrice?.enabled}
+              onParentChange={(e) => updateConfig('booking.foodPrice.enabled', e.target.checked)}
+              parentLabel="Food Price"
+              parentIcon={DollarSign}
+              description="Food pricing options"
+            >
+              <CustomCheckbox
+                checked={formConfig.booking.foodPrice?.autoCalculate}
+                onChange={(e) => updateConfig('booking.foodPrice.autoCalculate', e.target.checked)}
+                label="Auto Calculate from Venue"
+                description="Automatically calculate food price from venue settings"
+              />
+            </NestedFieldGroup>
+
+            {/* Pickup/Drop - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.booking.pickupDrop?.enabled}
+              onParentChange={(e) => updateConfig('booking.pickupDrop.enabled', e.target.checked)}
+              parentLabel="Pickup/Drop"
+              parentIcon={MapPin}
+              description="Transportation options"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <CustomCheckbox
+                  checked={formConfig.booking.pickupDrop?.pickup}
+                  onChange={(e) => updateConfig('booking.pickupDrop.pickup', e.target.checked)}
+                  label="Pickup"
+                />
+                <CustomCheckbox
+                  checked={formConfig.booking.pickupDrop?.drop}
+                  onChange={(e) => updateConfig('booking.pickupDrop.drop', e.target.checked)}
+                  label="Drop"
+                />
+              </div>
+            </NestedFieldGroup>
+
+            {/* Date Selection - Nested Group */}
+            <NestedFieldGroup
+              parentChecked={formConfig.booking.dateSelection?.enabled}
+              onParentChange={(e) => updateConfig('booking.dateSelection.enabled', e.target.checked)}
+              parentLabel="Date Selection"
+              parentIcon={Calendar}
+              description="Date selection options"
+            >
+              <CustomCheckbox
+                checked={formConfig.booking.dateSelection?.allowMultipleDates}
+                onChange={(e) => updateConfig('booking.dateSelection.allowMultipleDates', e.target.checked)}
+                label="Allow Multiple Dates"
+                description="Users can select multiple dates for booking"
+              />
+            </NestedFieldGroup>
           </div>
         )}
-      </div>
-
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Close
-        </Button>
       </div>
     </div>
   );

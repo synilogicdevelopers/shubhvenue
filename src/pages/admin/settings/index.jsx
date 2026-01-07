@@ -20,6 +20,8 @@ export const Settings = () => {
   const [paymentConfig, setPaymentConfig] = useState({
     razorpayKeyId: '',
     razorpayKeySecret: '',
+    enableRazorpayDirect: false,
+    enableMicroservice: true,
   });
   const [showSecret, setShowSecret] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -146,6 +148,8 @@ const handleConfirmAction = async () => {
         setPaymentConfig({
           razorpayKeyId: response.data.config.razorpayKeyId || '',
           razorpayKeySecret: '', // Don't load masked secret, user needs to enter full key to update
+          enableRazorpayDirect: response.data.config.enableRazorpayDirect === true,
+          enableMicroservice: response.data.config.enableMicroservice !== false, // Default to true
         });
       }
     } catch (error) {
@@ -157,14 +161,42 @@ const handleConfirmAction = async () => {
     e.preventDefault();
     
     // Validation
-    if (!paymentConfig.razorpayKeyId || !paymentConfig.razorpayKeySecret) {
-    toast.error('Project Code and Secret are required');
+    if (paymentConfig.enableRazorpayDirect && (!paymentConfig.razorpayKeyId || !paymentConfig.razorpayKeySecret)) {
+      toast.error('Razorpay Key ID and Secret are required when Razorpay Direct is enabled');
+      return;
+    }
+    
+    // Microservice requires Project Code and Secret for authentication
+    if (paymentConfig.enableMicroservice && (!paymentConfig.razorpayKeyId || !paymentConfig.razorpayKeySecret)) {
+      toast.error('Microservice Project Code and Secret are required when Microservice Payment is enabled');
       return;
     }
     
     setPaymentLoading(true);
     try {
-      const response = await paymentConfigAPI.update(paymentConfig);
+      // Prepare update data
+      const updateData = {
+        enableRazorpayDirect: Boolean(paymentConfig.enableRazorpayDirect),
+        enableMicroservice: Boolean(paymentConfig.enableMicroservice),
+      };
+      
+      // Include keys based on selected payment method
+      if (paymentConfig.enableRazorpayDirect) {
+        // Razorpay Direct requires keys
+        updateData.razorpayKeyId = paymentConfig.razorpayKeyId || '';
+        updateData.razorpayKeySecret = paymentConfig.razorpayKeySecret || '';
+      } else if (paymentConfig.enableMicroservice) {
+        // Microservice requires Project Code and Secret for authentication
+        updateData.razorpayKeyId = paymentConfig.razorpayKeyId || '';
+        updateData.razorpayKeySecret = paymentConfig.razorpayKeySecret || '';
+      }
+      
+      console.log('Updating payment config:', {
+        ...updateData,
+        razorpayKeySecret: updateData.razorpayKeySecret ? '***' : ''
+      });
+      
+      const response = await paymentConfigAPI.update(updateData);
       
       if (response.data?.success) {
         toast.success('Payment configuration updated successfully');
@@ -181,8 +213,16 @@ const handleConfirmAction = async () => {
       }
     } catch (error) {
       console.error('Payment config update error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update payment configuration';
-      toast.error(errorMessage);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to update payment configuration';
+      toast.error(errorMessage, { duration: 5000 });
+      
+      // Log full error for debugging
+      if (error.response?.data) {
+        console.error('Error response:', error.response.data);
+      }
     } finally {
       setPaymentLoading(false);
     }
@@ -468,31 +508,92 @@ const handleConfirmAction = async () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            Payment Configuration (Razorpay)
+            Payment Configuration
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePaymentConfigUpdate} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Razorpay Key ID</label>
-              <Input
-                type="text"
-                value={paymentConfig.razorpayKeyId}
-                onChange={(e) => setPaymentConfig({ ...paymentConfig, razorpayKeyId: e.target.value })}
-                placeholder="rzp_test_xxxxxxxxxxxxx"
-                required
-              />
+            {/* Payment Method Selection */}
+            <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <label className="block text-sm font-semibold mb-3">Payment Method</label>
+              
+              <div className="space-y-2">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentConfig.enableMicroservice}
+                    onChange={() => {
+                      setPaymentConfig({
+                        ...paymentConfig,
+                        enableMicroservice: true,
+                        enableRazorpayDirect: false,
+                      });
+                    }}
+                    className="w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium">Microservice Payment</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Use central payments microservice (payments.synilogic.in)
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    checked={paymentConfig.enableRazorpayDirect}
+                    onChange={() => {
+                      setPaymentConfig({
+                        ...paymentConfig,
+                        enableRazorpayDirect: true,
+                        enableMicroservice: false,
+                      });
+                    }}
+                    className="w-4 h-4 text-primary focus:ring-primary"
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium">Razorpay Direct</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Direct Razorpay integration (requires Razorpay keys)
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Razorpay Key Secret</label>
+
+            {/* Razorpay Keys - Only show if Razorpay Direct is enabled */}
+            {paymentConfig.enableRazorpayDirect && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Razorpay Key ID <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={paymentConfig.razorpayKeyId}
+                    onChange={(e) => setPaymentConfig({ ...paymentConfig, razorpayKeyId: e.target.value })}
+                    placeholder="rzp_test_xxxxxxxxxxxxx"
+                    required={paymentConfig.enableRazorpayDirect}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Your Razorpay Key ID (starts with rzp_test_ or rzp_live_)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Razorpay Key Secret <span className="text-red-500">*</span>
+                  </label>
               <div className="relative">
                 <Input
                   type={showSecret ? 'text' : 'password'}
                   value={paymentConfig.razorpayKeySecret}
                   onChange={(e) => setPaymentConfig({ ...paymentConfig, razorpayKeySecret: e.target.value })}
                   placeholder="Enter full Razorpay Key Secret to update"
-                  required
-                />
+                    required={paymentConfig.enableRazorpayDirect}
+                  />
                 <button
                   type="button"
                   onClick={() => setShowSecret(!showSecret)}
@@ -509,7 +610,72 @@ const handleConfirmAction = async () => {
                   </span>
                 )}
               </p>
-            </div>
+                </div>
+              </>
+            )}
+
+            {paymentConfig.enableMicroservice && (
+              <div className="space-y-3">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-semibold mb-2">
+                    ⚠️ Microservice Payment Configuration Required
+                  </p>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 space-y-2">
+                    <p>
+                      <strong>Step 1:</strong> Set <code className="bg-white dark:bg-gray-800 px-1 rounded text-xs">MICROSERVICE_API_URL</code> in backend <code className="bg-white dark:bg-gray-800 px-1 rounded text-xs">.env</code> file.
+                    </p>
+                    <p>
+                      <strong>Step 2:</strong> Enter your Microservice Project Code and Secret below (required for authentication).
+                    </p>
+                    <p className="text-xs mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                      <strong>Note:</strong> These are your microservice project credentials from <strong>payments.synilogic.in</strong> admin panel, NOT Razorpay keys.
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Microservice Project Code (Key ID) <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={paymentConfig.razorpayKeyId}
+                    onChange={(e) => setPaymentConfig({ ...paymentConfig, razorpayKeyId: e.target.value })}
+                    placeholder="Enter microservice project code"
+                    required={paymentConfig.enableMicroservice}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Your microservice project code from payments.synilogic.in admin panel
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Microservice Project Secret (Key Secret) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showSecret ? 'text' : 'password'}
+                      value={paymentConfig.razorpayKeySecret}
+                      onChange={(e) => setPaymentConfig({ ...paymentConfig, razorpayKeySecret: e.target.value })}
+                      placeholder="Enter microservice project secret"
+                      required={paymentConfig.enableMicroservice}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(!showSecret)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    >
+                      {showSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Your microservice project secret from payments.synilogic.in admin panel
+                  </p>
+                </div>
+              </div>
+            )}
+
             <Button type="submit" loading={paymentLoading}>
               Update Payment Configuration
             </Button>

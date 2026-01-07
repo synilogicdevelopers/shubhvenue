@@ -17,6 +17,8 @@ export const getPublicBanners = async (req, res) => {
       }
     }
 
+    const { categoryId } = req.query;
+
     // Only get active banners for public access
     const now = new Date();
     const filter = { 
@@ -37,9 +39,20 @@ export const getPublicBanners = async (req, res) => {
       ]
     };
 
+    // Filter by category if provided
+    if (categoryId) {
+      if (categoryId === 'null' || categoryId === '') {
+        // Get banners without category
+        filter.categoryId = null;
+      } else {
+        filter.categoryId = categoryId;
+      }
+    }
+
     const banners = await Banner.find(filter)
+      .populate('categoryId', 'name description')
       .sort({ sortOrder: 1, createdAt: -1 })
-      .select('title description image link sortOrder')
+      .select('title description image link sortOrder categoryId')
       .maxTimeMS(10000);
     
     res.json({
