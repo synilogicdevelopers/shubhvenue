@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Footer from '../../components/customer/Footer'
 import SEO from '../../components/SEO'
-import { publicBannersAPI } from '../../services/customer/api'
+import { publicBannersAPI, publicDecorationCategoriesAPI, publicOccasionSpecialsAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, Navigation } from 'swiper/modules'
@@ -14,7 +14,13 @@ import './Decoration.css'
 function Decoration() {
   const navigate = useNavigate()
   const [banners, setBanners] = useState([])
+  const [decorationCategories, setDecorationCategories] = useState([])
+  const [occasionSpecials, setOccasionSpecials] = useState([])
+  const [birthdayBanner, setBirthdayBanner] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [occasionSpecialsLoading, setOccasionSpecialsLoading] = useState(true)
+  const [birthdayBannerLoading, setBirthdayBannerLoading] = useState(true)
   const swiperRef = useRef(null)
 
   // Helper function to get banner image URL
@@ -30,6 +36,36 @@ function Decoration() {
       return image
     }
     return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/banners/${image}`
+  }
+
+  // Helper function to get category image URL
+  const getCategoryImageUrl = (image) => {
+    if (!image) {
+      return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=300&h=300&fit=crop'
+    }
+    if (image.startsWith('/uploads/')) {
+      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+      return `${baseUrl}${image}`
+    }
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/decoration-categories/${image}`
+  }
+
+  // Helper function to get occasion special image URL
+  const getOccasionSpecialImageUrl = (image) => {
+    if (!image) {
+      return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=300&h=300&fit=crop'
+    }
+    if (image.startsWith('/uploads/')) {
+      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+      return `${baseUrl}${image}`
+    }
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/occasion-specials/${image}`
   }
 
   useEffect(() => {
@@ -59,6 +95,101 @@ function Decoration() {
     }
 
     fetchBanners()
+  }, [])
+
+  useEffect(() => {
+    const fetchDecorationCategories = async () => {
+      try {
+        setCategoriesLoading(true)
+        const response = await publicDecorationCategoriesAPI.getAll({ active: 'true' })
+        
+        let categoriesData = []
+        if (response.data) {
+          if (response.data.categories && Array.isArray(response.data.categories)) {
+            categoriesData = response.data.categories
+          } else if (Array.isArray(response.data)) {
+            categoriesData = response.data
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            categoriesData = response.data.data
+          }
+        }
+        
+        setDecorationCategories(categoriesData)
+      } catch (error) {
+        console.error('Error fetching decoration categories:', error)
+        // Don't show error toast, just log it
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    fetchDecorationCategories()
+  }, [])
+
+  useEffect(() => {
+    const fetchOccasionSpecials = async () => {
+      try {
+        setOccasionSpecialsLoading(true)
+        const response = await publicOccasionSpecialsAPI.getAll({ active: 'true' })
+        
+        let occasionSpecialsData = []
+        if (response.data) {
+          if (response.data.occasionSpecials && Array.isArray(response.data.occasionSpecials)) {
+            occasionSpecialsData = response.data.occasionSpecials
+          } else if (Array.isArray(response.data)) {
+            occasionSpecialsData = response.data
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            occasionSpecialsData = response.data.data
+          }
+        }
+        
+        setOccasionSpecials(occasionSpecialsData)
+      } catch (error) {
+        console.error('Error fetching occasion specials:', error)
+        // Don't show error toast, just log it
+      } finally {
+        setOccasionSpecialsLoading(false)
+      }
+    }
+
+    fetchOccasionSpecials()
+  }, [])
+
+  useEffect(() => {
+    const fetchBirthdayBanner = async () => {
+      try {
+        setBirthdayBannerLoading(true)
+        // Fetch all banners
+        const bannerResponse = await publicBannersAPI.getAll()
+        let allBanners = []
+        if (bannerResponse.data) {
+          if (bannerResponse.data.banners && Array.isArray(bannerResponse.data.banners)) {
+            allBanners = bannerResponse.data.banners
+          } else if (Array.isArray(bannerResponse.data)) {
+            allBanners = bannerResponse.data
+          } else if (bannerResponse.data.data && Array.isArray(bannerResponse.data.data)) {
+            allBanners = bannerResponse.data.data
+          }
+        }
+        
+        // Find banner with "birthday" in title (case insensitive)
+        const birthdayBanner = allBanners.find(banner => 
+          banner.title && banner.title.toLowerCase().includes('birthday')
+        )
+        
+        if (birthdayBanner) {
+          setBirthdayBanner(birthdayBanner)
+        } else {
+          console.log('No birthday banner found')
+        }
+      } catch (error) {
+        console.error('Error fetching birthday banner:', error)
+      } finally {
+        setBirthdayBannerLoading(false)
+      }
+    }
+
+    fetchBirthdayBanner()
   }, [])
 
   const handleBannerClick = (banner) => {
@@ -156,6 +287,182 @@ function Decoration() {
               <p>No banners available at the moment.</p>
             </div>
           ) : null}
+
+          {/* Decoration Categories Section */}
+          {decorationCategories.length > 0 && (
+            <div className="decoration-categories-section">
+              {categoriesLoading ? (
+                <div style={{ padding: '20px', textAlign: 'center', width: '100%' }}>
+                  Loading categories...
+                </div>
+              ) : (
+                <>
+                  {/* Desktop: Full Width List */}
+                  <div className="decoration-categories-list decoration-categories-desktop">
+                    {decorationCategories.map((category) => (
+                      <div 
+                        key={category._id || category.id} 
+                        className="decoration-category-item clickable"
+                        onClick={() => {
+                          const categoryId = category._id || category.id
+                          navigate(`/venues?decorationCategoryId=${categoryId}&decorationCategoryName=${encodeURIComponent(category.name)}`, {
+                            state: {
+                              decorationCategoryId: categoryId,
+                              decorationCategoryName: category.name
+                            }
+                          })
+                        }}
+                      >
+                        <div className="decoration-category-icon">
+                          <img 
+                            src={getCategoryImageUrl(category.image)} 
+                            alt={category.name || 'Decoration Category'} 
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=200&h=200&fit=crop'
+                            }} 
+                          />
+                        </div>
+                        <p className="decoration-category-label">{category.name}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tablet & Mobile: Slider */}
+                  <div className="decoration-categories-slider-wrapper decoration-categories-mobile">
+                    <button 
+                      className="decoration-category-arrow decoration-category-arrow-prev" 
+                      aria-label="Previous"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    
+                    <Swiper
+                      modules={[Navigation, Autoplay]}
+                      spaceBetween={20}
+                      slidesPerView="auto"
+                      loop={decorationCategories.length > 4}
+                      autoplay={{
+                        delay: 3000,
+                        disableOnInteraction: false,
+                      }}
+                      navigation={{
+                        nextEl: '.decoration-category-arrow-next',
+                        prevEl: '.decoration-category-arrow-prev',
+                      }}
+                      breakpoints={{
+                        320: {
+                          slidesPerView: 3,
+                          spaceBetween: 16,
+                        },
+                        480: {
+                          slidesPerView: 4,
+                          spaceBetween: 18,
+                        },
+                        768: {
+                          slidesPerView: 5,
+                          spaceBetween: 20,
+                        },
+                      }}
+                      className="decoration-categories-swiper"
+                    >
+                      {decorationCategories.map((category) => (
+                        <SwiperSlide key={category._id || category.id}>
+                          <div className="decoration-category-item">
+                            <div className="decoration-category-icon">
+                              <img 
+                                src={getCategoryImageUrl(category.image)} 
+                                alt={category.name || 'Decoration Category'} 
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.target.src = 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=200&h=200&fit=crop'
+                                }} 
+                              />
+                            </div>
+                            <p className="decoration-category-label">{category.name}</p>
+                          </div>
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
+                    
+                    <button 
+                      className="decoration-category-arrow decoration-category-arrow-next" 
+                      aria-label="Next"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Occasion Special Section */}
+          {occasionSpecials.length > 0 && (
+            <div className="occasion-specials-section">
+              <div className="occasion-specials-header">
+                <h2 className="occasion-specials-title">Occasion Special</h2>
+              </div>
+              {occasionSpecialsLoading ? (
+                <div style={{ padding: '20px', textAlign: 'center', width: '100%' }}>
+                  Loading occasion specials...
+                </div>
+              ) : (
+                <div className="occasion-specials-grid">
+                  {occasionSpecials.map((occasionSpecial) => (
+                    <div 
+                      key={occasionSpecial._id || occasionSpecial.id} 
+                      className="occasion-special-card clickable"
+                      onClick={() => {
+                        const occasionSpecialId = occasionSpecial._id || occasionSpecial.id
+                        navigate(`/venues?occasionSpecialId=${occasionSpecialId}&occasionSpecialName=${encodeURIComponent(occasionSpecial.name)}`, {
+                          state: {
+                            occasionSpecialId: occasionSpecialId,
+                            occasionSpecialName: occasionSpecial.name
+                          }
+                        })
+                      }}
+                    >
+                      <div className="occasion-special-image-wrapper">
+                        <img 
+                          src={getOccasionSpecialImageUrl(occasionSpecial.image)} 
+                          alt={occasionSpecial.name || 'Occasion Special'} 
+                          className="occasion-special-image"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=300&h=300&fit=crop'
+                          }} 
+                        />
+                      </div>
+                      <p className="occasion-special-label">{occasionSpecial.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Birthday Party Category Banner */}
+          {birthdayBanner && (
+            <div className="birthday-banner-section">
+              <h2 className="birthday-banner-heading">Level Up Your Birthday Party</h2>
+              <div 
+                className={`birthday-banner-wrapper ${birthdayBanner.link ? 'clickable' : ''}`}
+                onClick={() => handleBannerClick(birthdayBanner)}
+              >
+                <img 
+                  src={getBannerImageUrl(birthdayBanner.image)} 
+                  alt={birthdayBanner.title || 'Birthday Party Banner'} 
+                  className="birthday-banner-image"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <Footer />

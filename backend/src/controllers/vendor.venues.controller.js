@@ -394,6 +394,8 @@ const formatVenueResponse = async (venue) => {
     vendorCategoryId: venueObj.vendorCategoryId, // Vendor category used for formConfig
     menuId: venueObj.menuId,
     subMenuId: venueObj.subMenuId,
+    decorationCategoryId: venueObj.decorationCategoryId,
+    occasionSpecialId: venueObj.occasionSpecialId,
     status: venueObj.status,
     vendorActive: venueObj.vendorActive !== undefined ? venueObj.vendorActive : true,
     bookingButtonEnabled: venueObj.bookingButtonEnabled !== undefined ? venueObj.bookingButtonEnabled : true,
@@ -467,6 +469,8 @@ export const getVenues = async (req, res) => {
       vendorCategory, // Filter by vendor category
       menuId,
       subMenuId,
+      decorationCategoryId,
+      occasionSpecialId,
       tags,
       isFeatured,
       minRating,
@@ -605,6 +609,49 @@ export const getVenues = async (req, res) => {
         // Fallback: just filter by menuId if submenu fetch fails
         filter.menuId = menuId;
         filter.subMenuId = null;
+      }
+    }
+
+    // Decoration Category filtering
+    // Must be applied after menu filtering to ensure proper combination
+    if (decorationCategoryId) {
+      console.log('🔍 Applying decorationCategoryId filter:', decorationCategoryId);
+      // If there's an $or filter from menu, we need to combine properly
+      if (filter.$or && !filter.$and) {
+        // Convert $or to $and with decorationCategoryId
+        filter.$and = [
+          { $or: filter.$or },
+          { decorationCategoryId: decorationCategoryId, decorationCategoryId: { $ne: null } }
+        ];
+        delete filter.$or;
+      } else if (filter.$and) {
+        // If $and already exists, add decorationCategoryId to it
+        filter.$and.push({ decorationCategoryId: decorationCategoryId, decorationCategoryId: { $ne: null } });
+      } else {
+        // Simple case: just set the filter and explicitly exclude null
+        filter.decorationCategoryId = decorationCategoryId;
+        filter.decorationCategoryId = { $eq: decorationCategoryId, $ne: null };
+      }
+      console.log('🔍 Decoration Category filter applied:', filter.decorationCategoryId || filter.$and);
+    }
+
+    // Occasion Special filtering
+    // Must be applied after menu filtering to ensure proper combination
+    if (occasionSpecialId) {
+      // If there's an $or filter from menu, we need to combine properly
+      if (filter.$or && !filter.$and) {
+        // Convert $or to $and with occasionSpecialId
+        filter.$and = [
+          { $or: filter.$or },
+          { occasionSpecialId: occasionSpecialId }
+        ];
+        delete filter.$or;
+      } else if (filter.$and) {
+        // If $and already exists, add occasionSpecialId to it
+        filter.$and.push({ occasionSpecialId: occasionSpecialId });
+      } else {
+        // Simple case: just set the filter
+        filter.occasionSpecialId = occasionSpecialId;
       }
     }
 
@@ -1014,6 +1061,8 @@ export const createVenue = async (req, res) => {
       vendorCategoryId, // Vendor category used for formConfig
       menuId,
       subMenuId,
+      decorationCategoryId,
+      occasionSpecialId,
       location, 
       capacity, 
       facilities,
@@ -1354,7 +1403,10 @@ export const createVenue = async (req, res) => {
     // Save menuId and subMenuId if provided (null values are allowed)
     venueData.menuId = menuId || null;
     venueData.subMenuId = subMenuId || null;
-    console.log('💾 Saving venue with menuId:', venueData.menuId, 'subMenuId:', venueData.subMenuId, 'vendorCategoryId:', venueData.vendorCategoryId);
+    // Save decorationCategoryId and occasionSpecialId if provided (null values are allowed)
+    venueData.decorationCategoryId = decorationCategoryId && decorationCategoryId.trim() !== '' ? decorationCategoryId : null;
+    venueData.occasionSpecialId = occasionSpecialId && occasionSpecialId.trim() !== '' ? occasionSpecialId : null;
+    console.log('💾 Saving venue with menuId:', venueData.menuId, 'subMenuId:', venueData.subMenuId, 'vendorCategoryId:', venueData.vendorCategoryId, 'decorationCategoryId:', venueData.decorationCategoryId, 'occasionSpecialId:', venueData.occasionSpecialId);
     
     // Location is optional - if not provided, use default empty location
     // Handle location - can be object, JSON string (from FormData), or plain string
@@ -1701,7 +1753,7 @@ export const updateVenue = async (req, res) => {
       });
     }
 
-    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, vendorCategoryId, menuId, subMenuId, description, metaTitle, metaDescription, availability } = req.body;
+    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, vendorCategoryId, menuId, subMenuId, decorationCategoryId, occasionSpecialId, description, metaTitle, metaDescription, availability } = req.body;
 
     // Update fields if provided
     // When updating, only name is required - all other fields are optional
@@ -2054,6 +2106,28 @@ export const updateVenue = async (req, res) => {
           venue.menuId = submenu.parentMenuId;
           console.log('ℹ️ Auto-set menuId from subMenuId parent:', venue.menuId);
         }
+      }
+    }
+
+    // Handle decorationCategoryId update
+    if (decorationCategoryId !== undefined) {
+      if (decorationCategoryId === '' || decorationCategoryId === null) {
+        venue.decorationCategoryId = null;
+        console.log('🗑️ Removed decorationCategoryId from venue');
+      } else {
+        venue.decorationCategoryId = decorationCategoryId;
+        console.log('✅ Updated decorationCategoryId:', decorationCategoryId);
+      }
+    }
+
+    // Handle occasionSpecialId update
+    if (occasionSpecialId !== undefined) {
+      if (occasionSpecialId === '' || occasionSpecialId === null) {
+        venue.occasionSpecialId = null;
+        console.log('🗑️ Removed occasionSpecialId from venue');
+      } else {
+        venue.occasionSpecialId = occasionSpecialId;
+        console.log('✅ Updated occasionSpecialId:', occasionSpecialId);
       }
     }
 
@@ -2552,6 +2626,16 @@ export const searchVenues = async (req, res) => {
     // Category filtering
     if (categoryId) {
       filter.categoryId = categoryId;
+    }
+
+    // Decoration Category filtering
+    if (decorationCategoryId) {
+      filter.decorationCategoryId = decorationCategoryId;
+    }
+
+    // Occasion Special filtering
+    if (occasionSpecialId) {
+      filter.occasionSpecialId = occasionSpecialId;
     }
 
     // Vendor Category filtering - filter venues by vendor's category

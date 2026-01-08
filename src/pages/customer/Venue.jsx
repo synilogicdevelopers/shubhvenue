@@ -73,6 +73,12 @@ const Venue = () => {
   const submenuName = location.state?.submenuName || urlParams.get('submenuName')
   const menuId = location.state?.menuId || urlParams.get('menuId')
   const menuName = location.state?.menuName || urlParams.get('menuName')
+  // Get decoration category filter
+  const decorationCategoryId = location.state?.decorationCategoryId || urlParams.get('decorationCategoryId')
+  const decorationCategoryName = location.state?.decorationCategoryName || urlParams.get('decorationCategoryName')
+  // Get occasion special filter
+  const occasionSpecialId = location.state?.occasionSpecialId || urlParams.get('occasionSpecialId')
+  const occasionSpecialName = location.state?.occasionSpecialName || urlParams.get('occasionSpecialName')
   
   // Debug logging
   useEffect(() => {
@@ -114,6 +120,14 @@ const Venue = () => {
       params.set('submenuId', submenuId)
       if (submenuName) params.set('submenuName', submenuName)
     }
+    if (decorationCategoryId) {
+      params.set('decorationCategoryId', decorationCategoryId)
+      if (decorationCategoryName) params.set('decorationCategoryName', decorationCategoryName)
+    }
+    if (occasionSpecialId) {
+      params.set('occasionSpecialId', occasionSpecialId)
+      if (occasionSpecialName) params.set('occasionSpecialName', occasionSpecialName)
+    }
     
     const newSearch = params.toString()
     const currentSearch = location.search.replace('?', '')
@@ -122,7 +136,7 @@ const Venue = () => {
     if (newSearch !== currentSearch) {
       navigate(`/venues${newSearch ? `?${newSearch}` : ''}`, { replace: true })
     }
-  }, [vendorCategoryId, vendorCategoryName, categoryId, categoryName, menuId, menuName, submenuId, submenuName, navigate, location.search, location.state])
+  }, [vendorCategoryId, vendorCategoryName, categoryId, categoryName, menuId, menuName, submenuId, submenuName, decorationCategoryId, decorationCategoryName, occasionSpecialId, occasionSpecialName, navigate, location.search, location.state])
 
   // Fetch all venues from API
   useEffect(() => {
@@ -171,6 +185,16 @@ const Venue = () => {
           apiParams.menuId = menuId
           console.log('Adding menuId filter:', menuId)
         }
+        // Add decoration category filter if decorationCategoryId is provided
+        if (decorationCategoryId) {
+          apiParams.decorationCategoryId = decorationCategoryId
+          console.log('Adding decorationCategoryId filter:', decorationCategoryId)
+        }
+        // Add occasion special filter if occasionSpecialId is provided
+        if (occasionSpecialId) {
+          apiParams.occasionSpecialId = occasionSpecialId
+          console.log('Adding occasionSpecialId filter:', occasionSpecialId)
+        }
         
         console.log('API Params:', apiParams)
         
@@ -186,6 +210,8 @@ const Venue = () => {
             if (vendorCategoryId) searchApiParams.vendorCategory = vendorCategoryId
             if (submenuId) searchApiParams.subMenuId = submenuId
             if (menuId) searchApiParams.menuId = menuId
+            if (decorationCategoryId) searchApiParams.decorationCategoryId = decorationCategoryId
+            if (occasionSpecialId) searchApiParams.occasionSpecialId = occasionSpecialId
             // Ensure we only surface active venues in search results
             searchApiParams.status = 'active'
             searchApiParams.limit = 50
@@ -377,7 +403,7 @@ const Venue = () => {
     }
 
     fetchVenues()
-  }, [categoryId, submenuId, menuId, searchParams.q, searchParams.city, searchParams.state])
+  }, [categoryId, submenuId, menuId, decorationCategoryId, occasionSpecialId, searchParams.q, searchParams.city, searchParams.state])
 
   // Get unique locations and types from API data
   const locations = useMemo(() => {

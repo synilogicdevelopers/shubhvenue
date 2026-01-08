@@ -3,7 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Server base URL - use localhost for development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -399,6 +399,35 @@ export const menusAPI = {
     return api.put(`/menus/${id}`, data);
   },
   delete: (id) => api.delete(`/menus/${id}`),
+};
+
+// Occasion Special APIs
+export const occasionSpecialsAPI = {
+  getAll: (params) => api.get('/occasion-specials', { params }),
+  getById: (id) => api.get(`/occasion-specials/${id}`),
+  create: (data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.post('/occasion-specials', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.post('/occasion-specials', data);
+  },
+  update: (id, data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.put(`/occasion-specials/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.put(`/occasion-specials/${id}`, data);
+  },
+  delete: (id) => api.delete(`/occasion-specials/${id}`),
 };
 
 // Staff APIs

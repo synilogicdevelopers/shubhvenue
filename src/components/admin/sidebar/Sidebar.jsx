@@ -15,6 +15,7 @@ import {
   UserPlus,
   Tag,
   Menu as MenuIcon,
+  Sparkles,
   Video as VideoIcon,
   MessageSquare,
   HelpCircle,
@@ -46,7 +47,15 @@ const allMenuItems = [
       { path: '/admin/decoration-categories', label: 'Decoration Categories', icon: Tag, permission: 'view_categories' },
     ],
   },
-  { path: '/admin/menus', icon: MenuIcon, label: 'Menus', permission: 'view_menus' },
+  {
+    label: 'Menus',
+    icon: MenuIcon,
+    permission: 'view_menus',
+    children: [
+      { path: '/admin/menus', label: 'Main Menus', icon: MenuIcon, permission: 'view_menus' },
+      { path: '/admin/occasion-specials', label: 'Occasion Special', icon: Sparkles, permission: 'view_menus' },
+    ],
+  },
   { path: '/admin/videos', icon: VideoIcon, label: 'Videos', permission: 'view_videos' },
   {
     label: 'Banners',

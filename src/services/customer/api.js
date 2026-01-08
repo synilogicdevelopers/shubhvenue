@@ -1,5 +1,5 @@
 // Server base URL - use localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api';
 
 // Helper function to make API requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -242,6 +242,24 @@ export const publicBannersAPI = {
     return apiRequest(`/banners${queryString ? `?${queryString}` : ''}`);
   },
   getById: (id) => apiRequest(`/banners/${id}`),
+};
+
+// Public Decoration Categories APIs (no auth required)
+export const publicDecorationCategoriesAPI = {
+  getAll: (params) => {
+    const queryString = params ? new URLSearchParams(params).toString() : '';
+    return apiRequest(`/decoration-categories${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => apiRequest(`/decoration-categories/${id}`),
+};
+
+// Public Occasion Specials APIs (no auth required)
+export const publicOccasionSpecialsAPI = {
+  getAll: (params) => {
+    const queryString = params ? new URLSearchParams(params).toString() : '';
+    return apiRequest(`/occasion-specials${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => apiRequest(`/occasion-specials/${id}`),
 };
 
 export default { apiRequest };

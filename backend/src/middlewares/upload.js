@@ -16,6 +16,7 @@ const staffUploadsDir = path.join(__dirname, '../../uploads/staff');
 const vendorStaffUploadsDir = path.join(__dirname, '../../uploads/vendor-staff');
 const vendorCategoryUploadsDir = path.join(__dirname, '../../uploads/vendor-categories');
 const decorationCategoryUploadsDir = path.join(__dirname, '../../uploads/decoration-categories');
+const occasionSpecialUploadsDir = path.join(__dirname, '../../uploads/occasion-specials');
 if (!fs.existsSync(venuesUploadsDir)) {
   fs.mkdirSync(venuesUploadsDir, { recursive: true });
 }
@@ -27,6 +28,9 @@ if (!fs.existsSync(vendorCategoryUploadsDir)) {
 }
 if (!fs.existsSync(decorationCategoryUploadsDir)) {
   fs.mkdirSync(decorationCategoryUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(occasionSpecialUploadsDir)) {
+  fs.mkdirSync(occasionSpecialUploadsDir, { recursive: true });
 }
 if (!fs.existsSync(menusUploadsDir)) {
   fs.mkdirSync(menusUploadsDir, { recursive: true });
@@ -90,6 +94,20 @@ const vendorCategoryStorage = multer.diskStorage({
 const decorationCategoryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, decorationCategoryUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Configure storage for occasion specials
+const occasionSpecialStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, occasionSpecialUploadsDir);
   },
   filename: (req, file, cb) => {
     // Generate unique filename: timestamp-random-originalname
@@ -201,6 +219,15 @@ const decorationCategoryUpload = multer({
   fileFilter: fileFilter
 });
 
+// Configure multer for occasion specials
+const occasionSpecialUpload = multer({
+  storage: occasionSpecialStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: fileFilter
+});
+
 // Configure multer for menus
 const menuUpload = multer({
   storage: menuStorage,
@@ -292,6 +319,9 @@ export const uploadVendorCategoryImage = vendorCategoryUpload.single('image');
 
 // Middleware for decoration category image upload
 export const uploadDecorationCategoryImage = decorationCategoryUpload.single('image');
+
+// Middleware for occasion special image upload
+export const uploadOccasionSpecialImage = occasionSpecialUpload.single('image');
 
 // Middleware for menu image upload (optional - only processes if multipart/form-data)
 export const uploadMenuImage = (req, res, next) => {

@@ -49,6 +49,8 @@ const defaultFormConfig = {
     category: true,
     menu: true,
     submenu: true,
+    decorationCategory: true,
+    occasionSpecial: true,
     videos: true,
     galleryImages: true
   },
@@ -479,6 +481,24 @@ export const VendorCategoryFormEditor = ({ formConfig: initialConfig, onChange, 
                 label="Submenu"
                 icon={Menu}
                 description="Submenu categories"
+              />
+
+              {/* Decoration Category */}
+              <CustomCheckbox
+                checked={formConfig.venue.decorationCategory}
+                onChange={(e) => updateConfig('venue.decorationCategory', e.target.checked)}
+                label="Decoration Category"
+                icon={Tag}
+                description="Decoration category selection"
+              />
+
+              {/* Occasion Special */}
+              <CustomCheckbox
+                checked={formConfig.venue.occasionSpecial}
+                onChange={(e) => updateConfig('venue.occasionSpecial', e.target.checked)}
+                label="Occasion Special"
+                icon={Tag}
+                description="Occasion special selection"
               />
 
               {/* Gender */}

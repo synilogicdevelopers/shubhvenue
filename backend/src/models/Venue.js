@@ -90,6 +90,16 @@ const venueSchema = new mongoose.Schema(
       ref: 'Menu',
       default: null
     },
+    decorationCategoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DecorationCategory',
+      default: null
+    },
+    occasionSpecialId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OccasionSpecial',
+      default: null
+    },
     location: {
       type: mongoose.Schema.Types.Mixed, // Can be string or object
       required: true
@@ -328,5 +338,7 @@ venueSchema.index({ isFeatured: 1 });
 venueSchema.index({ categoryId: 1 });
 venueSchema.index({ menuId: 1 });
 venueSchema.index({ subMenuId: 1 });
+venueSchema.index({ decorationCategoryId: 1 });
+venueSchema.index({ occasionSpecialId: 1 });
 
 export default mongoose.model('Venue', venueSchema);

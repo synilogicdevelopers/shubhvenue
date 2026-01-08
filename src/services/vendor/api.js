@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Server base URL - use localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8030/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -105,6 +105,24 @@ export const vendorCategoriesAPI = {
 export const menuAPI = {
   getMenus: (params) => api.get('/menus', { params }),
   getMenuById: (id) => api.get(`/menus/${id}`),
+}
+
+// Decoration Categories APIs (public - no auth required)
+export const decorationCategoriesAPI = {
+  getAll: (params) => {
+    const queryString = params ? new URLSearchParams(params).toString() : '';
+    return api.get(`/decoration-categories${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => api.get(`/decoration-categories/${id}`),
+}
+
+// Occasion Specials APIs (public - no auth required)
+export const occasionSpecialsAPI = {
+  getAll: (params) => {
+    const queryString = params ? new URLSearchParams(params).toString() : '';
+    return api.get(`/occasion-specials${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => api.get(`/occasion-specials/${id}`),
 }
 
 // Review APIs

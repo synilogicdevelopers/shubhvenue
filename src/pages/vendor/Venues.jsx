@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { vendorAPI, categoryAPI, reviewAPI, menuAPI, vendorCategoriesAPI } from '../../services/vendor/api'
+import { vendorAPI, categoryAPI, reviewAPI, menuAPI, vendorCategoriesAPI, decorationCategoriesAPI, occasionSpecialsAPI } from '../../services/vendor/api'
 import { useAuth } from '../../contexts/vendor/AuthContext'
 import { 
   Plus, 
@@ -39,6 +39,8 @@ export default function Venues() {
   const [selectedVendorCategoryId, setSelectedVendorCategoryId] = useState('') // Selected vendor category for form config
   const [menus, setMenus] = useState([])
   const [submenus, setSubmenus] = useState([])
+  const [decorationCategories, setDecorationCategories] = useState([])
+  const [occasionSpecials, setOccasionSpecials] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({
     page: 1,
@@ -129,12 +131,20 @@ export default function Venues() {
     
     for (const part of parts) {
       if (config === null || config === undefined) {
+        // For decorationCategory and occasionSpecial, if not explicitly set, allow it
+        if (fieldPath === 'decorationCategory' || fieldPath === 'occasionSpecial') {
+          return true
+        }
         return true
       }
       config = config[part]
     }
     
     // Field is enabled if it's not explicitly set to false
+    // For decorationCategory and occasionSpecial, default to true if undefined
+    if ((fieldPath === 'decorationCategory' || fieldPath === 'occasionSpecial') && config === undefined) {
+      return true
+    }
     return config !== false
   }
   
@@ -198,6 +208,8 @@ export default function Venues() {
     loadCategories()
     loadVendorCategories()
     loadMenus()
+    loadDecorationCategories()
+    loadOccasionSpecials()
     loadStates()
   }, [])
 
@@ -212,6 +224,8 @@ export default function Venues() {
       // setCurrentStep(0) // Removed step navigation
       setShowAddModal(true)
       loadMenus()
+      loadDecorationCategories()
+      loadOccasionSpecials()
       loadVendorCategories()
     } else if (!editingVenue) {
       setShowAddModal(false)
@@ -462,6 +476,46 @@ export default function Venues() {
       })
       setMenus([])
       return [] // Return empty array on error
+    }
+  }
+
+  const loadDecorationCategories = async () => {
+    try {
+      const response = await decorationCategoriesAPI.getAll({ active: 'true' })
+      let categoriesData = []
+      if (response && response.data) {
+        if (response.data.categories && Array.isArray(response.data.categories)) {
+          categoriesData = response.data.categories
+        } else if (Array.isArray(response.data)) {
+          categoriesData = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          categoriesData = response.data.data
+        }
+      }
+      setDecorationCategories(categoriesData)
+    } catch (error) {
+      console.error('Failed to load decoration categories:', error)
+      setDecorationCategories([])
+    }
+  }
+
+  const loadOccasionSpecials = async () => {
+    try {
+      const response = await occasionSpecialsAPI.getAll({ active: 'true' })
+      let occasionSpecialsData = []
+      if (response && response.data) {
+        if (response.data.occasionSpecials && Array.isArray(response.data.occasionSpecials)) {
+          occasionSpecialsData = response.data.occasionSpecials
+        } else if (Array.isArray(response.data)) {
+          occasionSpecialsData = response.data
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          occasionSpecialsData = response.data.data
+        }
+      }
+      setOccasionSpecials(occasionSpecialsData)
+    } catch (error) {
+      console.error('Failed to load occasion specials:', error)
+      setOccasionSpecials([])
     }
   }
 
@@ -864,6 +918,16 @@ export default function Venues() {
       }
       if (isFieldEnabled('submenu')) {
         formDataToSend.append('subMenuId', formData.subMenuId || '')
+      }
+      if (isFieldEnabled('decorationCategory')) {
+        const decorationCategoryId = formData.decorationCategoryId && formData.decorationCategoryId.trim() !== '' ? formData.decorationCategoryId : '';
+        formDataToSend.append('decorationCategoryId', decorationCategoryId)
+        console.log('💾 Sending decorationCategoryId:', decorationCategoryId)
+      }
+      if (isFieldEnabled('occasionSpecial')) {
+        const occasionSpecialId = formData.occasionSpecialId && formData.occasionSpecialId.trim() !== '' ? formData.occasionSpecialId : '';
+        formDataToSend.append('occasionSpecialId', occasionSpecialId)
+        console.log('💾 Sending occasionSpecialId:', occasionSpecialId)
       }
       
       // Amenities array - only send if enabled
@@ -1335,6 +1399,32 @@ export default function Venues() {
         }
         console.log('📥 Extracted subMenuId for editing:', subMenuIdValue)
       }
+
+      // Extract decorationCategoryId - handle both ObjectId and populated object
+      let decorationCategoryIdValue = ''
+      if (fullVenueData.decorationCategoryId) {
+        if (typeof fullVenueData.decorationCategoryId === 'object' && fullVenueData.decorationCategoryId._id) {
+          decorationCategoryIdValue = String(fullVenueData.decorationCategoryId._id)
+        } else if (typeof fullVenueData.decorationCategoryId === 'string') {
+          decorationCategoryIdValue = fullVenueData.decorationCategoryId
+        } else {
+          decorationCategoryIdValue = String(fullVenueData.decorationCategoryId)
+        }
+        console.log('📥 Extracted decorationCategoryId for editing:', decorationCategoryIdValue)
+      }
+
+      // Extract occasionSpecialId - handle both ObjectId and populated object
+      let occasionSpecialIdValue = ''
+      if (fullVenueData.occasionSpecialId) {
+        if (typeof fullVenueData.occasionSpecialId === 'object' && fullVenueData.occasionSpecialId._id) {
+          occasionSpecialIdValue = String(fullVenueData.occasionSpecialId._id)
+        } else if (typeof fullVenueData.occasionSpecialId === 'string') {
+          occasionSpecialIdValue = fullVenueData.occasionSpecialId
+        } else {
+          occasionSpecialIdValue = String(fullVenueData.occasionSpecialId)
+        }
+        console.log('📥 Extracted occasionSpecialId for editing:', occasionSpecialIdValue)
+      }
       
       // Ensure highlights is always an array
       let highlightsArray = []
@@ -1392,6 +1482,8 @@ export default function Venues() {
         categoryId: categoryIdValue,
         menuId: menuIdValue,
         subMenuId: subMenuIdValue,
+        decorationCategoryId: decorationCategoryIdValue,
+        occasionSpecialId: occasionSpecialIdValue,
         amenities: amenitiesArray,
         highlights: highlightsArray,
         // Handle rooms - can be number (legacy), array of strings, or array of objects { name, count }
@@ -2444,6 +2536,62 @@ export default function Venues() {
                           )
                         })}
                       </select>
+                    </div>
+                  )}
+
+                  {/* Decoration Category - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.decorationCategory !== false || formConfig.decorationCategory === undefined) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Decoration Category</label>
+                      <select
+                        name="decorationCategoryId"
+                        value={String(formData.decorationCategoryId || '')}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="">Select Decoration Category</option>
+                        {decorationCategories.map((category) => {
+                          const categoryId = String(category._id || category.id || '')
+                          return (
+                            <option key={categoryId} value={categoryId}>
+                              {category.name}
+                            </option>
+                          )
+                        })}
+                      </select>
+                      {decorationCategories.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No decoration categories available.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Occasion Special - Show if enabled in formConfig or if no formConfig */}
+                  {(formConfig === null || formConfig.occasionSpecial !== false || formConfig.occasionSpecial === undefined) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Occasion Special</label>
+                      <select
+                        name="occasionSpecialId"
+                        value={String(formData.occasionSpecialId || '')}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        <option value="">Select Occasion Special</option>
+                        {occasionSpecials.map((occasionSpecial) => {
+                          const occasionSpecialId = String(occasionSpecial._id || occasionSpecial.id || '')
+                          return (
+                            <option key={occasionSpecialId} value={occasionSpecialId}>
+                              {occasionSpecial.name}
+                            </option>
+                          )
+                        })}
+                      </select>
+                      {occasionSpecials.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No occasion specials available.
+                        </p>
+                      )}
                     </div>
                   )}
 

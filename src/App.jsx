@@ -41,6 +41,7 @@ import { Settings as AdminSettings } from './pages/admin/settings'
 import { Categories } from './pages/admin/categories'
 import { DecorationCategories } from './pages/admin/decoration-categories'
 import { Menus } from './pages/admin/menus'
+import { OccasionSpecials } from './pages/admin/occasion-specials'
 import { Videos as AdminVideos } from './pages/admin/videos'
 import { Testimonials } from './pages/admin/testimonials'
 import { FAQs } from './pages/admin/faqs'
@@ -279,26 +280,36 @@ function AdminRoutes() {
           </AdminPrivateRoute>
         }
       />
-      <Route
-        path="decoration-categories"
-        element={
-          <AdminPrivateRoute>
-            <DashboardLayout>
-              <DecorationCategories />
-            </DashboardLayout>
-          </AdminPrivateRoute>
-        }
-      />
-      <Route
-        path="menus"
-        element={
-          <AdminPrivateRoute>
-            <DashboardLayout>
-              <Menus />
-            </DashboardLayout>
-          </AdminPrivateRoute>
-        }
-      />
+            <Route
+              path="decoration-categories"
+              element={
+                <AdminPrivateRoute>
+                  <DashboardLayout>
+                    <DecorationCategories />
+                  </DashboardLayout>
+                </AdminPrivateRoute>
+              }
+            />
+            <Route
+              path="menus"
+              element={
+                <AdminPrivateRoute>
+                  <DashboardLayout>
+                    <Menus />
+                  </DashboardLayout>
+                </AdminPrivateRoute>
+              }
+            />
+            <Route
+              path="occasion-specials"
+              element={
+                <AdminPrivateRoute>
+                  <DashboardLayout>
+                    <OccasionSpecials />
+                  </DashboardLayout>
+                </AdminPrivateRoute>
+              }
+            />
       <Route
         path="videos"
         element={
