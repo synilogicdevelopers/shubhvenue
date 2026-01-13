@@ -2,14 +2,176 @@
   min-height: 100vh;
   background: #ffffff;
   width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Shimmer Animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Decoration Page Shimmer Loader */
+.decoration-shimmer-loader {
+  width: 100%;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.decoration-shimmer-hero {
+  width: 100%;
+  height: 400px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0;
+  margin-bottom: 40px;
+}
+
+.decoration-shimmer-section {
+  width: 100%;
+  margin-bottom: 60px;
+}
+
+.decoration-shimmer-heading {
+  width: 60%;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+  margin: 0 auto 30px;
+}
+
+.decoration-shimmer-banner {
+  width: 100%;
+  height: 300px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.decoration-shimmer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.decoration-shimmer-card {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.decoration-shimmer-image {
+  width: 100%;
+  height: 280px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.decoration-shimmer-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.decoration-shimmer-title {
+  width: 80%;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.decoration-shimmer-text {
+  width: 60%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.decoration-shimmer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.decoration-shimmer-rating {
+  width: 100px;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.decoration-shimmer-price {
+  width: 80px;
+  height: 20px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.decoration-shimmer-button {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .decoration-shimmer-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  
+  .decoration-shimmer-hero {
+    height: 300px;
+  }
+  
+  .decoration-shimmer-banner {
+    height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .decoration-shimmer-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .decoration-shimmer-image {
+    height: 240px;
+  }
 }
 
 .decoration-hero {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 400px;
   overflow: hidden;
-  margin-left: calc(-50vw + 50%);
+  box-sizing: border-box;
 }
 
 .decoration-banner-swiper {
@@ -221,17 +383,22 @@
 
 .decoration-container {
   width: 100%;
+  max-width: 100%;
   padding: 0;
+  margin: 0 auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 /* Decoration Categories Section */
 .decoration-categories-section {
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
+  width: 100%;
   padding: 40px 0;
   background: #ffffff;
   overflow-x: hidden;
   overflow-y: hidden;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .decoration-categories-list {
@@ -256,16 +423,24 @@
   gap: 12px;
   position: relative;
   padding: 20px 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .decoration-categories-swiper {
   flex: 1;
   padding: 10px 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .decoration-categories-swiper .swiper-slide {
   width: auto;
   height: auto;
+  flex-shrink: 0;
 }
 
 .decoration-category-arrow {
@@ -907,11 +1082,11 @@
 
 /* Birthday Party Category Banner Section */
 .birthday-banner-section {
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
+  width: 100%;
   padding: 40px 20px;
   background: #ffffff;
   margin-top: 40px;
+  box-sizing: border-box;
 }
 
 .birthday-banner-heading {
@@ -962,6 +1137,1180 @@
   .birthday-banner-heading {
     font-size: 1.75rem;
     margin-bottom: 20px;
+  }
+}
+
+/* Birthday Venues Section */
+.birthday-venues-section {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.birthday-venues-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 30px 0;
+  color: var(--text-dark);
+}
+
+.birthday-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.birthday-venue-card {
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.birthday-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.birthday-venue-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.birthday-venue-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.birthday-venue-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.birthday-venue-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.birthday-venue-location-text {
+  font-size: 0.875rem;
+  color: var(--gray-medium);
+  margin: -4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.birthday-venue-location-text svg {
+  flex-shrink: 0;
+  color: var(--gray-dark);
+}
+
+.birthday-venue-rating-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.birthday-venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.birthday-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.birthday-rating-stars svg {
+  flex-shrink: 0;
+}
+
+.birthday-rating-value {
+  font-weight: 600;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+}
+
+.birthday-venue-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.birthday-price-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.birthday-price-suffix {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray-medium);
+}
+
+.birthday-venue-book-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.birthday-venue-book-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.birthday-venue-book-btn:active {
+  transform: translateY(0);
+}
+
+.birthday-view-more-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.birthday-view-more-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.birthday-view-more-btn:active {
+  transform: translateY(0);
+}
+
+/* Baby Section Styles - Same as Birthday Section */
+.baby-banner-section {
+  width: 100%;
+  padding: 40px 20px;
+  background: #ffffff;
+  margin-top: 40px;
+  box-sizing: border-box;
+}
+
+.baby-banner-heading {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 30px 0;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.baby-banner-wrapper {
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.baby-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.baby-venues-section {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.baby-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.baby-venue-card {
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.baby-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.baby-venue-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.baby-venue-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.baby-venue-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.baby-venue-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.baby-venue-location-text {
+  font-size: 0.875rem;
+  color: var(--gray-medium);
+  margin: -4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.baby-venue-location-text svg {
+  flex-shrink: 0;
+  color: var(--gray-dark);
+}
+
+.baby-venue-rating-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.baby-venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.baby-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.baby-rating-stars svg {
+  flex-shrink: 0;
+}
+
+.baby-rating-value {
+  font-weight: 600;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+}
+
+.baby-venue-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.baby-price-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.baby-price-suffix {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray-medium);
+}
+
+.baby-venue-book-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.baby-venue-book-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.baby-venue-book-btn:active {
+  transform: translateY(0);
+}
+
+.baby-view-more-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.baby-view-more-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.baby-view-more-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .baby-banner-section {
+    padding: 30px 15px;
+    margin-top: 30px;
+  }
+  
+  .baby-banner-heading {
+    font-size: 2rem;
+    margin-bottom: 25px;
+  }
+
+  .baby-venues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .baby-banner-section {
+    padding: 20px 10px;
+    margin-top: 20px;
+  }
+  
+  .baby-banner-heading {
+    font-size: 1.75rem;
+    margin-bottom: 20px;
+  }
+
+  .baby-venues-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .baby-venue-image-wrapper {
+    height: 240px;
+  }
+}
+
+/* Romantic Section Styles - Same as Birthday/Baby Section */
+.romantic-banner-section {
+  width: 100%;
+  padding: 40px 20px;
+  background: #ffffff;
+  margin-top: 40px;
+  box-sizing: border-box;
+}
+
+.romantic-banner-heading {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 30px 0;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.romantic-banner-wrapper {
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.romantic-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.romantic-venues-section {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.romantic-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.romantic-venue-card {
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.romantic-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.romantic-venue-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.romantic-venue-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.romantic-venue-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.romantic-venue-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.romantic-venue-location-text {
+  font-size: 0.875rem;
+  color: var(--gray-medium);
+  margin: -4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.romantic-venue-location-text svg {
+  flex-shrink: 0;
+  color: var(--gray-dark);
+}
+
+.romantic-venue-rating-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.romantic-venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.romantic-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.romantic-rating-stars svg {
+  flex-shrink: 0;
+}
+
+.romantic-rating-value {
+  font-weight: 600;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+}
+
+.romantic-venue-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.romantic-price-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.romantic-price-suffix {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray-medium);
+}
+
+.romantic-venue-book-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.romantic-venue-book-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.romantic-venue-book-btn:active {
+  transform: translateY(0);
+}
+
+.romantic-view-more-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.romantic-view-more-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.romantic-view-more-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .romantic-banner-section {
+    padding: 30px 15px;
+    margin-top: 30px;
+  }
+  
+  .romantic-banner-heading {
+    font-size: 2rem;
+    margin-bottom: 25px;
+  }
+
+  .romantic-venues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .romantic-banner-section {
+    padding: 20px 10px;
+    margin-top: 20px;
+  }
+  
+  .romantic-banner-heading {
+    font-size: 1.75rem;
+    margin-bottom: 20px;
+  }
+
+  .romantic-venues-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .romantic-venue-image-wrapper {
+    height: 240px;
+  }
+}
+
+/* Same Day Section Styles - Same as Birthday/Baby/Romantic Section */
+.same-day-banner-section {
+  width: 100%;
+  padding: 40px 20px;
+  background: #ffffff;
+  margin-top: 40px;
+  box-sizing: border-box;
+}
+
+.same-day-banner-heading {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 30px 0;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.same-day-banner-wrapper {
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.same-day-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.same-day-venues-section {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.same-day-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.same-day-venue-card {
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.same-day-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.same-day-venue-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.same-day-venue-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.same-day-venue-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.same-day-venue-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.same-day-venue-location-text {
+  font-size: 0.875rem;
+  color: var(--gray-medium);
+  margin: -4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.same-day-venue-location-text svg {
+  flex-shrink: 0;
+  color: var(--gray-dark);
+}
+
+.same-day-venue-rating-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.same-day-venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.same-day-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.same-day-rating-stars svg {
+  flex-shrink: 0;
+}
+
+.same-day-rating-value {
+  font-weight: 600;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+}
+
+.same-day-venue-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.same-day-price-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.same-day-price-suffix {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray-medium);
+}
+
+.same-day-venue-book-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.same-day-venue-book-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.same-day-venue-book-btn:active {
+  transform: translateY(0);
+}
+
+.same-day-view-more-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.same-day-view-more-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.same-day-view-more-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .same-day-banner-section {
+    padding: 30px 15px;
+    margin-top: 30px;
+  }
+  
+  .same-day-banner-heading {
+    font-size: 2rem;
+    margin-bottom: 25px;
+  }
+
+  .same-day-venues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .same-day-banner-section {
+    padding: 20px 10px;
+    margin-top: 20px;
+  }
+  
+  .same-day-banner-heading {
+    font-size: 1.75rem;
+    margin-bottom: 20px;
+  }
+
+  .same-day-venues-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .same-day-venue-image-wrapper {
+    height: 240px;
+  }
+}
+
+/* Corporate Section Styles - Same as Birthday/Baby/Romantic/Same Day Section */
+.corporate-banner-section {
+  width: 100%;
+  padding: 40px 20px;
+  background: #ffffff;
+  margin-top: 40px;
+  box-sizing: border-box;
+}
+
+.corporate-banner-heading {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 30px 0;
+  background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.corporate-banner-wrapper {
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.corporate-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.corporate-venues-section {
+  margin-top: 40px;
+  width: 100%;
+}
+
+.corporate-venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 30px;
+}
+
+.corporate-venue-card {
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.corporate-venue-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.corporate-venue-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.corporate-venue-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.corporate-venue-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.corporate-venue-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.corporate-venue-location-text {
+  font-size: 0.875rem;
+  color: var(--gray-medium);
+  margin: -4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.corporate-venue-location-text svg {
+  flex-shrink: 0;
+  color: var(--gray-dark);
+}
+
+.corporate-venue-rating-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 16px;
+}
+
+.corporate-venue-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.corporate-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.corporate-rating-stars svg {
+  flex-shrink: 0;
+}
+
+.corporate-rating-value {
+  font-weight: 600;
+  color: var(--text-dark);
+  font-size: 0.875rem;
+}
+
+.corporate-venue-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.corporate-price-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.corporate-price-suffix {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray-medium);
+}
+
+.corporate-venue-book-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.corporate-venue-book-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.corporate-venue-book-btn:active {
+  transform: translateY(0);
+}
+
+.corporate-view-more-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #92487a 0%, #b85a8f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.corporate-view-more-btn:hover {
+  background: linear-gradient(135deg, #b85a8f 0%, #92487a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(146, 72, 122, 0.3);
+}
+
+.corporate-view-more-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .corporate-banner-section {
+    padding: 30px 15px;
+    margin-top: 30px;
+  }
+  
+  .corporate-banner-heading {
+    font-size: 2rem;
+    margin-bottom: 25px;
+  }
+
+  .corporate-venues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .corporate-banner-section {
+    padding: 20px 10px;
+    margin-top: 20px;
+  }
+  
+  .corporate-banner-heading {
+    font-size: 1.75rem;
+    margin-bottom: 20px;
+  }
+
+  .corporate-venues-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .corporate-venue-image-wrapper {
+    height: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .birthday-venues-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  
+  .birthday-venues-title {
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+  }
+}
+
+@media (max-width: 480px) {
+  .birthday-venues-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .birthday-venues-title {
+    font-size: 1.25rem;
+    margin-bottom: 20px;
+  }
+  
+  .birthday-venue-image-wrapper {
+    height: 240px;
   }
 }
 

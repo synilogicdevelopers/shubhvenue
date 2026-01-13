@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Footer from '../../components/customer/Footer'
 import SEO from '../../components/SEO'
 import './Venue.css'
-import { publicVenuesAPI } from '../../services/customer/api'
+import { publicVenuesAPI, publicDecorationCategoriesAPI } from '../../services/customer/api'
 import { createSlug } from '../../utils/customer/slug'
 import toast from 'react-hot-toast'
 
@@ -22,6 +22,7 @@ const Venue = () => {
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(9) // 9 venues per page
+  const [decorationCategoryBanner, setDecorationCategoryBanner] = useState(null)
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
@@ -29,14 +30,32 @@ const Venue = () => {
       return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
     }
     const image = Array.isArray(images) ? images[0] : images
-    if (image.startsWith('/uploads/')) {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
-    }
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/venues/${image}`
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's a venue image
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/venues/${encodedImage}`
   }
 
   // Helper function to format price
@@ -44,6 +63,39 @@ const Venue = () => {
     if (!price) return 0
     if (typeof price === 'number') return price
     return parseFloat(price) || 0
+  }
+
+  // Helper function to get decoration category image URL
+  const getDecorationCategoryImageUrl = (image) => {
+    if (!image) {
+      return null
+    }
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's a decoration category
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/decoration-categories/${encodedImage}`
   }
 
   // Helper function to format location
@@ -137,6 +189,53 @@ const Venue = () => {
       navigate(`/venues${newSearch ? `?${newSearch}` : ''}`, { replace: true })
     }
   }, [vendorCategoryId, vendorCategoryName, categoryId, categoryName, menuId, menuName, submenuId, submenuName, decorationCategoryId, decorationCategoryName, occasionSpecialId, occasionSpecialName, navigate, location.search, location.state])
+
+  // Fetch decoration category banner image when decorationCategoryId is present
+  useEffect(() => {
+    const fetchDecorationCategoryBanner = async () => {
+      if (decorationCategoryId) {
+        try {
+          const response = await publicDecorationCategoriesAPI.getById(decorationCategoryId)
+          let category = null
+          
+          // Handle different response structures
+          if (response.data) {
+            if (response.data.success && response.data.decorationCategory) {
+              category = response.data.decorationCategory
+            } else if (response.data.decorationCategory) {
+              category = response.data.decorationCategory
+            } else if (response.data.category) {
+              category = response.data.category
+            } else if (response.data.data) {
+              category = response.data.data
+            }
+          }
+          
+          if (category) {
+            // Prioritize bannerImage, fallback to image
+            const bannerImage = category.bannerImage || category.image
+            if (bannerImage) {
+              setDecorationCategoryBanner({
+                image: getDecorationCategoryImageUrl(bannerImage),
+                name: category.name || decorationCategoryName || 'Decoration Category'
+              })
+            } else {
+              setDecorationCategoryBanner(null)
+            }
+          } else {
+            setDecorationCategoryBanner(null)
+          }
+        } catch (error) {
+          console.error('Error fetching decoration category banner:', error)
+          setDecorationCategoryBanner(null)
+        }
+      } else {
+        setDecorationCategoryBanner(null)
+      }
+    }
+
+    fetchDecorationCategoryBanner()
+  }, [decorationCategoryId, decorationCategoryName])
 
   // Fetch all venues from API
   useEffect(() => {
@@ -363,6 +462,7 @@ const Venue = () => {
               type: venue.categoryId?.name || venue.category?.name || venue.venueType || 'Venue',
               price: formatPrice(venue.price),
               priceDisplay: formatPrice(venue.price) > 0 ? `${formatPrice(venue.price).toFixed(2)} Lakh` : 'Price on request',
+              pricingInfo: venue.pricingInfo || null,
               rooms: venue.rooms || venue.roomCount || 0,
               capacity: capacityValue,
               highlights: venue.highlights || [],
@@ -370,6 +470,8 @@ const Venue = () => {
               // Store category data for URL generation
               categoryId: venue.categoryId,
               category: venue.category,
+              // Store decoration category ID to identify decoration venues
+              decorationCategoryId: venue.decorationCategoryId || null,
               // Store original location object for filtering
               locationObj: venue.location
             };
@@ -554,8 +656,71 @@ const Venue = () => {
   return (
     <div className="venues-page">
       <SEO location={seoLocation} />
+      {/* Decoration Category Banner */}
+      {decorationCategoryBanner && decorationCategoryBanner.image && (
+        <div className="decoration-category-banner-wrapper">
+          <img 
+            src={getDecorationCategoryImageUrl(decorationCategoryBanner.image)} 
+            alt={decorationCategoryBanner.name || 'Decoration Category Banner'}
+            className="decoration-category-banner-image"
+            onError={(e) => {
+              e.target.style.display = 'none'
+            }}
+          />
+          <div className="decoration-category-banner-content">
+            <div className="decoration-category-banner-left">
+              {decorationCategoryBanner.name && (
+                <h2 className="decoration-category-banner-title">{decorationCategoryBanner.name}</h2>
+              )}
+            </div>
+            <div className="decoration-category-banner-right">
+              <div className="search-bar-wrapper">
+                <div className="search-bar">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search venues by name, location, or type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="search-input"
+                  />
+                  {searchQuery && (
+                    <button 
+                      className="clear-search-btn"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="toolbar-actions">
+                <button 
+                  className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                  </svg>
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <span className="filter-badge">{activeFiltersCount}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Category/Submenu/Vendor Category Filter Banner */}
-      {(categoryName || submenuName || menuName || vendorCategoryName) && (
+      {(categoryName || submenuName || menuName || vendorCategoryName) && !decorationCategoryBanner && (
         <div style={{ 
           background: 'linear-gradient(135deg, #92487a 0%, #b85a8f 100%)',
           color: 'white',
@@ -586,183 +751,142 @@ const Venue = () => {
           </p>
         </div>
       )}
-      {/* Hero Header Section */}
-      <div className="venues-hero">
-        <div className="venues-hero-content">
-          <h1 className="venues-page-title">
-            Discover Your Perfect
-            <span className="gradient-text"> Venue</span>
-          </h1>
-          <p className="venues-page-subtitle">
-            Explore our curated collection of premium venues for your special occasions
-          </p>
-          
-          {/* Search and Filter Bar inside Hero */}
-          <div className="venues-toolbar">
-          <div className="search-bar-wrapper">
-            <div className="search-bar">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-              </svg>
-              <input
-                type="text"
-                placeholder="Search venues by name, location, or type..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-              {searchQuery && (
-                <button 
-                  className="clear-search-btn"
-                  onClick={() => setSearchQuery('')}
+      {/* Hero Header Section - Only show when no decoration category banner */}
+      {!decorationCategoryBanner && (
+        <div className="venues-hero">
+          <div className="venues-hero-content">
+            <h1 className="venues-page-title">
+              Discover Your Perfect
+              <span className="gradient-text"> Venue</span>
+            </h1>
+            <p className="venues-page-subtitle">
+              Explore our curated collection of premium venues for your special occasions
+            </p>
+            
+            {/* Search and Filter Bar inside Hero */}
+            <div className="venues-toolbar">
+            <div className="search-bar-wrapper">
+              <div className="search-bar">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search venues by name, location, or type..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                {searchQuery && (
+                  <button 
+                    className="clear-search-btn"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="toolbar-actions">
+              <button 
+                className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className="filter-badge">{activeFiltersCount}</span>
+                )}
+              </button>
+
+              <div className={`sort-dropdown-wrapper ${showSortDropdown ? 'show' : ''}`}>
+                <button
+                  className="sort-select"
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  <span>
+                    {sortBy === 'default' && 'Sort by: Default'}
+                    {sortBy === 'rating' && 'Sort by: Rating'}
+                    {sortBy === 'reviews' && 'Sort by: Reviews'}
+                    {sortBy === 'price-low' && 'Sort by: Price (Low to High)'}
+                    {sortBy === 'price-high' && 'Sort by: Price (High to Low)'}
+                  </span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
-              )}
+                {showSortDropdown && (
+                  <div className="sort-dropdown-menu">
+                    <button
+                      className={`sort-dropdown-item ${sortBy === 'default' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSortBy('default')
+                        setShowSortDropdown(false)
+                      }}
+                    >
+                      Sort by: Default
+                    </button>
+                    <button
+                      className={`sort-dropdown-item ${sortBy === 'rating' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSortBy('rating')
+                        setShowSortDropdown(false)
+                      }}
+                    >
+                      Sort by: Rating
+                    </button>
+                    <button
+                      className={`sort-dropdown-item ${sortBy === 'reviews' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSortBy('reviews')
+                        setShowSortDropdown(false)
+                      }}
+                    >
+                      Sort by: Reviews
+                    </button>
+                    <button
+                      className={`sort-dropdown-item ${sortBy === 'price-low' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSortBy('price-low')
+                        setShowSortDropdown(false)
+                      }}
+                    >
+                      Sort by: Price (Low to High)
+                    </button>
+                    <button
+                      className={`sort-dropdown-item ${sortBy === 'price-high' ? 'active' : ''}`}
+                      onClick={() => {
+                        setSortBy('price-high')
+                        setShowSortDropdown(false)
+                      }}
+                    >
+                      Sort by: Price (High to Low)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
             </div>
           </div>
-
-          <div className="toolbar-actions">
-            <button 
-              className={`filter-toggle-btn ${showFilters ? 'active' : ''}`}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-              </svg>
-              Filters
-              {activeFiltersCount > 0 && (
-                <span className="filter-badge">{activeFiltersCount}</span>
-              )}
-            </button>
-
-            <div className={`sort-dropdown-wrapper ${showSortDropdown ? 'show' : ''}`}>
-              <button
-                className="sort-select"
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-              >
-                <span>
-                  {sortBy === 'default' && 'Sort by: Default'}
-                  {sortBy === 'rating' && 'Sort by: Rating'}
-                  {sortBy === 'reviews' && 'Sort by: Reviews'}
-                  {sortBy === 'price-low' && 'Sort by: Price (Low to High)'}
-                  {sortBy === 'price-high' && 'Sort by: Price (High to Low)'}
-                </span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              {showSortDropdown && (
-                <div className="sort-dropdown-menu">
-                  <button
-                    className={`sort-dropdown-item ${sortBy === 'default' ? 'active' : ''}`}
-                    onClick={() => {
-                      setSortBy('default')
-                      setShowSortDropdown(false)
-                    }}
-                  >
-                    Sort by: Default
-                  </button>
-                  <button
-                    className={`sort-dropdown-item ${sortBy === 'rating' ? 'active' : ''}`}
-                    onClick={() => {
-                      setSortBy('rating')
-                      setShowSortDropdown(false)
-                    }}
-                  >
-                    Sort by: Rating
-                  </button>
-                  <button
-                    className={`sort-dropdown-item ${sortBy === 'reviews' ? 'active' : ''}`}
-                    onClick={() => {
-                      setSortBy('reviews')
-                      setShowSortDropdown(false)
-                    }}
-                  >
-                    Sort by: Reviews
-                  </button>
-                  <button
-                    className={`sort-dropdown-item ${sortBy === 'price-low' ? 'active' : ''}`}
-                    onClick={() => {
-                      setSortBy('price-low')
-                      setShowSortDropdown(false)
-                    }}
-                  >
-                    Sort by: Price (Low to High)
-                  </button>
-                  <button
-                    className={`sort-dropdown-item ${sortBy === 'price-high' ? 'active' : ''}`}
-                    onClick={() => {
-                      setSortBy('price-high')
-                      setShowSortDropdown(false)
-                    }}
-                  >
-                    Sort by: Price (High to Low)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <div className="hero-decoration">
+            <div className="decoration-circle circle-1"></div>
+            <div className="decoration-circle circle-2"></div>
+            <div className="decoration-circle circle-3"></div>
           </div>
         </div>
-        <div className="hero-decoration">
-          <div className="decoration-circle circle-1"></div>
-          <div className="decoration-circle circle-2"></div>
-          <div className="decoration-circle circle-3"></div>
-        </div>
-      </div>
+      )}
 
-      <div className="venues-page-container">
-
-        {/* Active Filters Tags */}
-        {activeFiltersCount > 0 && (
-          <div className="active-filters">
-            <span className="active-filters-label">Active Filters:</span>
-            <div className="filter-tags">
-              {searchQuery && (
-                <span className="filter-tag">
-                  Search: "{searchQuery}"
-                  <button onClick={() => setSearchQuery('')}>×</button>
-                </span>
-              )}
-              {selectedLocation !== 'all' && (
-                <span className="filter-tag">
-                  {selectedLocation}
-                  <button onClick={() => setSelectedLocation('all')}>×</button>
-                </span>
-              )}
-              {selectedType !== 'all' && (
-                <span className="filter-tag">
-                  {selectedType}
-                  <button onClick={() => setSelectedType('all')}>×</button>
-                </span>
-              )}
-              {selectedRating !== 'all' && (
-                <span className="filter-tag">
-                  {selectedRating === '4+' ? '4+ Stars' : selectedRating === '4.5+' ? '4.5+ Stars' : '5 Stars'}
-                  <button onClick={() => setSelectedRating('all')}>×</button>
-                </span>
-              )}
-              {priceRange !== 'all' && (
-                <span className="filter-tag">
-                  {priceRange === 'low' ? 'Under ₹10L' : priceRange === 'medium' ? '₹10-20L' : 'Above ₹20L'}
-                  <button onClick={() => setPriceRange('all')}>×</button>
-                </span>
-              )}
-              <button className="clear-all-btn" onClick={clearFilters}>
-                Clear All
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Filters Panel */}
-        {showFilters && (
-          <div className="filters-panel">
+      {/* Filters Panel Modal - Outside container for proper overlay */}
+      {showFilters && (
+        <div className="filters-modal-overlay" onClick={() => setShowFilters(false)}>
+          <div className="filters-panel" onClick={(e) => e.stopPropagation()}>
             <div className="filters-header">
               <h3>Filter Venues</h3>
               <button className="close-filters-btn" onClick={() => setShowFilters(false)}>
@@ -861,6 +985,51 @@ const Venue = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      <div className="venues-page-container">
+
+        {/* Active Filters Tags */}
+        {activeFiltersCount > 0 && (
+          <div className="active-filters">
+            <span className="active-filters-label">Active Filters:</span>
+            <div className="filter-tags">
+              {searchQuery && (
+                <span className="filter-tag">
+                  Search: "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')}>×</button>
+                </span>
+              )}
+              {selectedLocation !== 'all' && (
+                <span className="filter-tag">
+                  {selectedLocation}
+                  <button onClick={() => setSelectedLocation('all')}>×</button>
+                </span>
+              )}
+              {selectedType !== 'all' && (
+                <span className="filter-tag">
+                  {selectedType}
+                  <button onClick={() => setSelectedType('all')}>×</button>
+                </span>
+              )}
+              {selectedRating !== 'all' && (
+                <span className="filter-tag">
+                  {selectedRating === '4+' ? '4+ Stars' : selectedRating === '4.5+' ? '4.5+ Stars' : '5 Stars'}
+                  <button onClick={() => setSelectedRating('all')}>×</button>
+                </span>
+              )}
+              {priceRange !== 'all' && (
+                <span className="filter-tag">
+                  {priceRange === 'low' ? 'Under ₹10L' : priceRange === 'medium' ? '₹10-20L' : 'Above ₹20L'}
+                  <button onClick={() => setPriceRange('all')}>×</button>
+                </span>
+              )}
+              <button className="clear-all-btn" onClick={clearFilters}>
+                Clear All
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Venues Grid */}
@@ -941,7 +1110,7 @@ const Venue = () => {
               >
                 <div className="venue-image-wrapper">
                   <img 
-                    src={venue.image} 
+                    src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
                     alt={venue.name} 
                     className="venue-image"
                     onError={(e) => {
@@ -975,6 +1144,30 @@ const Venue = () => {
                      </svg>
                      <span>{venue.type}</span>
                    </div>
+                   {/* Show price only for decoration venues */}
+                   {venue.decorationCategoryId && (venue.price > 0 || venue.pricingInfo?.rentalPrice > 0) && (
+                     <div className="venue-price">
+                       <span className="venue-card-price-label">Price</span>
+                       <span className="rupee-icon-card">₹</span>
+                       <span>
+                         {(() => {
+                           let priceText = '';
+                           if (venue.pricingInfo?.rentalPrice > 0) {
+                             priceText = venue.pricingInfo.rentalPrice.toLocaleString('en-IN');
+                           } else if (venue.priceDisplay && venue.priceDisplay !== 'Price on request') {
+                             // Remove any currency symbols
+                             priceText = venue.priceDisplay.replace(/[₹$]/g, '').trim();
+                           } else if (venue.price > 0) {
+                             priceText = venue.price.toLocaleString('en-IN');
+                           } else {
+                             priceText = 'Price on request';
+                           }
+                           return priceText;
+                         })()}
+                       </span>
+                       <span className="venue-card-price-period">/ Per Day</span>
+                     </div>
+                   )}
                    <div className="venue-tags">
                     {venue.capacity && venue.capacity !== 'Capacity not specified' && (
                       <span className="venue-tag">{venue.capacity} Guests</span>

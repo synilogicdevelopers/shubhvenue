@@ -9,7 +9,7 @@ import { Pagination } from '../../../components/admin/ui/Pagination';
 import { vendorsAPI, vendorCategoriesAPI } from '../../../services/admin/api';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
-import { Check, X, Eye, Trash2, Plus } from 'lucide-react';
+import { Check, X, Eye, Trash2, Plus, Search } from 'lucide-react';
 
 export const Vendors = () => {
   const [vendors, setVendors] = useState([]);
@@ -32,6 +32,7 @@ export const Vendors = () => {
   const [phoneError, setPhoneError] = useState('');
   const [categories, setCategories] = useState([]);
   const [updatingCategory, setUpdatingCategory] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchVendors();
@@ -131,12 +132,35 @@ export const Vendors = () => {
     }
   };
 
+  // Filter vendors based on search query
+  const filteredVendors = vendors.filter((vendor) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase().trim();
+    const name = (vendor.name || '').toLowerCase();
+    const email = (vendor.email || '').toLowerCase();
+    const phone = (vendor.phone || '').toLowerCase();
+    const category = (vendor.vendorCategory?.name || '').toLowerCase();
+    
+    return (
+      name.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query) ||
+      category.includes(query)
+    );
+  });
+
   // Pagination logic
-  const totalItems = vendors.length;
+  const totalItems = filteredVendors.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedVendors = vendors.slice(startIndex, endIndex);
+  const paginatedVendors = filteredVendors.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   if (loading) {
     return (
@@ -163,9 +187,30 @@ export const Vendors = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          {/* Total Count */}
+          {/* Search and Total Count */}
+          <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-gray-600 dark:text-gray-400">
+              {searchQuery ? (
+                <>
+                  Showing <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span> of{' '}
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{vendors.length}</span> vendors
+                </>
+              ) : (
+                <>
             Total Vendors: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+                </>
+              )}
+            </div>
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by name, email, phone, or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
 
           <Table>

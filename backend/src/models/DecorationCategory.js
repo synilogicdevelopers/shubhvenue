@@ -6,6 +6,7 @@ const decorationCategorySchema = new mongoose.Schema(
     description: { type: String },
     icon: { type: String }, // Icon URL or name
     image: { type: String }, // Category image URL
+    bannerImage: { type: String }, // Banner image URL for category
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 } // For ordering categories
   },

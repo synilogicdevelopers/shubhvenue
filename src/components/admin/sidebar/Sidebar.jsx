@@ -21,12 +21,15 @@ import {
   HelpCircle,
   Building2,
   Mail,
+  FileText,
   ChevronDown,
   ChevronRight,
   UserCog,
   Shield,
   Star,
   Image as ImageIcon,
+  CheckCircle2,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '../../../utils/admin/cn';
 import { getUserPermissions, isAdmin, hasPermission as checkPermission } from '../../../utils/admin/permissions';
@@ -56,7 +59,7 @@ const allMenuItems = [
       { path: '/admin/occasion-specials', label: 'Occasion Special', icon: Sparkles, permission: 'view_menus' },
     ],
   },
-  { path: '/admin/videos', icon: VideoIcon, label: 'Videos', permission: 'view_videos' },
+  { path: '/admin/videos', icon: VideoIcon, label: 'Banner Video', permission: 'view_videos' },
   {
     label: 'Banners',
     icon: ImageIcon,
@@ -70,6 +73,15 @@ const allMenuItems = [
   { path: '/admin/bookings', icon: Calendar, label: 'Bookings', permission: 'view_bookings' },
   { path: '/admin/payouts', icon: DollarSign, label: 'Payouts', permission: 'view_payouts' },
   { path: '/admin/reviews', icon: Star, label: 'Reviews', permission: 'view_reviews' },
+  {
+    label: 'Verification',
+    icon: CheckCircle2,
+    permission: 'view_vendors',
+    children: [
+      { path: '/admin/plans', label: 'Plans', icon: CreditCard, permission: 'view_vendors' },
+      { path: '/admin/subscriptions', label: 'Subscriptions', icon: CheckCircle2, permission: 'view_vendors' },
+    ],
+  },
   {
     label: 'Staff',
     icon: UserCog,
@@ -87,6 +99,7 @@ const allMenuItems = [
     children: [
       { path: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare, permission: 'view_testimonials' },
       { path: '/admin/faqs', label: 'FAQs', icon: HelpCircle, permission: 'view_faqs' },
+      { path: '/admin/email-templates', label: 'Email Templates', icon: FileText, permission: 'view_settings' },
       { path: '/admin/company', label: 'Company', icon: Building2, permission: 'view_company' },
       { path: '/admin/contacts', label: 'Contact Us', icon: Mail, permission: 'view_contacts' },
       { path: '/admin/settings', label: 'General Settings', icon: Settings, permission: 'view_settings' },
@@ -107,7 +120,7 @@ const hasPermission = (permission, userPermissions) => {
 
 export const Sidebar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState({ Staff: true, Settings: true });
+  const [openSubmenus, setOpenSubmenus] = useState({ Staff: true, Settings: true, Verification: true });
   const location = useLocation();
   const navRef = useRef(null);
   const savedScrollPosition = useRef(0);

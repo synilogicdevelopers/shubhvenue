@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { authAPI } from '../../services/vendor/api'
+import { forceLogout } from '../../utils/auth/logout'
 
 const AuthContext = createContext(null)
 
@@ -19,6 +20,13 @@ export function AuthProvider({ children }) {
           .then((response) => {
             // Handle both user and staff responses
             let userData = response.data.user || response.data.staff || response.data
+            
+            // Check if user is blocked
+            if (userData && userData.isBlocked) {
+              setUser(null)
+              forceLogout('blocked', '/vendor/login')
+              return
+            }
             
             // If staff response, extract permissions from role
             if (response.data.staff) {
@@ -57,10 +65,17 @@ export function AuthProvider({ children }) {
             setUser(userData)
             localStorage.setItem('vendor_user', JSON.stringify(userData))
           })
-          .catch(() => {
+          .catch((error) => {
+            // If blocked user error, force logout
+            if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+              setUser(null)
+              forceLogout('blocked', '/vendor/login')
+            } else {
+              // Other errors - just clear vendor data
             localStorage.removeItem('vendor_token')
             localStorage.removeItem('vendor_user')
             setUser(null)
+            }
           })
           .finally(() => setLoading(false))
       } catch (error) {
@@ -77,6 +92,17 @@ export function AuthProvider({ children }) {
     try {
       const response = await authAPI.login(email, password)
       const { token, user, staff } = response.data
+      
+      // Check if user is blocked (shouldn't happen if backend is working, but double check)
+      if (user?.isBlocked || staff?.isBlocked) {
+        setUser(null)
+        forceLogout('blocked', '/vendor/login')
+        return {
+          success: false,
+          error: 'Your account has been blocked. Please contact support for assistance.',
+          isBlocked: true
+        }
+      }
       
       // Handle both vendor owner and vendor staff login
       let userData = user || staff
@@ -116,9 +142,20 @@ export function AuthProvider({ children }) {
       
       return { success: true }
     } catch (error) {
+      // Handle blocked user error specifically
+      if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+        setUser(null)
+        forceLogout('blocked', '/vendor/login')
+        return {
+          success: false,
+          error: error.response?.data?.error || error.response?.data?.message || 'Your account has been blocked. Please contact support.',
+          isBlocked: true
+        }
+      }
+      
       return {
         success: false,
-        error: error.response?.data?.error || error.message || 'Login failed',
+        error: error.response?.data?.error || error.response?.data?.message || error.message || 'Login failed',
       }
     }
   }
@@ -146,9 +183,8 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('vendor_token')
-    localStorage.removeItem('vendor_user')
     setUser(null)
+    forceLogout('manual', '/vendor/login')
   }
 
   return (

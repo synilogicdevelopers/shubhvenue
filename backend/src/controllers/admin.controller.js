@@ -22,6 +22,8 @@ import Company from '../models/Company.js';
 import LegalPage from '../models/LegalPage.js';
 import Contact from '../models/Contact.js';
 import VendorCategory from '../models/VendorCategory.js';
+import Plan from '../models/Plan.js';
+import VendorPlanSubscription from '../models/VendorPlanSubscription.js';
 
 // ==================== ADMIN CREATE (VENDORS / VENUES) ====================
 
@@ -660,6 +662,121 @@ export const updateVenueByAdmin = async (req, res) => {
     if (body.bookingButtonEnabled !== undefined) venue.bookingButtonEnabled = body.bookingButtonEnabled === 'true' || body.bookingButtonEnabled === true;
     if (body.leadsButtonEnabled !== undefined) venue.leadsButtonEnabled = body.leadsButtonEnabled === 'true' || body.leadsButtonEnabled === true;
     if (body.isFeatured !== undefined) venue.isFeatured = body.isFeatured === 'true' || body.isFeatured === true;
+    
+    // Verified listing (admin can manually verify venues)
+    if (body.verifiedListing !== undefined) {
+      const wasVerified = venue.verifiedListing;
+      const willBeVerified = body.verifiedListing === 'true' || body.verifiedListing === true;
+      
+      venue.verifiedListing = willBeVerified;
+      
+      if (willBeVerified) {
+        // If verifying, set expiry to 1 year from now if not provided
+        if (!body.verifiedListingExpiry) {
+          const oneYearFromNow = new Date();
+          oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+          venue.verifiedListingExpiry = oneYearFromNow;
+        } else {
+          venue.verifiedListingExpiry = new Date(body.verifiedListingExpiry);
+        }
+      } else {
+        // If unverifying, clear expiry and plan ID
+        venue.verifiedListingExpiry = null;
+        venue.verifiedListingPlanId = null;
+        
+        // If venue was previously verified, cancel related active plan subscriptions
+        if (wasVerified) {
+          try {
+            // Find all active subscriptions that include this venue
+            const activeSubscriptions = await VendorPlanSubscription.find({
+              venueIds: venue._id,
+              status: 'active',
+              paymentStatus: 'completed'
+            });
+            
+            if (activeSubscriptions.length > 0) {
+              // Cancel all subscriptions that verified this venue
+              const subscriptionIds = activeSubscriptions.map(sub => sub._id);
+              await VendorPlanSubscription.updateMany(
+                { _id: { $in: subscriptionIds } },
+                { status: 'cancelled' }
+              );
+              
+              // Remove this venue from venueIds array in all subscriptions
+              await VendorPlanSubscription.updateMany(
+                { _id: { $in: subscriptionIds } },
+                { $pull: { venueIds: venue._id } }
+              );
+              
+              // Unverify all other venues that were verified through these cancelled subscriptions
+              // Get all venue IDs from the cancelled subscriptions
+              const allVenueIds = [];
+              const planIds = [];
+              
+              activeSubscriptions.forEach(sub => {
+                // Collect plan IDs from subscriptions (planId can be ObjectId or populated object)
+                if (sub.planId) {
+                  let planId;
+                  if (typeof sub.planId === 'object' && sub.planId._id) {
+                    planId = sub.planId._id.toString();
+                  } else if (typeof sub.planId === 'object' && sub.planId.toString) {
+                    planId = sub.planId.toString();
+                  } else {
+                    planId = String(sub.planId);
+                  }
+                  if (planId && mongoose.Types.ObjectId.isValid(planId) && !planIds.includes(planId)) {
+                    planIds.push(planId);
+                  }
+                }
+                
+                // Collect venue IDs from subscriptions
+                if (sub.venueIds && Array.isArray(sub.venueIds)) {
+                  sub.venueIds.forEach(vid => {
+                    let venueIdStr;
+                    if (typeof vid === 'object' && vid._id) {
+                      venueIdStr = vid._id.toString();
+                    } else if (typeof vid === 'object' && vid.toString) {
+                      venueIdStr = vid.toString();
+                    } else {
+                      venueIdStr = String(vid);
+                    }
+                    if (venueIdStr && mongoose.Types.ObjectId.isValid(venueIdStr) && venueIdStr !== venue._id.toString()) {
+                      allVenueIds.push(venueIdStr);
+                    }
+                  });
+                }
+              });
+              
+              // Remove duplicates
+              const uniqueVenueIds = [...new Set(allVenueIds)];
+              
+              if (uniqueVenueIds.length > 0 && planIds.length > 0) {
+                // Unverify these venues that were verified through the cancelled subscriptions' plans
+                await Venue.updateMany(
+                  { 
+                    _id: { $in: uniqueVenueIds },
+                    verifiedListingPlanId: { $in: planIds }
+                  },
+                  { 
+                    verifiedListing: false,
+                    verifiedListingExpiry: null,
+                    verifiedListingPlanId: null
+                  }
+                );
+              }
+              
+              console.log(`✅ Cancelled ${activeSubscriptions.length} subscription(s) and unverified ${uniqueVenueIds.length} related venue(s) due to admin unverification`);
+            }
+          } catch (error) {
+            console.error('Error cancelling subscriptions on venue unverification:', error);
+            // Don't fail the venue update if subscription cancellation fails
+          }
+        }
+      }
+    }
+    if (body.verifiedListingExpiry !== undefined && body.verifiedListingExpiry !== null && body.verifiedListingExpiry !== '') {
+      venue.verifiedListingExpiry = new Date(body.verifiedListingExpiry);
+    }
 
     // Price
     if (body.price !== undefined && body.price !== null && body.price !== '') {
@@ -1154,7 +1271,7 @@ export const getDashboard = async (req, res) => {
       });
     }
 
-    const [users, vendors, venues, bookingsCount, leads, payouts, allBookings] = await Promise.all([
+    const [users, vendors, venues, bookingsCount, leads, payouts, allBookings, planSubscriptions] = await Promise.all([
       User.countDocuments({ role: 'customer' }).catch(() => 0),
       User.countDocuments({ role: 'vendor' }).catch(() => 0),
       Venue.countDocuments().catch(() => 0),
@@ -1162,15 +1279,24 @@ export const getDashboard = async (req, res) => {
       Lead.countDocuments().catch(() => 0),
       Payout.find().catch(() => []),
       Booking.find().select('totalAmount').catch(() => []),
+      VendorPlanSubscription.find({ paymentStatus: 'completed' }).select('amountPaid createdAt').catch(() => []),
     ]);
 
-    const revenue = allBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    // Calculate revenue from bookings
+    const bookingRevenue = allBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    
+    // Calculate revenue from plan subscriptions
+    const planSubscriptionRevenue = planSubscriptions.reduce((sum, sub) => sum + (sub.amountPaid || 0), 0);
+    
+    // Total revenue = booking revenue + plan subscription revenue
+    const revenue = bookingRevenue + planSubscriptionRevenue;
     const commission = payouts.reduce((sum, p) => sum + (p.commission || 0), 0);
 
-    // Monthly revenue (last 6 months)
+    // Monthly revenue (last 6 months) - include both bookings and plan subscriptions
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
+    // Monthly booking revenue
     const monthlyBookings = await Booking.aggregate([
       { $match: { createdAt: { $gte: sixMonthsAgo } } },
       {
@@ -1180,12 +1306,42 @@ export const getDashboard = async (req, res) => {
         },
       },
       { $sort: { _id: 1 } },
-    ]);
+    ]).catch(() => []);
 
-    const monthlyRevenue = monthlyBookings.map((item) => ({
-      month: item._id,
-      revenue: item.revenue || 0,
-    }));
+    // Monthly plan subscription revenue
+    const monthlyPlanSubscriptions = await VendorPlanSubscription.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: sixMonthsAgo },
+          paymentStatus: 'completed'
+        } 
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          revenue: { $sum: '$amountPaid' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]).catch(() => []);
+
+    // Combine booking and plan subscription revenue by month
+    const revenueMap = new Map();
+    
+    // Add booking revenue
+    monthlyBookings.forEach(item => {
+      revenueMap.set(item._id, (revenueMap.get(item._id) || 0) + (item.revenue || 0));
+    });
+    
+    // Add plan subscription revenue
+    monthlyPlanSubscriptions.forEach(item => {
+      revenueMap.set(item._id, (revenueMap.get(item._id) || 0) + (item.revenue || 0));
+    });
+
+    // Convert map to array and sort by month
+    const monthlyRevenue = Array.from(revenueMap.entries())
+      .map(([month, revenue]) => ({ month, revenue }))
+      .sort((a, b) => a.month.localeCompare(b.month));
 
     // Booking status distribution
     const bookingStatus = await Booking.aggregate([
@@ -1412,20 +1568,65 @@ export const getVendors = async (req, res) => {
       .populate('vendorCategory', 'name description')
       .sort({ createdAt: -1 });
 
-    // Calculate revenue for each vendor
+    // Get active subscriptions for vendors
+    const activeSubscriptions = await VendorPlanSubscription.find({
+      status: 'active',
+      paymentStatus: 'completed',
+      endDate: { $gte: new Date() }
+    }).populate('planId', 'name priority');
+
+    // Create a map of vendorId to subscription info
+    const vendorSubscriptionMap = {};
+    activeSubscriptions.forEach(sub => {
+      if (!vendorSubscriptionMap[sub.vendorId]) {
+        vendorSubscriptionMap[sub.vendorId] = {
+          hasActivePlan: true,
+          planPriority: sub.planId?.priority || 0,
+          planName: sub.planId?.name || 'Unknown'
+        };
+      } else {
+        // If vendor has multiple plans, use the highest priority
+        if (sub.planId?.priority > vendorSubscriptionMap[sub.vendorId].planPriority) {
+          vendorSubscriptionMap[sub.vendorId].planPriority = sub.planId.priority;
+          vendorSubscriptionMap[sub.vendorId].planName = sub.planId.name;
+        }
+      }
+    });
+
+    // Calculate revenue for each vendor and add verification status
     const vendorsWithRevenue = await Promise.all(
       vendors.map(async (vendor) => {
         const venues = await Venue.find({ vendorId: vendor._id });
         const venueIds = venues.map(v => v._id);
         const bookings = await Booking.find({ venueId: { $in: venueIds } });
         const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+        
+        const subscriptionInfo = vendorSubscriptionMap[vendor._id.toString()] || {
+          hasActivePlan: false,
+          planPriority: 0,
+          planName: null
+        };
+        
         return {
           ...vendor.toObject(),
           totalRevenue,
           status: vendor.vendorStatus || 'pending', // Add status field for frontend compatibility
+          isVerified: subscriptionInfo.hasActivePlan,
+          planPriority: subscriptionInfo.planPriority,
+          planName: subscriptionInfo.planName
         };
       })
     );
+
+    // Sort: verified vendors first (by priority), then unverified vendors
+    vendorsWithRevenue.sort((a, b) => {
+      if (a.isVerified && !b.isVerified) return -1;
+      if (!a.isVerified && b.isVerified) return 1;
+      if (a.isVerified && b.isVerified) {
+        return b.planPriority - a.planPriority; // Higher priority first
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt); // Newest first for unverified
+    });
 
     res.json(vendorsWithRevenue);
   } catch (error) {
@@ -1758,13 +1959,62 @@ export const getBookings = async (req, res) => {
       .populate('venueId', 'name location')
       .sort({ createdAt: -1 });
     
+    // Get all booking IDs to fetch associated leads for email
+    const bookingIds = bookings.map(b => b._id);
+    const leads = await Lead.find({ bookingId: { $in: bookingIds } })
+      .select('bookingId email name phone')
+      .lean();
+    
+    // Create a map of bookingId to lead data
+    const leadMap = {};
+    leads.forEach(lead => {
+      if (lead.bookingId) {
+        leadMap[lead.bookingId.toString()] = lead;
+      }
+    });
+    
     // Add paymentStatus based on paymentId and remove duplicates by _id
+    // Also ensure customer name and email are available from booking fields if customerId is null
     const seenIds = new Set();
     const bookingsWithPayment = bookings
-      .map(booking => ({
-        ...booking.toObject(),
-        paymentStatus: booking.paymentId ? 'paid' : 'pending',
-      }))
+      .map(booking => {
+        const bookingObj = booking.toObject();
+        const lead = leadMap[bookingObj._id.toString()];
+        
+        // If customerId is null or doesn't have name/email, use booking's direct fields or lead
+        if (!bookingObj.customerId || !bookingObj.customerId.name) {
+          // Priority: booking.name > lead.name > null
+          const customerName = bookingObj.name || (lead?.name) || null;
+          const customerEmail = bookingObj.email || (lead?.email) || (bookingObj.customerId?.email) || null;
+          const customerPhone = bookingObj.phone || (lead?.phone) || (bookingObj.customerId?.phone) || null;
+          
+          if (customerName || customerEmail || customerPhone) {
+            bookingObj.customerId = {
+              _id: bookingObj.customerId?._id || null,
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone
+            };
+          }
+        } else {
+          // If customerId exists but email is missing, try to get from booking or lead
+          if (!bookingObj.customerId.email) {
+            bookingObj.customerId.email = bookingObj.email || (lead?.email) || null;
+          }
+          if (!bookingObj.customerId.phone) {
+            bookingObj.customerId.phone = bookingObj.phone || (lead?.phone) || null;
+          }
+          // If name is missing from customerId but exists in booking, use it
+          if (!bookingObj.customerId.name && bookingObj.name) {
+            bookingObj.customerId.name = bookingObj.name;
+          }
+        }
+        
+        return {
+          ...bookingObj,
+          paymentStatus: bookingObj.paymentId ? 'paid' : 'pending',
+        };
+      })
       .filter(booking => {
         // Remove duplicates based on _id
         if (seenIds.has(booking._id.toString())) {
@@ -1795,10 +2045,29 @@ export const updateBookingStatus = async (req, res) => {
       id,
       { status },
       { new: true }
-    ).populate('customerId', 'name email').populate('venueId', 'name');
+    ).populate('customerId', 'name email phone').populate('venueId', 'name location');
     
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    // Send confirmation email to customer when admin confirms booking
+    if (status === 'confirmed') {
+      try {
+        const { sendVendorBookingConfirmationEmail } = await import('../utils/emailService.js');
+        
+        // Get customer email
+        const customerEmail = booking.customerId?.email || booking.email || null;
+        if (customerEmail) {
+          console.log('📧 Sending booking confirmation email to customer (admin confirmed):', customerEmail);
+          sendVendorBookingConfirmationEmail(booking, customerEmail).catch(err => 
+            console.error('Error sending booking confirmation email to customer:', err)
+          );
+        }
+      } catch (emailError) {
+        console.error('Error setting up booking confirmation email:', emailError);
+        // Don't fail the status update if email fails
+      }
     }
     
     res.json({ message: 'Booking status updated', booking });
@@ -1832,13 +2101,18 @@ export const approveBooking = async (req, res) => {
       { new: true }
     );
     
+    // Get venue details to get vendorId for email and ledger
+    let vendorEmail = null;
+    const venueId = booking.venueId._id || booking.venueId;
+    const venue = await Venue.findById(venueId).populate('vendorId');
+    
+    if (venue && venue.vendorId) {
+      vendorEmail = venue.vendorId.email || null;
+    }
+    
     // Create ledger entry for approved booking (if payment is done)
     if (booking.paymentStatus === 'paid' && booking.totalAmount > 0) {
       try {
-        // Get venue details to get vendorId
-        const venueId = booking.venueId._id || booking.venueId;
-        const venue = await Venue.findById(venueId).populate('vendorId');
-        
         if (venue && venue.vendorId) {
           const vendorId = venue.vendorId._id || venue.vendorId;
           
@@ -1877,6 +2151,19 @@ export const approveBooking = async (req, res) => {
       } catch (ledgerError) {
         // Log error but don't fail the booking approval
         console.error('❌ Error creating ledger entry for approved booking:', ledgerError);
+      }
+    }
+    
+    // Send email notification to vendor (non-blocking)
+    if (vendorEmail) {
+      try {
+        const { sendBookingApprovalToVendor } = await import('../utils/emailService.js');
+        sendBookingApprovalToVendor(booking, vendorEmail).catch(err => 
+          console.error('Error sending booking approval email to vendor:', err)
+        );
+      } catch (emailError) {
+        console.error('Error setting up vendor email notification:', emailError);
+        // Don't fail the booking approval if email fails
       }
     }
     
@@ -2054,8 +2341,8 @@ export const getAnalytics = async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    // Monthly revenue
-    const monthlyRevenue = await Booking.aggregate([
+    // Monthly revenue from bookings
+    const monthlyBookingRevenue = await Booking.aggregate([
       { $match: { createdAt: { $gte: sixMonthsAgo } } },
       {
         $group: {
@@ -2064,7 +2351,42 @@ export const getAnalytics = async (req, res) => {
         },
       },
       { $sort: { _id: 1 } },
-    ]);
+    ]).catch(() => []);
+
+    // Monthly revenue from plan subscriptions
+    const monthlyPlanRevenue = await VendorPlanSubscription.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: sixMonthsAgo },
+          paymentStatus: 'completed'
+        } 
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          revenue: { $sum: '$amountPaid' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]).catch(() => []);
+
+    // Combine booking and plan subscription revenue by month
+    const revenueMap = new Map();
+    
+    // Add booking revenue
+    monthlyBookingRevenue.forEach(item => {
+      revenueMap.set(item._id, (revenueMap.get(item._id) || 0) + (item.revenue || 0));
+    });
+    
+    // Add plan subscription revenue
+    monthlyPlanRevenue.forEach(item => {
+      revenueMap.set(item._id, (revenueMap.get(item._id) || 0) + (item.revenue || 0));
+    });
+
+    // Convert map to array and sort by month
+    const monthlyRevenue = Array.from(revenueMap.entries())
+      .map(([month, revenue]) => ({ month, revenue }))
+      .sort((a, b) => a.month.localeCompare(b.month));
 
     // Bookings trend
     const bookingsTrend = await Booking.aggregate([
@@ -2122,7 +2444,7 @@ export const getAnalytics = async (req, res) => {
 
     res.json({
       monthlyRevenue: monthlyRevenue.map((item) => ({
-        month: item._id,
+        month: item.month,
         revenue: item.revenue || 0,
       })),
       bookingsTrend: bookingsTrend.map((item) => ({
@@ -2681,6 +3003,14 @@ export const updateEmailConfig = async (req, res) => {
       });
     }
 
+    // Validate SMTP Username is not an email address (common mistake)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(smtpUsername.trim())) {
+      return res.status(400).json({ 
+        message: 'SMTP Username should not be an email address. For ZeptoMail, use "emailapikey". For other providers, use your SMTP username (not email).' 
+      });
+    }
+
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
       try {
@@ -2826,6 +3156,471 @@ export const testEmail = async (req, res) => {
       message: 'Internal server error',
       error: error.message 
     });
+  }
+};
+
+// Test Template Email (Admin Only)
+export const testTemplateEmail = async (req, res) => {
+  try {
+    const { templateId, templateType, email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        message: 'Email address is required for testing' 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'Invalid email format' 
+      });
+    }
+
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        const { connectToDatabase } = await import('../config/db.js');
+        await connectToDatabase();
+      } catch (dbError) {
+        return res.status(503).json({ 
+          message: 'Database connection unavailable',
+          hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+        });
+      }
+    }
+
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    
+    // Get template by ID or type
+    let template;
+    if (templateId) {
+      template = await EmailTemplate.findById(templateId);
+    } else if (templateType) {
+      template = await EmailTemplate.findOne({ type: templateType });
+    } else {
+      return res.status(400).json({ 
+        message: 'Either templateId or templateType is required' 
+      });
+    }
+
+    if (!template) {
+      return res.status(404).json({ 
+        message: 'Template not found' 
+      });
+    }
+
+    if (!template.isActive) {
+      return res.status(400).json({ 
+        message: 'Template is not active. Please activate it first.' 
+      });
+    }
+
+    // Get admin email config for variables
+    const EmailConfig = (await import('../models/EmailConfig.js')).default;
+    const config = await EmailConfig.getConfig();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5175';
+    
+    // Generate sample variables based on template type
+    const sampleVariables = generateSampleVariables(template.type, {
+      frontendUrl,
+      smtpHost: config.smtpHost || 'smtp.zeptomail.in',
+      smtpPort: config.smtpPort || '465',
+      smtpSecurity: config.smtpSecurity || 'SSL',
+      fromAddress: config.emailFromAddress || 'no-reply@synilogicitsolution.com',
+    });
+
+    // Get template and replace variables
+    const { getTemplateAndReplaceVariables, sendEmail } = await import('../utils/emailService.js');
+    const templateData = await getTemplateAndReplaceVariables(template.type, sampleVariables);
+
+    if (!templateData) {
+      return res.status(500).json({ 
+        message: 'Failed to process template. Template may be missing or inactive.' 
+      });
+    }
+
+    const subject = templateData.subject || template.subject || 'Test Email - ShubhVenue';
+    const html = templateData.html;
+    const text = templateData.text;
+
+    // Send email
+    const result = await sendEmail({
+      to: email,
+      subject,
+      html,
+      text,
+    });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: `Test email sent successfully to ${email} using template: ${template.name}`,
+        messageId: result.messageId,
+        templateName: template.name,
+        templateType: template.type
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send test email',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('Test template email error:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+// Helper function to generate sample variables for testing
+function generateSampleVariables(templateType, baseVars) {
+  const sampleData = {
+    frontendUrl: baseVars.frontendUrl,
+    smtpHost: baseVars.smtpHost,
+    smtpPort: baseVars.smtpPort,
+    smtpSecurity: baseVars.smtpSecurity,
+    fromAddress: baseVars.fromAddress,
+    testDate: new Date().toLocaleDateString('en-IN', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }),
+  };
+
+  // Add template-specific sample data
+  switch (templateType) {
+    case 'customer_welcome':
+    case 'vendor_welcome':
+      sampleData.user = {
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        phone: '+91 9876543210'
+      };
+      break;
+    
+    case 'booking_confirmation':
+    case 'vendor_booking_confirmation':
+      sampleData.customerName = 'John Doe';
+      sampleData.bookingId = 'BKG12345';
+      sampleData.venueName = 'Grand Ballroom';
+      sampleData.bookingDate = '25 December 2024';
+      sampleData.guests = '100';
+      sampleData.totalAmount = '₹50,000';
+      sampleData.venue = {
+        name: 'Grand Ballroom',
+        address: '123 Event Street, City, State 12345',
+        phone: '+91 9876543210'
+      };
+      break;
+    
+    case 'booking_cancellation':
+      sampleData.customerName = 'John Doe';
+      sampleData.bookingId = 'BKG12345';
+      sampleData.venueName = 'Grand Ballroom';
+      sampleData.bookingDate = '25 December 2024';
+      sampleData.refundAmount = '₹50,000';
+      break;
+    
+    case 'review_notification_vendor':
+    case 'review_reply_customer':
+      sampleData.customerName = 'John Doe';
+      sampleData.venueName = 'Grand Ballroom';
+      sampleData.rating = '5';
+      sampleData.reviewText = 'Excellent service and beautiful venue!';
+      sampleData.venueSlug = 'grand-ballroom';
+      break;
+    
+    case 'verification_request_vendor':
+    case 'verification_request_admin':
+    case 'verification_approval_vendor':
+      sampleData.vendorName = 'ABC Events';
+      sampleData.vendorEmail = 'vendor@example.com';
+      sampleData.planName = 'Premium Plan';
+      break;
+    
+    case 'monthly_revenue_vendor':
+      sampleData.vendorName = 'ABC Events';
+      sampleData.monthName = 'January';
+      sampleData.year = '2024';
+      sampleData.totalRevenue = '₹1,00,000';
+      sampleData.bookingRevenue = '₹80,000';
+      sampleData.totalBookings = '10';
+      break;
+    
+    case 'monthly_revenue_admin':
+      sampleData.monthName = 'January';
+      sampleData.year = '2024';
+      sampleData.totalRevenue = '₹5,00,000';
+      sampleData.bookingRevenue = '₹4,00,000';
+      sampleData.planRevenue = '₹1,00,000';
+      sampleData.totalBookings = '50';
+      sampleData.planSubscriptions = '10';
+      break;
+    
+    case 'test_email':
+      // Already has all needed variables
+      break;
+    
+    default:
+      // Generic sample data
+      sampleData.customerName = 'John Doe';
+      sampleData.venueName = 'Grand Ballroom';
+      sampleData.bookingId = 'BKG12345';
+      break;
+  }
+
+  return sampleData;
+}
+
+// Email Templates CRUD (Admin Only)
+
+// Get all email templates
+export const getEmailTemplates = async (req, res) => {
+  try {
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    const templates = await EmailTemplate.find().sort({ type: 1, name: 1 });
+    
+    res.json({
+      success: true,
+      templates
+    });
+  } catch (error) {
+    console.error('Get email templates error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+// Get email template by ID
+export const getEmailTemplateById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    const template = await EmailTemplate.findById(id);
+    
+    if (!template) {
+      return res.status(404).json({ message: 'Email template not found' });
+    }
+    
+    res.json({
+      success: true,
+      template
+    });
+  } catch (error) {
+    console.error('Get email template error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid template ID' });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+// Create email template
+export const createEmailTemplate = async (req, res) => {
+  try {
+    const { name, type, subject, html, text, description, logoUrl, variables, isActive } = req.body;
+    
+    if (!name || !type || !html) {
+      return res.status(400).json({ message: 'Name, type, and HTML content are required' });
+    }
+    
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    
+    // Check if template with same name already exists
+    const existingTemplate = await EmailTemplate.findOne({ name });
+    if (existingTemplate) {
+      return res.status(409).json({ message: 'Template with this name already exists' });
+    }
+    
+    // Handle logo file upload - if logo file is uploaded, use its path
+    let finalLogoUrl = logoUrl || '';
+    if (req.file) {
+      // Logo file was uploaded
+      finalLogoUrl = `/uploads/email-logos/${req.file.filename}`;
+    } else if (!logoUrl) {
+      // No file and no URL - set default if needed
+      finalLogoUrl = '';
+    }
+    
+    // Parse variables if provided as JSON string
+    let parsedVariables = [];
+    if (variables) {
+      try {
+        parsedVariables = typeof variables === 'string' ? JSON.parse(variables) : variables;
+      } catch (e) {
+        parsedVariables = [];
+      }
+    }
+    
+    // Auto-generate text version from HTML if not provided
+    const finalText = text || html.replace(/<[^>]*>/g, '').trim();
+    
+    const template = await EmailTemplate.create({
+      name,
+      type,
+      subject: subject || '',
+      html,
+      text: finalText || '',
+      logoUrl: finalLogoUrl,
+      variables: parsedVariables || [],
+      description: description || '',
+      isActive: isActive !== undefined ? (isActive === 'true' || isActive === true) : true
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Email template created successfully',
+      template
+    });
+  } catch (error) {
+    console.error('Create email template error:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Template with this name already exists' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+// Update email template
+export const updateEmailTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, type, subject, html, text, description, logoUrl, variables, isActive } = req.body;
+    
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    const template = await EmailTemplate.findById(id);
+    
+    if (!template) {
+      return res.status(404).json({ message: 'Email template not found' });
+    }
+    
+    // Check if name is being changed and if new name already exists
+    if (name && name !== template.name) {
+      const existingTemplate = await EmailTemplate.findOne({ name });
+      if (existingTemplate) {
+        return res.status(409).json({ message: 'Template with this name already exists' });
+      }
+    }
+    
+    // Parse variables if provided as JSON string
+    let parsedVariables = template.variables;
+    if (variables !== undefined) {
+      try {
+        parsedVariables = typeof variables === 'string' ? JSON.parse(variables) : variables;
+      } catch (e) {
+        parsedVariables = template.variables;
+      }
+    }
+    
+    // Update fields - only update what's provided
+    if (name) template.name = name;
+    if (type) template.type = type;
+    if (subject !== undefined) template.subject = subject;
+    if (description !== undefined) template.description = description;
+    if (variables !== undefined) template.variables = parsedVariables;
+    
+    if (html) {
+      template.html = html;
+      // Auto-generate text version from HTML if text not provided
+      if (!text) {
+        template.text = html.replace(/<[^>]*>/g, '').trim();
+      }
+    }
+    
+    if (text !== undefined) template.text = text;
+    
+    // Handle logo file upload - if logo file is uploaded, use its path
+    if (req.file) {
+      // Logo file was uploaded - use the uploaded file path
+      template.logoUrl = `/uploads/email-logos/${req.file.filename}`;
+    } else if (logoUrl !== undefined && logoUrl !== null) {
+      // Logo URL was provided in body (could be empty string to remove logo, or URL to set)
+      template.logoUrl = logoUrl || '';
+    }
+    // If no file and no logoUrl provided, existing logoUrl is preserved
+    
+    if (isActive !== undefined) template.isActive = isActive === 'true' || isActive === true;
+    
+    await template.save();
+    
+    res.json({
+      success: true,
+      message: 'Email template updated successfully',
+      template
+    });
+  } catch (error) {
+    console.error('Update email template error:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Template with this name already exists' });
+    }
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid template ID' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+// Delete email template
+export const deleteEmailTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    const template = await EmailTemplate.findByIdAndDelete(id);
+    
+    if (!template) {
+      return res.status(404).json({ message: 'Email template not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Email template deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete email template error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid template ID' });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+// Toggle template active status
+export const toggleEmailTemplateActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const EmailTemplate = (await import('../models/EmailTemplate.js')).default;
+    const template = await EmailTemplate.findById(id);
+    
+    if (!template) {
+      return res.status(404).json({ message: 'Email template not found' });
+    }
+    
+    template.isActive = !template.isActive;
+    await template.save();
+    
+    res.json({
+      success: true,
+      message: `Template ${template.isActive ? 'activated' : 'deactivated'} successfully`,
+      template
+    });
+  } catch (error) {
+    console.error('Toggle template active error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid template ID' });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
 
@@ -4678,6 +5473,535 @@ export const getVendorCategoriesPublic = async (req, res) => {
     });
   } catch (error) {
     console.error('Get vendor categories public error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// ==================== PLAN MANAGEMENT ====================
+
+// Get all plans
+export const getPlans = async (req, res) => {
+  try {
+    const { isActive } = req.query;
+    const query = {};
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
+    
+    const plans = await Plan.find(query)
+      .sort({ priority: -1, createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: plans.length,
+      plans
+    });
+  } catch (error) {
+    console.error('Get plans error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get plan by ID
+export const getPlanById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid plan ID' });
+    }
+    
+    const plan = await Plan.findById(id);
+    
+    if (!plan) {
+      return res.status(404).json({ message: 'Plan not found' });
+    }
+    
+    res.json({
+      success: true,
+      plan
+    });
+  } catch (error) {
+    console.error('Get plan by ID error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Create plan
+export const createPlan = async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      price,
+      duration,
+      durationUnit,
+      features,
+      isActive,
+      maxVenues,
+      priority
+    } = req.body;
+    
+    if (!name || !price || !duration) {
+      return res.status(400).json({ 
+        message: 'Name, price, and duration are required' 
+      });
+    }
+    
+    if (price < 0) {
+      return res.status(400).json({ message: 'Price must be non-negative' });
+    }
+    
+    if (duration < 1) {
+      return res.status(400).json({ message: 'Duration must be at least 1' });
+    }
+    
+    const plan = new Plan({
+      name,
+      description,
+      price,
+      duration,
+      durationUnit: durationUnit || 'months',
+      features: Array.isArray(features) ? features : [],
+      isActive: isActive !== undefined ? isActive : true,
+      maxVenues: maxVenues || 1,
+      priority: priority || 0
+    });
+    
+    await plan.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Plan created successfully',
+      plan
+    });
+  } catch (error) {
+    console.error('Create plan error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update plan
+export const updatePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      description,
+      price,
+      duration,
+      durationUnit,
+      features,
+      isActive,
+      maxVenues,
+      priority
+    } = req.body;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid plan ID' });
+    }
+    
+    const plan = await Plan.findById(id);
+    
+    if (!plan) {
+      return res.status(404).json({ message: 'Plan not found' });
+    }
+    
+    if (name !== undefined) plan.name = name;
+    if (description !== undefined) plan.description = description;
+    if (price !== undefined) {
+      if (price < 0) {
+        return res.status(400).json({ message: 'Price must be non-negative' });
+      }
+      plan.price = price;
+    }
+    if (duration !== undefined) {
+      if (duration < 1) {
+        return res.status(400).json({ message: 'Duration must be at least 1' });
+      }
+      plan.duration = duration;
+    }
+    if (durationUnit !== undefined) plan.durationUnit = durationUnit;
+    if (features !== undefined) plan.features = Array.isArray(features) ? features : [];
+    if (isActive !== undefined) plan.isActive = isActive;
+    if (maxVenues !== undefined) plan.maxVenues = maxVenues;
+    if (priority !== undefined) plan.priority = priority;
+    
+    await plan.save();
+    
+    res.json({
+      success: true,
+      message: 'Plan updated successfully',
+      plan
+    });
+  } catch (error) {
+    console.error('Update plan error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete plan
+export const deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid plan ID' });
+    }
+    
+    const plan = await Plan.findById(id);
+    
+    if (!plan) {
+      return res.status(404).json({ message: 'Plan not found' });
+    }
+    
+    // Check if plan has active subscriptions
+    const activeSubscriptions = await VendorPlanSubscription.find({
+      planId: id,
+      status: 'active',
+      paymentStatus: 'completed'
+    });
+    
+    let cancelledSubscriptionsCount = 0;
+    let unverifiedVenuesCount = 0;
+    
+    if (activeSubscriptions.length > 0) {
+      // Cancel all active subscriptions for this plan
+      const subscriptionIds = activeSubscriptions.map(sub => sub._id);
+      
+      await VendorPlanSubscription.updateMany(
+        { _id: { $in: subscriptionIds } },
+        { status: 'cancelled' }
+      );
+      
+      cancelledSubscriptionsCount = subscriptionIds.length;
+      
+      // Collect all venue IDs from these subscriptions
+      const allVenueIds = [];
+      activeSubscriptions.forEach(sub => {
+        if (sub.venueIds && Array.isArray(sub.venueIds)) {
+          sub.venueIds.forEach(vid => {
+            let venueIdStr;
+            if (typeof vid === 'object' && vid._id) {
+              venueIdStr = vid._id.toString();
+            } else if (typeof vid === 'object' && vid.toString) {
+              venueIdStr = vid.toString();
+            } else {
+              venueIdStr = String(vid);
+            }
+            if (venueIdStr && mongoose.Types.ObjectId.isValid(venueIdStr)) {
+              allVenueIds.push(venueIdStr);
+            }
+          });
+        }
+      });
+      
+      // Remove duplicates
+      const uniqueVenueIds = [...new Set(allVenueIds)];
+      
+      if (uniqueVenueIds.length > 0) {
+        // Unverify all venues that were verified through these subscriptions
+        const result = await Venue.updateMany(
+          { 
+            _id: { $in: uniqueVenueIds },
+            verifiedListingPlanId: id
+          },
+          { 
+            verifiedListing: false,
+            verifiedListingExpiry: null,
+            verifiedListingPlanId: null
+          }
+        );
+        
+        unverifiedVenuesCount = result.modifiedCount || 0;
+      }
+      
+      console.log(`✅ Plan deletion: Cancelled ${cancelledSubscriptionsCount} subscription(s) and unverified ${unverifiedVenuesCount} venue(s)`);
+    }
+    
+    // Delete the plan
+    await Plan.findByIdAndDelete(id);
+    
+    let message = 'Plan deleted successfully';
+    if (cancelledSubscriptionsCount > 0 || unverifiedVenuesCount > 0) {
+      message = `Plan deleted successfully. ${cancelledSubscriptionsCount} active subscription(s) cancelled and ${unverifiedVenuesCount} venue(s) unverified.`;
+    }
+    
+    res.json({
+      success: true,
+      message,
+      cancelledSubscriptions: cancelledSubscriptionsCount,
+      unverifiedVenues: unverifiedVenuesCount
+    });
+  } catch (error) {
+    console.error('Delete plan error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid plan ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get all vendor plan subscriptions
+export const getVendorPlanSubscriptions = async (req, res) => {
+  try {
+    const { vendorId, status } = req.query;
+    const query = {};
+    
+    if (vendorId) {
+      if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+        return res.status(400).json({ message: 'Invalid vendor ID' });
+      }
+      query.vendorId = vendorId;
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    const subscriptions = await VendorPlanSubscription.find(query)
+      .populate('vendorId', 'name email phone')
+      .populate('planId', 'name price duration durationUnit')
+      .populate('venueIds', 'name')
+      .populate('adminVerifiedBy', 'name email')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: subscriptions.length,
+      subscriptions
+    });
+  } catch (error) {
+    console.error('Get vendor plan subscriptions error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get pending verification requests
+export const getPendingVerificationRequests = async (req, res) => {
+  try {
+    const subscriptions = await VendorPlanSubscription.find({
+      status: 'pending_verification',
+      paymentStatus: 'completed',
+      adminVerified: false
+    })
+      .populate('vendorId', 'name email phone')
+      .populate('planId', 'name price duration durationUnit priority')
+      .populate('venueIds', 'name status')
+      .sort({ createdAt: 1 }); // Oldest first - FIFO
+    
+    res.json({
+      success: true,
+      count: subscriptions.length,
+      requests: subscriptions
+    });
+  } catch (error) {
+    console.error('Get pending verification requests error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Approve verification request
+export const approveVerificationRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user?.userId;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid subscription ID' });
+    }
+    
+    const subscription = await VendorPlanSubscription.findById(id)
+      .populate('planId')
+      .populate('venueIds');
+    
+    if (!subscription) {
+      return res.status(404).json({ message: 'Verification request not found' });
+    }
+    
+    if (subscription.status !== 'pending_verification') {
+      return res.status(400).json({ 
+        message: `Subscription is not pending verification. Current status: ${subscription.status}` 
+      });
+    }
+    
+    if (subscription.paymentStatus !== 'completed') {
+      return res.status(400).json({ 
+        message: 'Cannot approve: Payment not completed' 
+      });
+    }
+    
+    // Approve and activate subscription
+    subscription.status = 'active';
+    subscription.adminVerified = true;
+    subscription.adminVerifiedAt = new Date();
+    subscription.adminVerifiedBy = adminId;
+    subscription.adminRejectionReason = null;
+    
+    await subscription.save();
+    
+    // Activate verified listing for venues
+    if (subscription.venueIds && subscription.venueIds.length > 0) {
+      const venueIds = subscription.venueIds.map(v => v._id || v);
+      
+      await Venue.updateMany(
+        { _id: { $in: venueIds } },
+        {
+          verifiedListing: true,
+          verifiedListingExpiry: subscription.endDate,
+          verifiedListingPlanId: subscription.planId._id || subscription.planId
+        }
+      );
+      
+      console.log(`✅ Approved verification: Activated verified listing for ${venueIds.length} venue(s)`);
+    }
+    
+    // Populate subscription for email
+    const populatedSubscription = await VendorPlanSubscription.findById(id)
+      .populate('vendorId', 'name email phone')
+      .populate('planId', 'name price duration durationUnit')
+      .populate('venueIds', 'name')
+      .populate('adminVerifiedBy', 'name email');
+    
+    // Send approval email to vendor (non-blocking)
+    try {
+      const { sendVerificationApprovalEmailToVendor } = await import('../utils/emailService.js');
+      
+      if (populatedSubscription.vendorId && populatedSubscription.vendorId.email) {
+        console.log('📧 Sending verification approval email to vendor:', populatedSubscription.vendorId.email);
+        sendVerificationApprovalEmailToVendor(populatedSubscription.vendorId, populatedSubscription).catch(err => 
+          console.error('Error sending verification approval email to vendor:', err)
+        );
+      }
+    } catch (emailError) {
+      console.error('Error setting up verification approval email:', emailError);
+      // Don't fail the approval if email fails
+    }
+    
+    res.json({
+      success: true,
+      message: 'Verification request approved successfully. Venues have been verified.',
+      subscription: populatedSubscription
+    });
+  } catch (error) {
+    console.error('Approve verification request error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid subscription ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Reject verification request
+export const rejectVerificationRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+    const adminId = req.user?.userId;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid subscription ID' });
+    }
+    
+    if (!rejectionReason || !rejectionReason.trim()) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+    
+    const subscription = await VendorPlanSubscription.findById(id);
+    
+    if (!subscription) {
+      return res.status(404).json({ message: 'Verification request not found' });
+    }
+    
+    if (subscription.status !== 'pending_verification') {
+      return res.status(400).json({ 
+        message: `Subscription is not pending verification. Current status: ${subscription.status}` 
+      });
+    }
+    
+    // Reject verification request
+    subscription.status = 'cancelled';
+    subscription.adminVerified = false;
+    subscription.adminVerifiedAt = new Date();
+    subscription.adminVerifiedBy = adminId;
+    subscription.adminRejectionReason = rejectionReason.trim();
+    
+    await subscription.save();
+    
+    // DO NOT verify venues - subscription is rejected
+    
+    res.json({
+      success: true,
+      message: 'Verification request rejected successfully.',
+      subscription: await VendorPlanSubscription.findById(id)
+        .populate('vendorId', 'name email phone')
+        .populate('planId', 'name price duration durationUnit')
+        .populate('adminVerifiedBy', 'name email')
+    });
+  } catch (error) {
+    console.error('Reject verification request error:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid subscription ID' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get Plan Subscriptions Configuration (Admin Only)
+export const getPlanSubscriptionsConfig = async (req, res) => {
+  try {
+    const config = await AppConfig.getConfig();
+    
+    res.json({
+      success: true,
+      config: {
+        planSubscriptionsEnabled: config.planSubscriptionsEnabled !== undefined ? config.planSubscriptionsEnabled : true,
+        updatedAt: config.updatedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Get plan subscriptions config error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Update Plan Subscriptions Configuration (Admin Only)
+export const updatePlanSubscriptionsConfig = async (req, res) => {
+  try {
+    const { planSubscriptionsEnabled } = req.body;
+
+    if (typeof planSubscriptionsEnabled !== 'boolean') {
+      return res.status(400).json({ 
+        message: 'planSubscriptionsEnabled must be a boolean value' 
+      });
+    }
+
+    let config = await AppConfig.findOne();
+    
+    if (config) {
+      config.planSubscriptionsEnabled = planSubscriptionsEnabled;
+      await config.save();
+      console.log(`✅ Plan subscriptions ${planSubscriptionsEnabled ? 'enabled' : 'disabled'}`);
+    } else {
+      config = await AppConfig.create({
+        planSubscriptionsEnabled,
+      });
+      console.log(`✅ Plan subscriptions config created: ${planSubscriptionsEnabled ? 'enabled' : 'disabled'}`);
+    }
+
+    res.json({
+      success: true,
+      message: `Plan subscriptions ${planSubscriptionsEnabled ? 'enabled' : 'disabled'} successfully`,
+      config: {
+        planSubscriptionsEnabled: config.planSubscriptionsEnabled,
+        updatedAt: config.updatedAt,
+      }
+    });
+  } catch (error) {
+    console.error('Update plan subscriptions config error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Internal server error' });
   }
 };

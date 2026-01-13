@@ -400,6 +400,14 @@ const formatVenueResponse = async (venue) => {
     vendorActive: venueObj.vendorActive !== undefined ? venueObj.vendorActive : true,
     bookingButtonEnabled: venueObj.bookingButtonEnabled !== undefined ? venueObj.bookingButtonEnabled : true,
     leadsButtonEnabled: venueObj.leadsButtonEnabled !== undefined ? venueObj.leadsButtonEnabled : true,
+    verifiedListing: venueObj.verifiedListing || false,
+    verifiedListingExpiry: venueObj.verifiedListingExpiry || null,
+    verifiedListingPlanId: venueObj.verifiedListingPlanId || null,
+    verifiedListingPlan: venueObj.verifiedListingPlanId && typeof venueObj.verifiedListingPlanId === 'object' ? {
+      _id: venueObj.verifiedListingPlanId._id,
+      name: venueObj.verifiedListingPlanId.name,
+      priority: venueObj.verifiedListingPlanId.priority
+    } : null,
     createdAt: venueObj.createdAt,
     updatedAt: venueObj.updatedAt
   };
@@ -698,7 +706,7 @@ export const getVenues = async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    // Sorting
+    // Sorting - prioritize verified listings
     let sort = { createdAt: -1 }; // Default: newest first
     if (req.query.sortBy) {
       const sortField = req.query.sortBy;
@@ -706,10 +714,49 @@ export const getVenues = async (req, res) => {
       sort = { [sortField]: sortOrder };
     }
 
+    // For public access, prioritize verified listings
+    // Verified listings should appear first, then sort by other criteria
+    if (userRole !== 'vendor' && userRole !== 'vendor_staff') {
+      // Get plan priorities for verified listings
+      const Plan = (await import('../models/Plan.js')).default;
+      const VendorPlanSubscription = (await import('../models/VendorPlanSubscription.js')).default;
+      
+      // Get active subscriptions with plan priorities (only admin verified ones)
+      const activeSubscriptions = await VendorPlanSubscription.find({
+        status: 'active',
+        paymentStatus: 'completed',
+        adminVerified: true,
+        endDate: { $gte: new Date() }
+      })
+        .populate('planId', 'priority')
+        .lean();
+      
+      // Create map of venueId to plan priority
+      const venuePriorityMap = {};
+      activeSubscriptions.forEach(sub => {
+        const priority = sub.planId?.priority || 0;
+        sub.venueIds.forEach(venueId => {
+          const venueIdStr = venueId.toString();
+          // Use highest priority if venue has multiple subscriptions
+          if (!venuePriorityMap[venueIdStr] || priority > venuePriorityMap[venueIdStr]) {
+            venuePriorityMap[venueIdStr] = priority;
+          }
+        });
+      });
+      
+      // Update sort to prioritize verified listings with higher plan priority
+      sort = {
+        verifiedListing: -1, // Verified listings first (true = 1, false = 0, so -1 puts true first)
+        verifiedListingExpiry: -1, // Among verified, those with later expiry first
+        ...sort // Then apply user's sort preference
+      };
+    }
+
     // Execute query with pagination and timeout
     const queryPromise = Venue.find(filter)
       .populate('vendorId', 'name email phone')
       .populate('categoryId', 'name description icon image')
+      .populate('verifiedListingPlanId', 'name priority')
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -793,6 +840,30 @@ export const getVenues = async (req, res) => {
       const searchRadius = parseFloat(radius) || 50; // Default 50km radius
 
       if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(searchRadius)) {
+        // Get plan priorities for verified listings
+        const Plan = (await import('../models/Plan.js')).default;
+        const VendorPlanSubscription = (await import('../models/VendorPlanSubscription.js')).default;
+        
+        const activeSubscriptions = await VendorPlanSubscription.find({
+          status: 'active',
+          paymentStatus: 'completed',
+          adminVerified: true,
+          endDate: { $gte: new Date() }
+        })
+          .populate('planId', 'priority')
+          .lean();
+        
+        const venuePriorityMap = {};
+        activeSubscriptions.forEach(sub => {
+          const priority = sub.planId?.priority || 0;
+          sub.venueIds.forEach(venueId => {
+            const venueIdStr = venueId.toString();
+            if (!venuePriorityMap[venueIdStr] || priority > venuePriorityMap[venueIdStr]) {
+              venuePriorityMap[venueIdStr] = priority;
+            }
+          });
+        });
+        
         // Calculate distance for each venue and filter by radius
         const venuesWithDistance = formattedVenues
           .map(venue => {
@@ -812,10 +883,14 @@ export const getVenues = async (req, res) => {
               distance = calculateDistance(userLat, userLon, venueLat, venueLon);
             }
 
+            const venueIdStr = venue.id || venue._id?.toString();
+            const planPriority = venuePriorityMap[venueIdStr] || 0;
+
             return {
               ...venue,
               distance: distance, // Distance in kilometers
-              hasCoordinates: venueLat !== null && venueLon !== null
+              hasCoordinates: venueLat !== null && venueLon !== null,
+              planPriority: planPriority
             };
           })
           .filter(venue => {
@@ -827,9 +902,17 @@ export const getVenues = async (req, res) => {
             return venue.distance <= searchRadius;
           })
           .sort((a, b) => {
-            // Sort by distance (nearest first)
-            // Venues with coordinates come first, sorted by distance
-            // Venues without coordinates come last
+            // Sort: verified listings first (by plan priority), then by distance
+            // Verified listings with higher priority come first
+            if (a.verifiedListing && !b.verifiedListing) return -1;
+            if (!a.verifiedListing && b.verifiedListing) return 1;
+            if (a.verifiedListing && b.verifiedListing) {
+              // Both verified - sort by plan priority first, then distance
+              if (a.planPriority !== b.planPriority) {
+                return b.planPriority - a.planPriority; // Higher priority first
+              }
+            }
+            // For same verification status, sort by distance
             if (a.distance === null && b.distance === null) return 0;
             if (a.distance === null) return 1;
             if (b.distance === null) return -1;
@@ -841,6 +924,47 @@ export const getVenues = async (req, res) => {
         // Update totalCount to reflect filtered results
         totalCount = formattedVenues.length;
       }
+    } else {
+      // If no location provided, still prioritize verified listings
+      // Sort by verified status and plan priority
+      const Plan = (await import('../models/Plan.js')).default;
+      const VendorPlanSubscription = (await import('../models/VendorPlanSubscription.js')).default;
+      
+      const activeSubscriptions = await VendorPlanSubscription.find({
+        status: 'active',
+        paymentStatus: 'completed',
+        adminVerified: true,
+        endDate: { $gte: new Date() }
+      })
+        .populate('planId', 'priority')
+        .lean();
+      
+      const venuePriorityMap = {};
+      activeSubscriptions.forEach(sub => {
+        const priority = sub.planId?.priority || 0;
+        sub.venueIds.forEach(venueId => {
+          const venueIdStr = venueId.toString();
+          if (!venuePriorityMap[venueIdStr] || priority > venuePriorityMap[venueIdStr]) {
+            venuePriorityMap[venueIdStr] = priority;
+          }
+        });
+      });
+      
+      formattedVenues = formattedVenues.map(venue => {
+        const venueIdStr = venue.id || venue._id?.toString();
+        return {
+          ...venue,
+          planPriority: venuePriorityMap[venueIdStr] || 0
+        };
+      }).sort((a, b) => {
+        // Verified listings first, sorted by plan priority
+        if (a.verifiedListing && !b.verifiedListing) return -1;
+        if (!a.verifiedListing && b.verifiedListing) return 1;
+        if (a.verifiedListing && b.verifiedListing) {
+          return b.planPriority - a.planPriority; // Higher priority first
+        }
+        return 0; // Keep original sort for unverified
+      });
     }
 
     res.json({

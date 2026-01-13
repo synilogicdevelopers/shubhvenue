@@ -274,6 +274,20 @@ const venueSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected', 'active'],
       default: 'pending'
     },
+    // Verified listing status - set when vendor purchases a plan
+    verifiedListing: {
+      type: Boolean,
+      default: false
+    },
+    verifiedListingExpiry: {
+      type: Date,
+      default: null
+    },
+    verifiedListingPlanId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Plan',
+      default: null
+    },
   // Vendor-controlled visibility (independent of admin approval)
   vendorActive: {
     type: Boolean,
@@ -335,6 +349,8 @@ venueSchema.index({ 'ratingInfo.average': -1 });
 venueSchema.index({ 'capacity.minGuests': 1 });
 venueSchema.index({ 'capacity.maxGuests': 1 });
 venueSchema.index({ isFeatured: 1 });
+venueSchema.index({ verifiedListing: 1 });
+venueSchema.index({ verifiedListingExpiry: 1 });
 venueSchema.index({ categoryId: 1 });
 venueSchema.index({ menuId: 1 });
 venueSchema.index({ subMenuId: 1 });

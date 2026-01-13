@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { forceLogout } from '../../utils/auth/logout';
 
 // Server base URL - use localhost for development
 const API_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api';
@@ -39,9 +40,13 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      window.location.href = '/admin/login';
+      // Session expired - force logout
       toast.error('Session expired. Please login again.');
+      forceLogout('expired', '/admin/login');
+    } else if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+      // User is blocked - logout immediately and clear all data
+      toast.error('Your account has been blocked. Please contact support.');
+      forceLogout('blocked', '/admin/login');
     } else if (error.response?.status === 503) {
       const message = error.response?.data?.message || 'Database connection unavailable';
       const hint = error.response?.data?.hint || '';
@@ -96,6 +101,23 @@ export const vendorsAPI = {
   updateCategory: (vendorId, categoryId) => api.put(`/admin/vendors/${vendorId}/category`, { categoryId: categoryId || null }),
 };
 
+// Plans APIs
+export const plansAPI = {
+  getAll: (params) => api.get('/admin/plans', { params }),
+  getById: (id) => api.get(`/admin/plans/${id}`),
+  create: (data) => api.post('/admin/plans', data),
+  update: (id, data) => api.put(`/admin/plans/${id}`, data),
+  delete: (id) => api.delete(`/admin/plans/${id}`),
+};
+
+// Plan Subscriptions APIs
+export const planSubscriptionsAPI = {
+  getAll: (params) => api.get('/admin/plan-subscriptions', { params }),
+  getPendingVerificationRequests: () => api.get('/admin/verification-requests/pending'),
+  approveVerificationRequest: (id) => api.put(`/admin/verification-requests/${id}/approve`),
+  rejectVerificationRequest: (id, reason) => api.put(`/admin/verification-requests/${id}/reject`, { rejectionReason: reason }),
+};
+
 // Vendor Categories APIs
 export const vendorCategoriesAPI = {
   getAll: (params) => api.get('/admin/vendor-categories', { params }),
@@ -144,6 +166,7 @@ export const venuesAPI = {
   approve: (id) => api.put(`/admin/venues/approve/${id}`),
   reject: (id) => api.put(`/admin/venues/reject/${id}`),
   updateButtonSettings: (id, data) => api.put(`/admin/venues/${id}/button-settings`, data),
+  verify: (id, verified = true) => api.put(`/admin/venues/${id}`, { verifiedListing: verified }),
   getStates: () => api.get('/vendor/venues/states'),
   getCities: (state) => api.get('/vendor/venues/cities', { params: { state } }),
 };
@@ -188,12 +211,50 @@ export const paymentConfigAPI = {
 export const emailConfigAPI = {
   get: () => api.get('/admin/email-config'),
   update: (data) => api.put('/admin/email-config', data),
+  test: (email) => api.post('/admin/email-config/test', { email }),
+};
+
+// Email Templates APIs
+export const emailTemplatesAPI = {
+  getAll: () => api.get('/admin/email-templates'),
+  getById: (id) => api.get(`/admin/email-templates/${id}`),
+  create: (data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.post('/admin/email-templates', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.post('/admin/email-templates', data);
+  },
+  update: (id, data) => {
+    // Check if data is FormData (file upload)
+    if (data instanceof FormData) {
+      return api.put(`/admin/email-templates/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    return api.put(`/admin/email-templates/${id}`, data);
+  },
+  delete: (id) => api.delete(`/admin/email-templates/${id}`),
+  toggleActive: (id) => api.put(`/admin/email-templates/${id}/toggle-active`),
+  test: (templateId, templateType, email) => api.post('/admin/email-templates/test', { templateId, templateType, email }),
 };
 
 // Google Maps Config APIs
 export const googleMapsConfigAPI = {
   get: () => api.get('/admin/google-maps-config'),
   update: (data) => api.put('/admin/google-maps-config', data),
+};
+
+// Plan Subscriptions Config APIs
+export const planSubscriptionsConfigAPI = {
+  get: () => api.get('/admin/plan-subscriptions-config'),
+  update: (data) => api.put('/admin/plan-subscriptions-config', data),
 };
 
 // Categories APIs

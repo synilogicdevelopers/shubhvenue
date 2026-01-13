@@ -3,10 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ad
 import { Button } from '../../../components/admin/ui/Button';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
-import { authAPI, paymentConfigAPI, emailConfigAPI, googleMapsConfigAPI, legalPagesAPI } from '../../../services/admin/api';
+import { authAPI, paymentConfigAPI, emailConfigAPI, googleMapsConfigAPI, planSubscriptionsConfigAPI, legalPagesAPI } from '../../../services/admin/api';
 import { setTheme, getTheme } from '../../../utils/theme';
 import toast from 'react-hot-toast';
-import { User, Lock, Moon, Sun, LogOut, Trash2, CreditCard, Eye, EyeOff, MapPin, FileText, ChevronDown, Mail } from 'lucide-react';
+import { User, Lock, Moon, Sun, LogOut, Trash2, CreditCard, Eye, EyeOff, MapPin, FileText, ChevronDown, Mail, Package } from 'lucide-react';
 
 export const Settings = () => {
   const [profile, setProfile] = useState({ name: '', email: '' });
@@ -47,6 +47,7 @@ export const Settings = () => {
   });
   const [showEmailPassword, setShowEmailPassword] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [selectedLegalPage, setSelectedLegalPage] = useState('privacy-policy');
   const [legalPageData, setLegalPageData] = useState({
     title: '',
@@ -57,12 +58,15 @@ export const Settings = () => {
   const [legalPageSaving, setLegalPageSaving] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [planSubscriptionsEnabled, setPlanSubscriptionsEnabled] = useState(true);
+  const [planSubscriptionsLoading, setPlanSubscriptionsLoading] = useState(false);
 
   useEffect(() => {
     fetchProfile();
     fetchPaymentConfig();
     fetchEmailConfig();
     fetchGoogleMapsConfig();
+    fetchPlanSubscriptionsConfig();
     fetchLegalPage();
   }, [selectedLegalPage]);
 
@@ -234,29 +238,35 @@ const handleConfirmAction = async () => {
       console.log('Email config response:', response.data);
       if (response.data?.success && response.data?.config) {
         const config = response.data.config;
+        console.log('Raw config from backend:', config);
+        console.log('SMTP Username from backend:', config.smtpUsername);
+        
         const emailConfigData = {
-          smtpUsername: config.smtpUsername || '',
+          smtpUsername: config.smtpUsername ? String(config.smtpUsername).trim() : '',
           smtpPassword: '', // Don't load masked password
-          smtpHost: config.smtpHost || '',
-          mailDriver: config.mailDriver || '',
-          smtpPort: config.smtpPort?.toString() || '',
-          smtpSecurity: config.smtpSecurity || '',
-          smtpAuthDomain: config.smtpAuthDomain || '',
-          smtpAddress: config.smtpAddress || '',
-          emailFromAddress: config.emailFromAddress || '',
-          emailFromName: config.emailFromName || '',
-          replyEmailAddress: config.replyEmailAddress || '',
-          replyEmailName: config.replyEmailName || '',
-          adminNotificationEmail: config.adminNotificationEmail || '',
+          smtpHost: config.smtpHost ? String(config.smtpHost).trim() : '',
+          mailDriver: config.mailDriver ? String(config.mailDriver).trim() : '',
+          smtpPort: config.smtpPort ? String(config.smtpPort) : '',
+          smtpSecurity: config.smtpSecurity ? String(config.smtpSecurity).trim() : '',
+          smtpAuthDomain: config.smtpAuthDomain ? String(config.smtpAuthDomain).trim() : '',
+          smtpAddress: config.smtpAddress ? String(config.smtpAddress).trim() : '',
+          emailFromAddress: config.emailFromAddress ? String(config.emailFromAddress).trim() : '',
+          emailFromName: config.emailFromName ? String(config.emailFromName).trim() : '',
+          replyEmailAddress: config.replyEmailAddress ? String(config.replyEmailAddress).trim() : '',
+          replyEmailName: config.replyEmailName ? String(config.replyEmailName).trim() : '',
+          adminNotificationEmail: config.adminNotificationEmail ? String(config.adminNotificationEmail).trim() : '',
         };
-        console.log('Setting email config:', emailConfigData);
+        console.log('Setting email config data:', emailConfigData);
+        console.log('SMTP Username being set:', emailConfigData.smtpUsername);
         setEmailConfig(emailConfigData);
       } else {
         console.warn('Email config response format unexpected:', response.data);
+        toast.error('Failed to load email configuration');
       }
     } catch (error) {
       console.error('Failed to load email config:', error);
       console.error('Error details:', error.response?.data || error.message);
+      toast.error('Failed to load email configuration');
     }
   };
 
@@ -302,6 +312,29 @@ const handleConfirmAction = async () => {
       toast.error(errorMessage);
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!emailConfig.adminNotificationEmail) {
+      toast.error('Please set admin notification email first');
+      return;
+    }
+
+    setTestEmailLoading(true);
+    try {
+      const response = await emailConfigAPI.test(emailConfig.adminNotificationEmail);
+      if (response.data?.success || response.data?.message) {
+        toast.success(response.data?.message || 'Test email sent successfully! Please check your inbox.');
+      } else {
+        toast.error(response.data?.message || 'Failed to send test email');
+      }
+    } catch (error) {
+      console.error('Test email error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to send test email';
+      toast.error(errorMessage);
+    } finally {
+      setTestEmailLoading(false);
     }
   };
 
@@ -430,6 +463,39 @@ const handleConfirmAction = async () => {
       toast.error(errorMessage);
     } finally {
       setMapsLoading(false);
+    }
+  };
+
+  const fetchPlanSubscriptionsConfig = async () => {
+    try {
+      const response = await planSubscriptionsConfigAPI.get();
+      if (response.data?.config) {
+        setPlanSubscriptionsEnabled(response.data.config.planSubscriptionsEnabled !== undefined ? response.data.config.planSubscriptionsEnabled : true);
+      }
+    } catch (error) {
+      console.error('Failed to load plan subscriptions config:', error);
+    }
+  };
+
+  const handlePlanSubscriptionsConfigUpdate = async (enabled) => {
+    setPlanSubscriptionsLoading(true);
+    try {
+      const response = await planSubscriptionsConfigAPI.update({
+        planSubscriptionsEnabled: enabled,
+      });
+      
+      if (response.data?.success) {
+        setPlanSubscriptionsEnabled(enabled);
+        toast.success(`Plan subscriptions ${enabled ? 'enabled' : 'disabled'} successfully`);
+      } else {
+        toast.error(response.data?.message || `Failed to ${enabled ? 'enable' : 'disable'} plan subscriptions`);
+      }
+    } catch (error) {
+      console.error('Plan subscriptions config update error:', error);
+      const errorMessage = error.response?.data?.message || error.message || `Failed to ${enabled ? 'enable' : 'disable'} plan subscriptions`;
+      toast.error(errorMessage);
+    } finally {
+      setPlanSubscriptionsLoading(false);
     }
   };
 
@@ -695,7 +761,9 @@ const handleConfirmAction = async () => {
           <form onSubmit={handleEmailConfigUpdate} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">SMTP Username</label>
+                <label className="block text-sm font-medium mb-2">
+                  SMTP Username <span className="text-red-500">*</span>
+                </label>
                 <Input
                   type="text"
                   value={emailConfig.smtpUsername}
@@ -703,6 +771,9 @@ const handleConfirmAction = async () => {
                   placeholder="emailapikey"
                   required
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  SMTP authentication username (NOT an email address). For ZeptoMail, use "emailapikey". For other providers, use your SMTP username.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">SMTP Password</label>
@@ -838,9 +909,21 @@ const handleConfirmAction = async () => {
                 </p>
               </div>
             </div>
-            <Button type="submit" loading={emailLoading}>
-              Update Email Configuration
-            </Button>
+            <div className="flex gap-3">
+              <Button type="submit" loading={emailLoading}>
+                Update Email Configuration
+              </Button>
+              <Button 
+                type="button" 
+                onClick={handleTestEmail}
+                loading={testEmailLoading}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                Test Email
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -898,6 +981,67 @@ const handleConfirmAction = async () => {
               Update Google Maps API Key
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Plan Subscriptions Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Plan Subscriptions Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Plan Subscriptions Status</label>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="subscriptions-enabled"
+                    name="planSubscriptions"
+                    checked={planSubscriptionsEnabled === true}
+                    onChange={() => handlePlanSubscriptionsConfigUpdate(true)}
+                    disabled={planSubscriptionsLoading}
+                    className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="subscriptions-enabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Enabled
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    id="subscriptions-disabled"
+                    name="planSubscriptions"
+                    checked={planSubscriptionsEnabled === false}
+                    onChange={() => handlePlanSubscriptionsConfigUpdate(false)}
+                    disabled={planSubscriptionsLoading}
+                    className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+                  />
+                  <label htmlFor="subscriptions-disabled" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Disabled
+                  </label>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {planSubscriptionsEnabled ? (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✓ Vendors can purchase plans to verify their venues
+                  </span>
+                ) : (
+                  <span className="text-orange-600 dark:text-orange-400">
+                    ⚠️ Plan subscriptions are disabled. Vendors cannot purchase plans.
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                When disabled, vendors will not be able to purchase plans. Existing subscriptions will remain active but no new purchases can be made.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

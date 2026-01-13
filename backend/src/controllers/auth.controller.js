@@ -325,6 +325,16 @@ export const login = async (req, res) => {
     // Note: Removed approval check - vendors can now login immediately after registration
     // Approval is only required for adding venues, not for login
 
+    // Check if user is blocked
+    if (user.isBlocked) {
+      console.log(`Login attempt failed: User account blocked for email: ${normalizedEmail}`);
+      return res.status(403).json({ 
+        error: 'Your account has been blocked. Please contact support for assistance.',
+        isBlocked: true,
+        message: 'Your account has been blocked. Please contact support for assistance.'
+      });
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -398,7 +408,15 @@ export const getProfile = async (req, res) => {
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
+    console.log('📋 getProfile called:', {
+      userId,
+      userIdType: typeof userId,
+      userRole,
+      isValidObjectId: userId ? mongoose.Types.ObjectId.isValid(userId) : false
+    });
+
     if (!userId) {
+      console.error('❌ No userId found in req.user:', req.user);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -431,6 +449,15 @@ export const getProfile = async (req, res) => {
         return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
       }
 
+      // Check if vendor owner is blocked
+      if (staff.vendorId && staff.vendorId.isBlocked) {
+        return res.status(403).json({ 
+          error: 'Account Blocked',
+          message: 'The vendor account associated with your staff account has been blocked. Please contact support.',
+          isBlocked: true
+        });
+      }
+
       const permissions = staff.role.permissions || [];
       
       return res.json({
@@ -450,23 +477,58 @@ export const getProfile = async (req, res) => {
             name: staff.role.name,
             permissions: permissions
           },
-          isActive: staff.isActive
+          isActive: staff.isActive,
+          isBlocked: staff.vendorId?.isBlocked || false // Include vendor's blocked status
         }
       });
     }
 
     // Handle regular user (vendor owner or customer) profile
-    const user = await User.findById(userId)
-      .select('-password')
-      .populate('vendorCategory');
+    // Try to find user by ID - handle both string and ObjectId formats
+    let user;
+    try {
+      // Try with userId as-is first
+      user = await User.findById(userId)
+        .select('-password')
+        .populate('vendorCategory');
+      
+      // If not found and userId is a string, try converting to ObjectId
+      if (!user && userId && typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
+        user = await User.findById(new mongoose.Types.ObjectId(userId))
+          .select('-password')
+          .populate('vendorCategory');
+      }
+    } catch (findError) {
+      console.error('Error finding user in getProfile:', findError);
+      console.error('userId:', userId);
+      console.error('userId type:', typeof userId);
+      return res.status(500).json({ 
+        error: 'Error fetching user profile',
+        message: 'Failed to retrieve user information'
+      });
+    }
     
     if (!user) {
+      console.error('User not found in getProfile:', {
+        userId,
+        userIdType: typeof userId,
+        isValidObjectId: mongoose.Types.ObjectId.isValid(userId)
+      });
       return res.status(404).json({ error: 'User not found' });
     }
 
     // Check if vendor is deleted (for backward compatibility with soft-deleted accounts)
     if (user.isDeleted) {
       return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
+    }
+
+    // Check if user is blocked
+    if (user.isBlocked) {
+      return res.status(403).json({ 
+        error: 'Account Blocked',
+        message: 'Your account has been blocked. Please contact support.',
+        isBlocked: true
+      });
     }
 
     // Note: Removed reject check - rejected vendors can still access profile
@@ -489,6 +551,7 @@ export const getProfile = async (req, res) => {
         phone: user.phone,
         role: user.role,
         verified: user.verified,
+        isBlocked: user.isBlocked, // Include blocked status in response
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
@@ -999,6 +1062,16 @@ export const googleLogin = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deleted. Please contact support.' });
     }
 
+    // Check if user is blocked
+    if (user.isBlocked) {
+      console.log(`Google login attempt failed: User account blocked for email: ${user.email}`);
+      return res.status(403).json({ 
+        error: 'Your account has been blocked. Please contact support for assistance.',
+        isBlocked: true,
+        message: 'Your account has been blocked. Please contact support for assistance.'
+      });
+    }
+
     // Check if vendor is rejected
     if (user.role === 'vendor' && user.vendorStatus === 'rejected') {
       console.log(`Google login attempt failed: Vendor account rejected for email: ${user.email}`);
@@ -1047,6 +1120,114 @@ export const googleLogin = async (req, res) => {
     }
 
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Welcome endpoint - Check if user is blocked (for customer home page)
+export const welcome = async (req, res) => {
+  try {
+    // This is an optional auth endpoint - check if user is logged in
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    
+    if (!token) {
+      // No token - user is not logged in, return success
+      return res.json({
+        success: true,
+        message: 'Welcome',
+        isAuthenticated: false
+      });
+    }
+
+    try {
+      // Verify token
+      const payload = jwt.verify(token, process.env.JWT_SECRET || 'change_me');
+      const userId = payload.userId;
+      const userRole = payload.role;
+
+      if (!userId) {
+        return res.json({
+          success: true,
+          message: 'Welcome',
+          isAuthenticated: false
+        });
+      }
+
+      // Check MongoDB connection
+      if (mongoose.connection.readyState !== 1) {
+        try {
+          const { connectToDatabase } = await import('../config/db.js');
+          await connectToDatabase();
+        } catch (dbError) {
+          return res.status(503).json({ 
+            error: 'Database connection unavailable',
+            hint: dbError.message || 'Please check MongoDB connection settings and restart backend server'
+          });
+        }
+      }
+
+      // Find user
+      const user = await User.findById(userId).select('-password');
+      
+      if (!user) {
+        return res.json({
+          success: true,
+          message: 'Welcome',
+          isAuthenticated: false
+        });
+      }
+
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return res.status(403).json({ 
+          success: false,
+          error: 'Account Blocked',
+          message: 'Your account has been blocked. Please contact support.',
+          isBlocked: true,
+          isAuthenticated: true
+        });
+      }
+
+      // Check if user is deleted
+      if (user.isDeleted) {
+        return res.status(403).json({ 
+          success: false,
+          error: 'Account Deleted',
+          message: 'Your account has been deleted. Please contact support.',
+          isDeleted: true,
+          isAuthenticated: true
+        });
+      }
+
+      // User is authenticated and not blocked
+      return res.json({
+        success: true,
+        message: 'Welcome',
+        isAuthenticated: true,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isBlocked: false
+        }
+      });
+    } catch (tokenError) {
+      // Invalid token - user is not authenticated
+      return res.json({
+        success: true,
+        message: 'Welcome',
+        isAuthenticated: false
+      });
+    }
+  } catch (error) {
+    console.error('Welcome endpoint error:', error);
+    // On error, return success so page doesn't break
+    return res.json({
+      success: true,
+      message: 'Welcome',
+      isAuthenticated: false
+    });
   }
 };
 

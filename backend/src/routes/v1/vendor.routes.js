@@ -15,7 +15,11 @@ import {
   getCalendarEvents,
   createCalendarEvent,
   updateCalendarEvent,
-  deleteCalendarEvent
+  deleteCalendarEvent,
+  getPlans,
+  getVendorSubscriptions,
+  createPlanPaymentOrder,
+  verifyPlanPayment
 } from '../../controllers/vendor.controller.js';
 
 const router = Router();
@@ -54,6 +58,12 @@ router.get('/calendar-events', requirePermission('vendor_view_blocked_dates'), g
 router.post('/calendar-events', requirePermission('vendor_create_blocked_dates'), createCalendarEvent);
 router.put('/calendar-events/:id', requirePermission('vendor_create_blocked_dates'), updateCalendarEvent);
 router.delete('/calendar-events/:id', requirePermission('vendor_delete_blocked_dates'), deleteCalendarEvent);
+
+// Plan management
+router.get('/plans', requirePermission('vendor_view_dashboard'), getPlans);
+router.get('/subscriptions', requirePermission('vendor_view_dashboard'), getVendorSubscriptions);
+router.post('/plans/purchase', requirePermission('vendor_view_dashboard'), createPlanPaymentOrder);
+router.post('/plans/verify-payment', requirePermission('vendor_view_dashboard'), verifyPlanPayment);
 
 export default router;
 

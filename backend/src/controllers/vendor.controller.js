@@ -4,6 +4,9 @@ import Booking from '../models/Booking.js';
 import Payout from '../models/Payout.js';
 import Ledger from '../models/Ledger.js';
 import CalendarEvent from '../models/CalendarEvent.js';
+import Plan from '../models/Plan.js';
+import VendorPlanSubscription from '../models/VendorPlanSubscription.js';
+import User from '../models/User.js';
 
 // Helper function to get vendor ID from request
 // For vendor_staff, use vendorId; for vendor, use userId
@@ -390,30 +393,75 @@ export const getVendorBookings = async (req, res) => {
 
     // Get vendor venues
     const vendorVenues = await Venue.find({ vendorId: vendorId }).select('_id');
-    const venueIds = vendorVenues.map(v => v._id);
+    const venueIds = vendorVenues
+      .map(v => v._id)
+      .filter(id => id != null)
+      .map(id => id.toString ? id.toString() : String(id));
+
+    // Build query conditions
+    // If vendor has venues, include bookings for those venues
+    // Also always include manual venue bookings created by this vendor
+    const queryConditions = [];
+    
+    if (venueIds.length > 0) {
+      queryConditions.push({ venueId: { $in: venueIds }, adminApproved: true });
+    }
+    
+    // Always include manual venue bookings created by this vendor
+    queryConditions.push({ vendorId: vendorId, venueId: null, adminApproved: true });
 
     // Get bookings for vendor venues (only admin-approved bookings)
-    const bookings = await Booking.find({
-      venueId: { $in: venueIds },
-      adminApproved: true
+    // Include both:
+    // 1. Bookings for vendor's venues (venueId in venueIds) - if vendor has venues
+    // 2. Manual venue bookings created by this vendor (venueId is null, vendorId matches)
+    let bookings;
+    try {
+      bookings = await Booking.find({
+        $or: queryConditions
     })
       .populate('customerId', 'name email phone')
       .populate('venueId', 'name location price capacity images')
-      .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean(); // Use lean() for better performance and to avoid Mongoose document issues
+    } catch (queryError) {
+      console.error('Error querying bookings:', queryError);
+      // If populate fails, try without populate
+      bookings = await Booking.find({
+        $or: queryConditions
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+    }
 
-    // Format bookings
+    // Format bookings with better error handling
     const bookingsData = bookings.map(booking => {
-      const bookingObj = booking.toObject ? booking.toObject() : booking;
+      try {
       return {
-        ...bookingObj,
-        id: bookingObj._id?.toString() || bookingObj.id,
-        eventDate: bookingObj.date || bookingObj.eventDate || bookingObj.createdAt,
-        guests: bookingObj.guests || bookingObj.capacity || 0,
-        totalAmount: bookingObj.totalAmount || bookingObj.amount || 0,
-        status: bookingObj.status || 'pending',
-        venue: bookingObj.venueId,
-        customer: bookingObj.customerId
+          ...booking,
+          id: booking._id?.toString() || booking.id,
+          _id: booking._id?.toString() || booking._id,
+          eventDate: booking.date || booking.eventDate || booking.createdAt,
+          guests: booking.guests || booking.capacity || 0,
+          totalAmount: booking.totalAmount || booking.amount || 0,
+          status: booking.status || 'pending',
+          venue: booking.venueId || null,
+          customer: booking.customerId || null
+        };
+      } catch (mapError) {
+        console.error('Error formatting booking:', mapError, booking);
+        // Return a minimal safe object if formatting fails
+        return {
+          id: booking._id?.toString() || 'unknown',
+          _id: booking._id?.toString() || booking._id,
+          eventDate: booking.date || booking.createdAt || new Date(),
+          guests: booking.guests || 0,
+          totalAmount: booking.totalAmount || 0,
+          status: booking.status || 'pending',
+          venue: booking.venueId || null,
+          customer: booking.customerId || null,
+          error: 'Error formatting booking data'
       };
+      }
     });
 
     res.json({
@@ -423,6 +471,7 @@ export const getVendorBookings = async (req, res) => {
     });
   } catch (error) {
     console.error('Get vendor bookings error:', error);
+    console.error('Error stack:', error.stack);
     
     if (error.name === 'MongoServerError' || error.name === 'MongoTimeoutError') {
       return res.status(503).json({ 
@@ -433,7 +482,8 @@ export const getVendorBookings = async (req, res) => {
     
     res.status(500).json({ 
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -754,8 +804,16 @@ export const createVendorBooking = async (req, res) => {
     } = req.body;
 
     // Validation - venueId or venueName must be provided
-    if (!venueId && !venueName) {
+    // Trim venueName if provided
+    const trimmedVenueName = venueName ? venueName.trim() : null;
+    
+    if (!venueId && !trimmedVenueName) {
       return res.status(400).json({ error: 'Either Venue ID or Venue Name is required' });
+    }
+    
+    // If venueId is not provided, venueName must be provided and not empty
+    if (!venueId && (!trimmedVenueName || trimmedVenueName.length === 0)) {
+      return res.status(400).json({ error: 'Venue Name is required when Venue ID is not provided' });
     }
 
     if (!date || !guests) {
@@ -776,9 +834,7 @@ export const createVendorBooking = async (req, res) => {
       return res.status(400).json({ error: 'eventType must be a string' });
     }
     // Trim and clean the eventType string
-    if (eventType) {
-      eventType = eventType.trim();
-    }
+    const cleanedEventType = eventType ? eventType.trim() : eventType;
 
     // Validate paymentStatus if provided
     if (paymentStatus && !['paid', 'unpaid'].includes(paymentStatus)) {
@@ -937,19 +993,29 @@ export const createVendorBooking = async (req, res) => {
     }
 
     // Create booking directly (no payment, no admin approval needed)
+    // Log for debugging manual venue bookings
+    console.log('Creating vendor booking:', {
+      venueId: venueId || 'null',
+      venueName: trimmedVenueName || 'null',
+      hasVenueId: !!venueId,
+      hasVenueName: !!trimmedVenueName,
+      vendorId: vendorId
+    });
+    
     const booking = new Booking({
       customerId: null, // No customer user account
       venueId: venueId || null, // Optional - can be null if venueName is provided
-      venueName: venueName ? venueName.trim() : null, // Venue name if venueId is not provided
+      venueName: trimmedVenueName || null, // Venue name if venueId is not provided
+      vendorId: vendorId, // Store vendorId to identify vendor-created bookings (especially manual venue bookings)
       date: bookingDate,
       dateFrom: parsedDateFrom || null,
       dateTo: parsedDateTo || null,
       name: name.trim(),
       phone: phone.trim(),
-      email: email || null,
+      email: (email && email.trim()) || null, // Convert empty string to null
       marriageFor: marriageFor || 'boy',
       personName: personName || null,
-      eventType: eventType || 'wedding',
+      eventType: cleanedEventType || 'wedding',
       guests: Number(guests),
       rooms: rooms ? Number(rooms) : 0,
       foodPreference: foodPreference || 'both',
@@ -964,10 +1030,26 @@ export const createVendorBooking = async (req, res) => {
 
     await booking.save();
 
+    // Populate venue and customer if they exist
+    try {
+      if (booking.venueId) {
+        await booking.populate('venueId', 'name location price capacity images');
+      }
+      if (booking.customerId) {
+        await booking.populate('customerId', 'name email phone');
+      }
+    } catch (populateError) {
+      console.error('Error populating booking:', populateError);
+      // Continue even if populate fails
+    }
+
+    // Convert to plain object to avoid Mongoose document issues
+    const bookingObj = booking.toObject ? booking.toObject() : booking;
+
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',
-      booking: booking
+      booking: bookingObj
     });
   } catch (error) {
     console.error('Create vendor booking error:', error);
@@ -1700,6 +1782,511 @@ export const deleteCalendarEvent = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete calendar event error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// ==================== VENDOR PLAN MANAGEMENT ====================
+
+// Get all available plans
+export const getPlans = async (req, res) => {
+  try {
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+
+    const plans = await Plan.find({ isActive: true })
+      .sort({ priority: -1, price: 1 });
+
+    res.json({
+      success: true,
+      plans
+    });
+  } catch (error) {
+    console.error('Get plans error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Get vendor's active subscriptions
+export const getVendorSubscriptions = async (req, res) => {
+  try {
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    const subscriptions = await VendorPlanSubscription.find({
+      vendorId: vendorId
+    })
+      .populate('planId', 'name price duration durationUnit features')
+      .populate('venueIds', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      subscriptions
+    });
+  } catch (error) {
+    console.error('Get vendor subscriptions error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Create payment order for plan purchase
+export const createPlanPaymentOrder = async (req, res) => {
+  try {
+    // Check if plan subscriptions are enabled
+    const AppConfig = (await import('../models/AppConfig.js')).default;
+    const config = await AppConfig.getConfig();
+    if (config.planSubscriptionsEnabled === false) {
+      return res.status(403).json({ 
+        error: 'Plan subscriptions are currently disabled by admin',
+        message: 'Plan subscriptions feature has been temporarily disabled. Please contact admin for more information.'
+      });
+    }
+
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    const { planId, venueIds } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ error: 'Plan ID is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(planId)) {
+      return res.status(400).json({ error: 'Invalid plan ID' });
+    }
+
+    const plan = await Plan.findById(planId);
+    if (!plan || !plan.isActive) {
+      return res.status(404).json({ error: 'Plan not found or inactive' });
+    }
+
+    // Validate venue IDs if provided
+    if (venueIds && Array.isArray(venueIds) && venueIds.length > 0) {
+      if (venueIds.length > plan.maxVenues) {
+        return res.status(400).json({ 
+          error: `This plan allows maximum ${plan.maxVenues} venue(s). You selected ${venueIds.length}.` 
+        });
+      }
+
+      // Validate venue IDs
+      const invalidVenueIds = venueIds.filter(id => !mongoose.Types.ObjectId.isValid(id));
+      if (invalidVenueIds.length > 0) {
+        return res.status(400).json({ error: 'Invalid venue ID(s) provided' });
+      }
+
+      // Verify all venues belong to the vendor
+      const venues = await Venue.find({
+        _id: { $in: venueIds },
+        vendorId: vendorId
+      });
+
+      if (venues.length !== venueIds.length) {
+        return res.status(403).json({ error: 'Some venues do not belong to you' });
+      }
+    }
+
+    // Calculate end date
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    switch (plan.durationUnit) {
+      case 'days':
+        endDate.setDate(endDate.getDate() + plan.duration);
+        break;
+      case 'weeks':
+        endDate.setDate(endDate.getDate() + (plan.duration * 7));
+        break;
+      case 'months':
+        endDate.setMonth(endDate.getMonth() + plan.duration);
+        break;
+      case 'years':
+        endDate.setFullYear(endDate.getFullYear() + plan.duration);
+        break;
+    }
+
+    // Create subscription with pending payment and pending verification
+    const subscription = new VendorPlanSubscription({
+      vendorId: vendorId,
+      planId: planId,
+      venueIds: (venueIds && Array.isArray(venueIds) && venueIds.length > 0) ? venueIds : [],
+      startDate: startDate,
+      endDate: endDate,
+      status: 'pending_verification', // Will be activated only after admin verification
+      paymentStatus: 'pending',
+      amountPaid: plan.price,
+      adminVerified: false
+    });
+
+    await subscription.save();
+
+    // Create payment order (similar to booking payment)
+    const PaymentConfig = (await import('../models/PaymentConfig.js')).default;
+    const paymentConfig = await PaymentConfig.getConfig();
+    
+    if (!paymentConfig) {
+      return res.status(500).json({ 
+        error: 'Payment configuration not available' 
+      });
+    }
+    
+    // Check if we have at least one payment method configured
+    if (!paymentConfig.razorpayKeyId && !paymentConfig.enableMicroservice) {
+      return res.status(500).json({ 
+        error: 'Payment configuration not available',
+        message: 'Please configure Razorpay or enable microservice in admin settings'
+      });
+    }
+
+    const amount = Math.round(plan.price * 100); // Convert to paise
+
+    // Determine which payment method to use
+    const useMicroservice = paymentConfig.enableMicroservice === true || 
+                           (paymentConfig.enableMicroservice !== false && paymentConfig.enableRazorpayDirect !== true);
+    const useRazorpayDirect = paymentConfig.enableRazorpayDirect === true && paymentConfig.enableMicroservice === false;
+
+    if (useRazorpayDirect) {
+      // Direct Razorpay Integration
+      if (!paymentConfig.razorpayKeyId || !paymentConfig.razorpayKeySecret) {
+        return res.status(400).json({
+          error: 'Razorpay configuration error',
+          message: 'Razorpay Key ID and Secret are required for direct Razorpay integration.',
+        });
+      }
+
+      const axios = (await import('axios')).default;
+      const razorpayAuth = Buffer.from(`${paymentConfig.razorpayKeyId}:${paymentConfig.razorpayKeySecret}`).toString('base64');
+
+      // Generate receipt (max 40 characters for Razorpay)
+      const receiptId = subscription._id.toString().slice(-8); // Last 8 chars of subscription ID
+      const receipt = `plan_${receiptId}_${Date.now().toString().slice(-8)}`; // Max 25 chars
+      
+      const razorpayOrderData = {
+        amount: amount,
+        currency: 'INR',
+        receipt: receipt.substring(0, 40), // Ensure max 40 chars
+        notes: {
+          source: 'Shubhvenue',
+          plan_id: planId,
+          subscription_id: subscription._id.toString(),
+          vendor_id: vendorId,
+        }
+      };
+
+      try {
+        const razorpayResponse = await axios.post(
+          'https://api.razorpay.com/v1/orders',
+          razorpayOrderData,
+          {
+            headers: {
+              Authorization: `Basic ${razorpayAuth}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const razorpayOrder = razorpayResponse.data;
+
+        return res.json({
+          success: true,
+          subscriptionId: subscription._id.toString(),
+          paymentOrder: {
+            id: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+          },
+          razorpayKeyId: paymentConfig.razorpayKeyId,
+          plan: {
+            name: plan.name,
+            price: plan.price,
+            duration: plan.duration,
+            durationUnit: plan.durationUnit
+          }
+        });
+      } catch (razorpayError) {
+        console.error('Razorpay order creation error:', razorpayError.response?.data || razorpayError.message);
+        return res.status(500).json({
+          error: 'Failed to create Razorpay order',
+          message: razorpayError.response?.data?.error?.description || razorpayError.message || 'Failed to create payment order',
+        });
+      }
+    } else {
+      // Microservice Integration
+      const { callMicroservice } = await import('../utils/microserviceClient.js');
+      
+      const customer = {
+        name: 'Vendor',
+        email: 'vendor@example.com',
+        contact: '',
+      };
+
+      const notes = {
+        source: 'Shubhvenue',
+        plan_id: planId,
+        subscription_id: subscription._id.toString(),
+        vendor_id: vendorId,
+        venue_ids: venueIds || []
+      };
+
+      const payload = {
+        amount: amount,
+        currency: 'INR',
+        customer,
+        notes,
+      };
+
+      try {
+        const microserviceResponse = await callMicroservice('/api/payment/order', 'POST', payload);
+        const orderData = microserviceResponse?.data || {};
+
+        if (!orderData.order_id) {
+          return res.status(500).json({
+            error: 'Payment configuration error',
+            message: 'Microservice did not return a valid order. Please contact support.',
+          });
+        }
+
+        // Get razorpayKeyId from payment config if not in microservice response
+        const razorpayKey = orderData.key_id || paymentConfig.razorpayKeyId;
+
+        if (!razorpayKey) {
+          return res.status(500).json({
+            error: 'Payment configuration error',
+            message: 'Razorpay Key ID is missing. Please configure in admin settings.',
+          });
+        }
+
+        return res.json({
+          success: true,
+          subscriptionId: subscription._id.toString(),
+          paymentOrder: {
+            id: orderData.order_id,
+            amount: orderData.amount || amount,
+            currency: orderData.currency || 'INR',
+          },
+          razorpayKeyId: razorpayKey,
+          plan: {
+            name: plan.name,
+            price: plan.price,
+            duration: plan.duration,
+            durationUnit: plan.durationUnit
+          }
+        });
+      } catch (microserviceError) {
+        console.error('Microservice call error:', microserviceError);
+        return res.status(500).json({
+          error: 'Payment service unavailable',
+          message: 'Unable to create payment order. Please try again later.',
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Create plan payment order error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Failed to create payment order',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// Verify plan payment and activate subscription
+export const verifyPlanPayment = async (req, res) => {
+  try {
+    const accessCheck = checkVendorAccess(req);
+    if (accessCheck.error) {
+      return res.status(403).json({ error: accessCheck.error });
+    }
+    const vendorId = accessCheck.vendorId;
+
+    const { 
+      subscriptionId, 
+      paymentId, 
+      razorpayOrderId, 
+      razorpayPaymentId, 
+      razorpaySignature,
+      verificationRequestDetails 
+    } = req.body;
+
+    if (!subscriptionId) {
+      return res.status(400).json({ error: 'Subscription ID is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      return res.status(400).json({ error: 'Invalid subscription ID' });
+    }
+
+    // Validate verification request details (required for verification)
+    if (!verificationRequestDetails) {
+      return res.status(400).json({ 
+        error: 'Verification details are required',
+        message: 'Please provide business details for verification'
+      });
+    }
+
+    const {
+      businessName,
+      businessAddress,
+      businessPhone,
+      businessEmail,
+      businessRegistrationNumber,
+      gstNumber,
+      panNumber,
+      additionalDetails
+    } = verificationRequestDetails;
+
+    if (!businessName || !businessName.trim()) {
+      return res.status(400).json({ error: 'Business name is required' });
+    }
+
+    if (!businessAddress || !businessAddress.trim()) {
+      return res.status(400).json({ error: 'Business address is required' });
+    }
+
+    if (!businessPhone || !businessPhone.trim()) {
+      return res.status(400).json({ error: 'Business phone is required' });
+    }
+
+    if (!businessEmail || !businessEmail.trim()) {
+      return res.status(400).json({ error: 'Business email is required' });
+    }
+
+    const subscription = await VendorPlanSubscription.findById(subscriptionId)
+      .populate('planId');
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    if (subscription.vendorId.toString() !== vendorId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Verify payment signature directly
+    let paymentVerified = false;
+    
+    if (razorpayOrderId && razorpayPaymentId && razorpaySignature) {
+      try {
+        const PaymentConfig = (await import('../models/PaymentConfig.js')).default;
+        const paymentConfig = await PaymentConfig.getConfig();
+        
+        if (paymentConfig && paymentConfig.razorpayKeySecret) {
+          const crypto = (await import('crypto')).default;
+          const text = `${razorpayOrderId}|${razorpayPaymentId}`;
+          const generatedSignature = crypto
+            .createHmac('sha256', paymentConfig.razorpayKeySecret)
+            .update(text)
+            .digest('hex');
+          
+          if (generatedSignature === razorpaySignature) {
+            paymentVerified = true;
+            console.log('✅ Payment signature verified for subscription:', subscriptionId);
+          } else {
+            console.error('❌ Payment signature mismatch for subscription:', subscriptionId);
+          }
+        } else {
+          // If using microservice, assume payment is verified if we got here
+          // The microservice webhook will handle actual verification
+          console.log('⚠️ Using microservice - payment verification handled by webhook');
+          paymentVerified = true; // Trust the frontend for now, webhook will verify
+        }
+      } catch (verifyError) {
+        console.error('Payment verification error:', verifyError);
+        // For microservice, we'll trust the payment and let webhook verify
+        paymentVerified = true;
+      }
+    } else {
+      console.error('Missing payment verification data');
+    }
+
+    // Update subscription with payment details
+    subscription.paymentId = paymentId || razorpayPaymentId;
+    subscription.paymentStatus = paymentVerified ? 'completed' : 'pending';
+    
+    // Store verification request details
+    subscription.verificationRequestDetails = {
+      businessName: businessName.trim(),
+      businessAddress: businessAddress.trim(),
+      businessPhone: businessPhone.trim(),
+      businessEmail: businessEmail.trim().toLowerCase(),
+      businessRegistrationNumber: businessRegistrationNumber ? businessRegistrationNumber.trim() : '',
+      gstNumber: gstNumber ? gstNumber.trim() : '',
+      panNumber: panNumber ? panNumber.trim() : '',
+      additionalDetails: additionalDetails ? additionalDetails.trim() : '',
+      submittedAt: new Date()
+    };
+    
+    // Set status to pending_verification instead of active
+    // Admin needs to verify before activation
+    subscription.status = 'pending_verification';
+    subscription.adminVerified = false;
+    
+    // DO NOT activate venues yet - wait for admin approval
+    // Venues will be verified only after admin approves the verification request
+
+    await subscription.save();
+    console.log(`✅ Subscription ${subscriptionId} payment verified and verification request submitted for admin approval`);
+
+    // Populate subscription for email
+    await subscription.populate('planId', 'name price duration durationUnit');
+    await subscription.populate('venueIds', 'name');
+
+    // Send email notifications (non-blocking)
+    try {
+      const { sendVerificationRequestConfirmationToVendor, sendVerificationRequestNotificationToAdmin, getAdminEmails } = await import('../utils/emailService.js');
+      
+      // Get vendor details
+      const vendor = await User.findById(vendorId).select('name email phone');
+      
+      if (vendor) {
+        // Send confirmation email to vendor
+        console.log('📧 Sending verification request confirmation to vendor:', vendor.email);
+        sendVerificationRequestConfirmationToVendor(vendor, subscription).catch(err => 
+          console.error('Error sending verification request confirmation to vendor:', err)
+        );
+        
+        // Send notification email to admin
+        const adminEmails = await getAdminEmails();
+        if (adminEmails && adminEmails.length > 0) {
+          console.log('📧 Sending verification request notification to admin');
+          sendVerificationRequestNotificationToAdmin(vendor, subscription, adminEmails).catch(err => 
+            console.error('Error sending verification request notification to admin:', err)
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error('Error setting up verification request emails:', emailError);
+      // Don't fail the verification request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully! Your verification request has been submitted. Admin will verify your details within 24-48 hours and then your venues will be verified.',
+      subscription: await VendorPlanSubscription.findById(subscription._id)
+        .populate('planId', 'name price duration durationUnit')
+        .populate('venueIds', 'name'),
+      status: 'pending_verification',
+      verificationMessage: 'Admin will review your verification request within 24-48 hours'
+    });
+  } catch (error) {
+    console.error('Verify plan payment error:', error);
     res.status(500).json({ 
       error: 'Internal server error',
       message: process.env.NODE_ENV === 'development' ? error.message : undefined

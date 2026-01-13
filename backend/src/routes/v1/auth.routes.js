@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, getProfile, updateProfile, changePassword, googleLogin } from '../../controllers/auth.controller.js';
+import { register, login, getProfile, updateProfile, changePassword, googleLogin, welcome } from '../../controllers/auth.controller.js';
 import { requireAuth } from '../../middlewares/auth.js';
 
 const router = Router();
@@ -19,6 +19,7 @@ const authLimiter = rateLimit({
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
 router.post('/google-login', authLimiter, googleLogin);
+router.get('/welcome', welcome); // Welcome endpoint - checks if user is blocked (optional auth)
 
 // Protected routes
 router.get('/profile', requireAuth, getProfile);

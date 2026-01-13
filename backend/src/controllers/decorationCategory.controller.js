@@ -25,6 +25,24 @@ const deleteDecorationCategoryImageFile = (imagePath) => {
   }
 };
 
+// Helper function to delete decoration category banner image file
+const deleteDecorationCategoryBannerImageFile = (bannerImagePath) => {
+  if (!bannerImagePath) return;
+  
+  try {
+    const filename = bannerImagePath.replace('/uploads/decoration-categories/', '');
+    if (filename && !filename.includes('http')) {
+      const filePath = path.join(__dirname, '../../uploads/decoration-categories', filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted old decoration category banner image: ${filePath}`);
+      }
+    }
+  } catch (error) {
+    console.error(`Error deleting decoration category banner image file ${bannerImagePath}:`, error.message);
+  }
+};
+
 // Helper function to validate image URL
 const isValidImageUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -176,7 +194,7 @@ export const getDecorationCategoryById = async (req, res) => {
 // Create decoration category (Admin only)
 export const createDecorationCategory = async (req, res) => {
   try {
-    const { name, description, icon, image, isActive, sortOrder } = req.body;
+    const { name, description, icon, image, bannerImage, isActive, sortOrder } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Decoration category name is required' });
@@ -206,8 +224,8 @@ export const createDecorationCategory = async (req, res) => {
     }
 
     let imagePath = null;
-    if (req.file) {
-      imagePath = `/uploads/decoration-categories/${req.file.filename}`;
+    if (req.files && req.files.image && req.files.image[0]) {
+      imagePath = `/uploads/decoration-categories/${req.files.image[0].filename}`;
     } else if (image) {
       imagePath = validateAndProcessImageUrl(image);
       if (image && !imagePath) {
@@ -217,11 +235,24 @@ export const createDecorationCategory = async (req, res) => {
       }
     }
 
+    let bannerImagePath = null;
+    if (req.files && req.files.bannerImage && req.files.bannerImage[0]) {
+      bannerImagePath = `/uploads/decoration-categories/${req.files.bannerImage[0].filename}`;
+    } else if (bannerImage) {
+      bannerImagePath = validateAndProcessImageUrl(bannerImage);
+      if (bannerImage && !bannerImagePath) {
+        return res.status(400).json({ 
+          error: 'Invalid banner image URL. Please provide a valid image URL (http/https) or upload a file.' 
+        });
+      }
+    }
+
     const category = new DecorationCategory({
       name: name.trim(),
       description: description || '',
       icon: icon || '',
       image: imagePath || '',
+      bannerImage: bannerImagePath || '',
       isActive: isActive !== undefined ? isActive : true,
       sortOrder: sortOrder || 0
     });
@@ -253,7 +284,7 @@ export const createDecorationCategory = async (req, res) => {
 export const updateDecorationCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, icon, image, isActive, sortOrder } = req.body;
+    const { name, description, icon, image, bannerImage, isActive, sortOrder } = req.body;
 
     if (mongoose.connection.readyState !== 1) {
       try {
@@ -289,11 +320,12 @@ export const updateDecorationCategory = async (req, res) => {
       category.name = name.trim();
     }
 
-    if (req.file) {
+    // Handle image upload/update
+    if (req.files && req.files.image && req.files.image[0]) {
       if (category.image) {
         deleteDecorationCategoryImageFile(category.image);
       }
-      category.image = `/uploads/decoration-categories/${req.file.filename}`;
+      category.image = `/uploads/decoration-categories/${req.files.image[0].filename}`;
     }
     else if (image !== undefined) {
       if (image === null || image === '') {
@@ -313,6 +345,34 @@ export const updateDecorationCategory = async (req, res) => {
           deleteDecorationCategoryImageFile(category.image);
         }
         category.image = validatedUrl;
+      }
+    }
+
+    // Handle bannerImage upload/update
+    if (req.files && req.files.bannerImage && req.files.bannerImage[0]) {
+      if (category.bannerImage) {
+        deleteDecorationCategoryBannerImageFile(category.bannerImage);
+      }
+      category.bannerImage = `/uploads/decoration-categories/${req.files.bannerImage[0].filename}`;
+    }
+    else if (bannerImage !== undefined) {
+      if (bannerImage === null || bannerImage === '') {
+        if (category.bannerImage) {
+          deleteDecorationCategoryBannerImageFile(category.bannerImage);
+        }
+        category.bannerImage = '';
+      } else if (bannerImage !== category.bannerImage) {
+        const validatedUrl = validateAndProcessImageUrl(bannerImage);
+        if (!validatedUrl) {
+          return res.status(400).json({ 
+            error: 'Invalid banner image URL. Please provide a valid image URL (http/https) or upload a file.' 
+          });
+        }
+        
+        if (category.bannerImage && !category.bannerImage.includes('http')) {
+          deleteDecorationCategoryBannerImageFile(category.bannerImage);
+        }
+        category.bannerImage = validatedUrl;
       }
     }
 
@@ -375,6 +435,10 @@ export const deleteDecorationCategory = async (req, res) => {
 
     if (category.image) {
       deleteDecorationCategoryImageFile(category.image);
+    }
+
+    if (category.bannerImage) {
+      deleteDecorationCategoryBannerImageFile(category.bannerImage);
     }
 
     const deletePromise = DecorationCategory.findByIdAndDelete(id);

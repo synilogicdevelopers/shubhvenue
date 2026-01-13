@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) {
@@ -8,6 +9,43 @@ export function requireAuth(req, res, next) {
   }
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'change_me');
+    
+    // Check if user is blocked (for all regular users - vendor_staff don't have isBlocked field)
+    if (payload.role && payload.role !== 'vendor_staff' && payload.userId) {
+      try {
+        const user = await User.findById(payload.userId);
+        if (user && user.isBlocked) {
+          console.log(`Blocked user attempted to access: ${payload.email} (Role: ${payload.role})`);
+          return res.status(403).json({ 
+            error: 'Account Blocked',
+            message: 'Your account has been blocked. Please contact support.',
+            isBlocked: true
+          });
+        }
+      } catch (dbError) {
+        console.error('Error checking user block status:', dbError);
+        // Continue if check fails (don't block legitimate users)
+      }
+    }
+    
+    // For vendor_staff, check if their vendor owner is blocked
+    if (payload.role === 'vendor_staff' && payload.vendorId) {
+      try {
+        const vendor = await User.findById(payload.vendorId);
+        if (vendor && vendor.isBlocked) {
+          console.log(`Vendor staff attempted to access but vendor is blocked: ${payload.email}`);
+          return res.status(403).json({ 
+            error: 'Account Blocked',
+            message: 'The vendor account associated with your staff account has been blocked. Please contact support.',
+            isBlocked: true
+          });
+        }
+      } catch (dbError) {
+        console.error('Error checking vendor block status for staff:', dbError);
+        // Continue if check fails (don't block legitimate users)
+      }
+    }
+    
     req.user = payload;
     console.log('Token decoded successfully:', {
       userId: payload.userId,

@@ -25,16 +25,36 @@ function BookingHistory() {
     }
     const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
     
-    // Handle different path formats
-    if (image.startsWith('/uploads/') || image.startsWith('/uploads')) {
-      return `${baseUrl}${image}`
-    }
-    if (image.startsWith('uploads/')) {
-      return `${baseUrl}/${image}`
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
     }
     
-    // Handle other paths
-    return `${baseUrl}${image.startsWith('/') ? image : `/${image}`}`
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's a venue image
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/venues/${encodedImage}`
+  }
+  
+  // Helper function to get venue image URL
+  const getVenueImageUrl = (images) => {
+    if (!images || (Array.isArray(images) && images.length === 0)) {
+      return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+    }
+    const image = Array.isArray(images) ? images[0] : images
+    return getImageUrl(image)
   }
 
   // Helper function to format location
@@ -424,7 +444,7 @@ function BookingHistory() {
                   <div key={booking.id} className="booking-card">
                     <div className="booking-card-image">
                       <img 
-                        src={booking.venue.image} 
+                        src={getVenueImageUrl(booking.venue.images || booking.venue.image || booking.venue.coverImage)} 
                         alt={booking.venue.name}
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'

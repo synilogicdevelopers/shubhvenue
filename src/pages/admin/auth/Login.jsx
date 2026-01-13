@@ -5,6 +5,7 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { authAPI } from '../../../services/admin/api';
 import { Button } from '../../../components/admin/ui/Button';
 import toast from 'react-hot-toast';
+import { forceLogout } from '../../../utils/auth/logout';
 
 export const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -100,10 +101,19 @@ export const Login = () => {
         throw new Error('Login failed: Invalid response');
       }
     } catch (error) {
+      // Handle blocked user error specifically
+      if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Your account has been blocked. Please contact support.';
+        toast.error(errorMessage);
+        setErrors({ submit: errorMessage });
+        // Force logout and clear all data
+        forceLogout('blocked', '/admin/login');
+      } else {
       // Get error message from response
       const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
       setErrors({ submit: errorMessage });
+      }
     } finally {
       setLoading(false);
     }

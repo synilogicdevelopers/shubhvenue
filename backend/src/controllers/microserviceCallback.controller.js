@@ -122,6 +122,31 @@ export const handleMicroserviceCallback = async (req, res) => {
 
       console.log('🎉 Booking created from callback:', booking._id);
 
+      // Send email notifications (non-blocking)
+      try {
+        const { sendBookingConfirmationEmail, sendBookingNotificationToAdmin } = await import('../utils/emailService.js');
+        
+        // Populate booking for email
+        await booking.populate('customerId', 'name email phone');
+        await booking.populate('venueId', 'name location price capacity images coverImage image');
+        
+        // Get customer email from notes or booking
+        const customerEmail = notes.customer?.email || booking.customerId?.email || booking.email || null;
+        if (customerEmail) {
+          sendBookingConfirmationEmail(booking, customerEmail).catch(err => 
+            console.error('Error sending booking confirmation email to customer:', err)
+          );
+        }
+        
+        // Send notification to admin
+        sendBookingNotificationToAdmin(booking).catch(err => 
+          console.error('Error sending booking notification to admin:', err)
+        );
+      } catch (emailError) {
+        console.error('Error setting up email notifications:', emailError);
+        // Don't fail the callback if email fails
+      }
+
       return res.json({
         success: true,
         message: 'Booking created from callback',

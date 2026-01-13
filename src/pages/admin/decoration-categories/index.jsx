@@ -26,10 +26,13 @@ export const DecorationCategories = () => {
     name: '',
     description: '',
     image: '',
+    bannerImage: '',
     isActive: true
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [bannerImageFile, setBannerImageFile] = useState(null);
+  const [bannerImagePreview, setBannerImagePreview] = useState(null);
 
   useEffect(() => {
     fetchCategories();
@@ -79,21 +82,28 @@ export const DecorationCategories = () => {
         name: category.name || '',
         description: category.description || '',
         image: category.image || '',
+        bannerImage: category.bannerImage || '',
         isActive: category.isActive !== undefined ? category.isActive : true
       });
       const imageUrl = category.image ? getImageUrl(category.image) : null;
       setImagePreview(imageUrl);
       setImageFile(null);
+      const bannerImageUrl = category.bannerImage ? getImageUrl(category.bannerImage) : null;
+      setBannerImagePreview(bannerImageUrl);
+      setBannerImageFile(null);
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
         description: '',
         image: '',
+        bannerImage: '',
         isActive: true
       });
       setImagePreview(null);
       setImageFile(null);
+      setBannerImagePreview(null);
+      setBannerImageFile(null);
     }
     setIsModalOpen(true);
   };
@@ -105,10 +115,13 @@ export const DecorationCategories = () => {
       name: '',
       description: '',
       image: '',
+      bannerImage: '',
       isActive: true
     });
     setImageFile(null);
     setImagePreview(null);
+    setBannerImageFile(null);
+    setBannerImagePreview(null);
   };
 
   const handleImageChange = (e) => {
@@ -118,6 +131,18 @@ export const DecorationCategories = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBannerImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setBannerImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -141,6 +166,12 @@ export const DecorationCategories = () => {
         submitData.append('image', imageFile);
       } else if (formData.image && !imageFile) {
         submitData.append('image', formData.image);
+      }
+
+      if (bannerImageFile) {
+        submitData.append('bannerImage', bannerImageFile);
+      } else if (formData.bannerImage && !bannerImageFile) {
+        submitData.append('bannerImage', formData.bannerImage);
       }
 
       if (editingCategory) {
@@ -188,6 +219,7 @@ export const DecorationCategories = () => {
         name: category.name,
         description: category.description || '',
         image: category.image || '',
+        bannerImage: category.bannerImage || '',
         isActive: !category.isActive
       };
       
@@ -450,6 +482,42 @@ export const DecorationCategories = () => {
                     src={getImageUrl(imagePreview)} 
                     alt="Preview" 
                     className="w-32 h-32 object-cover rounded-lg border border-gray-300"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+              Banner Image
+            </label>
+            <div className="space-y-3">
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerImageChange}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary file:text-white
+                    hover:file:bg-primary/90
+                    cursor-pointer"
+                />
+                <p className="mt-1 text-xs text-gray-500">Upload a banner image file (JPG, PNG, GIF, WEBP - Max 5MB)</p>
+              </div>
+              
+              {bannerImagePreview && (
+                <div className="mt-2">
+                  <img 
+                    src={getImageUrl(bannerImagePreview)} 
+                    alt="Banner Preview" 
+                    className="w-full max-w-md h-48 object-cover rounded-lg border border-gray-300"
                     onError={(e) => {
                       e.target.style.display = 'none';
                     }}

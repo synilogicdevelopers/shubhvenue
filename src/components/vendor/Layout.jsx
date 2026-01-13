@@ -16,7 +16,9 @@ import {
   MessageSquare,
   Settings,
   UserCog,
-  Shield
+  Shield,
+  CheckCircle2,
+  CreditCard
 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 
@@ -45,6 +47,7 @@ export default function Layout() {
     { name: 'Bookings', href: '/vendor/bookings', icon: Calendar, permission: 'vendor_view_bookings' },
     { name: 'Reviews', href: '/vendor/reviews', icon: MessageSquare, permission: 'vendor_view_reviews' },
     { name: 'Payouts', href: '/vendor/payouts', icon: Wallet, permission: 'vendor_view_payouts' },
+    { name: 'Verification Plans', href: '/vendor/plans', icon: CheckCircle2, permission: 'vendor_view_dashboard' },
     {
       name: 'Staff',
       href: '/vendor/staff',

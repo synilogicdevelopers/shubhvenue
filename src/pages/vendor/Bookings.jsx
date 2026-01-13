@@ -304,7 +304,7 @@ export default function Bookings() {
 
       const bookingData = {
         venueId: formData.useManualVenue ? null : formData.venueId, // null if manual venue
-        venueName: formData.useManualVenue ? formData.venueName.trim() : null, // venue name if manual
+        venueName: formData.useManualVenue ? (formData.venueName?.trim() || null) : null, // venue name if manual (null if empty)
         date: formData.checkIn, // Use checkIn as primary date
         dateFrom: formData.checkIn || null,
         dateTo: formData.checkOut || null,
@@ -321,7 +321,12 @@ export default function Bookings() {
         paymentStatus: formData.paymentStatus || 'paid'
       }
 
-      await vendorAPI.createBooking(bookingData)
+      const response = await vendorAPI.createBooking(bookingData)
+      
+      // Check if response is valid JSON
+      if (response && response.data) {
+        // Check if the response indicates success
+        if (response.data.success !== false) {
       toast.success('Booking added successfully!')
       setShowAddForm(false)
       setFormData({
@@ -342,9 +347,33 @@ export default function Bookings() {
         totalAmount: '',
         paymentStatus: 'paid'
       })
+          // Wait a bit before reloading to ensure backend has processed
+          setTimeout(() => {
       loadBookings()
+          }, 500)
+        } else {
+          throw new Error(response.data.message || response.data.error || 'Failed to add booking')
+        }
+      } else {
+        throw new Error('Invalid response from server')
+      }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to add booking')
+      console.error('Error creating booking:', error)
+      let errorMessage = 'Failed to add booking'
+      
+      if (error.response) {
+        // Check if response is HTML (error page)
+        const contentType = error.response.headers?.['content-type'] || ''
+        if (contentType.includes('text/html')) {
+          errorMessage = 'Server error: Please check server logs'
+        } else {
+          errorMessage = error.response?.data?.error || error.response?.data?.message || errorMessage
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setSubmitting(false)
     }

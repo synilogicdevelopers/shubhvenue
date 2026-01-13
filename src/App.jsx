@@ -22,6 +22,11 @@ import TermsOfService from './pages/customer/TermsOfService'
 import CookiePolicy from './pages/customer/CookiePolicy'
 import ContactUs from './pages/customer/ContactUs'
 import Decoration from './pages/customer/Decoration'
+import BirthdayVenues from './pages/customer/BirthdayVenues'
+import BabyVenues from './pages/customer/BabyVenues'
+import RomanticVenues from './pages/customer/RomanticVenues'
+import SameDayVenues from './pages/customer/SameDayVenues'
+import CorporateVenues from './pages/customer/CorporateVenues'
 import './App.css'
 
 // Admin Routes
@@ -45,6 +50,7 @@ import { OccasionSpecials } from './pages/admin/occasion-specials'
 import { Videos as AdminVideos } from './pages/admin/videos'
 import { Testimonials } from './pages/admin/testimonials'
 import { FAQs } from './pages/admin/faqs'
+import { EmailTemplates } from './pages/admin/email-templates'
 import { Company } from './pages/admin/company'
 import { Contacts } from './pages/admin/contacts'
 import { Banners } from './pages/admin/banners'
@@ -52,6 +58,8 @@ import { BannerCategories } from './pages/admin/banner-categories'
 import { Staff } from './pages/admin/staff'
 import { Roles } from './pages/admin/roles'
 import { Reviews as AdminReviews } from './pages/admin/reviews'
+import { Plans } from './pages/admin/plans'
+import { Subscriptions } from './pages/admin/subscriptions'
 
 // Vendor Routes
 import { AuthProvider, useAuth } from './contexts/vendor/AuthContext'
@@ -68,6 +76,7 @@ import Reviews from './pages/vendor/Reviews'
 import VendorSettings from './pages/vendor/Settings'
 import VendorStaff from './pages/vendor/Staff'
 import VendorRoles from './pages/vendor/Roles'
+import VendorPlans from './pages/vendor/Plans'
 import Layout from './components/vendor/Layout'
 
 // Vendor Private Route Component
@@ -109,6 +118,7 @@ function VendorRoutes() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="reviews" element={<Reviews />} />
+        <Route path="plans" element={<VendorPlans />} />
         <Route path="staff" element={<VendorStaff />} />
         <Route path="roles" element={<VendorRoles />} />
         <Route path="settings" element={<VendorSettings />} />
@@ -149,6 +159,11 @@ function CustomerRoutes() {
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/contact-us" element={<ContactUs />} />
           <Route path="/decoration" element={<Decoration />} />
+          <Route path="/birthday-venues" element={<BirthdayVenues />} />
+          <Route path="/baby-venues" element={<BabyVenues />} />
+          <Route path="/romantic-venues" element={<RomanticVenues />} />
+          <Route path="/same-day-venues" element={<SameDayVenues />} />
+          <Route path="/corporate-venues" element={<CorporateVenues />} />
         </Routes>
       </main>
     </div>
@@ -341,6 +356,16 @@ function AdminRoutes() {
         }
       />
       <Route
+        path="email-templates"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <EmailTemplates />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
         path="company"
         element={
           <AdminPrivateRoute>
@@ -406,6 +431,26 @@ function AdminRoutes() {
           <AdminPrivateRoute>
             <DashboardLayout>
               <AdminReviews />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="plans"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <Plans />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
+        path="subscriptions"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <Subscriptions />
             </DashboardLayout>
           </AdminPrivateRoute>
         }

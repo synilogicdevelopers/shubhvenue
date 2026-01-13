@@ -10,6 +10,10 @@ const appConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  planSubscriptionsEnabled: {
+    type: Boolean,
+    default: true,
+  },
 }, {
   timestamps: true,
 });
@@ -22,6 +26,7 @@ appConfigSchema.statics.getConfig = async function() {
     config = await this.create({
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
       isActive: true,
+      planSubscriptionsEnabled: true,
     });
   }
   return config;

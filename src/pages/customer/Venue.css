@@ -23,6 +23,114 @@
   padding: 0 24px 80px;
 }
 
+/* Decoration Category Banner Section */
+.decoration-category-banner-section {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 0;
+  margin-bottom: 0;
+  background: #ffffff;
+}
+
+.decoration-category-banner-wrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  overflow: hidden;
+  cursor: default;
+  margin-bottom: 0;
+}
+
+.decoration-category-banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.decoration-category-banner-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 30%, rgba(0, 0, 0, 0.8) 100%);
+  padding: 60px 40px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  z-index: 5;
+}
+
+.decoration-category-banner-left {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.decoration-category-banner-title {
+  color: #ffffff;
+  font-size: 3rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+}
+
+.decoration-category-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.decoration-category-banner-right .search-bar-wrapper {
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.decoration-category-banner-right .search-bar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.decoration-category-banner-right .filter-toggle-btn {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--text-dark);
+}
+
+.decoration-category-banner-right .filter-toggle-btn:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.decoration-category-banner-right .toolbar-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.decoration-category-banner-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 6px;
+  color: #92487a;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.decoration-category-banner-close:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 /* Hero Header Section */
 .venues-hero {
   position: relative;
@@ -30,6 +138,17 @@
   padding: 45px 24px 40px;
   margin-bottom: 32px;
   overflow: visible;
+}
+
+/* Hide only title/subtitle when decoration category banner is shown, keep search/filters */
+.venues-hero.hide-title-only .venues-hero-content {
+  text-align: center;
+}
+
+.venues-hero.hide-title-only {
+  padding: 20px 24px 40px;
+  margin-bottom: 32px;
+  margin-top: 0;
 }
 
 .venues-hero-content {
@@ -480,15 +599,82 @@
   }
 }
 
+/* Filters Panel Modal Overlay */
+.filters-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Filters Panel */
+.filters-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .filters-panel {
   background: var(--white);
   border-radius: 20px;
   padding: 32px;
-  margin-bottom: 32px;
-  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 1px solid #E5E7EB;
+  position: relative;
+  margin: auto;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes slideDown {
@@ -753,6 +939,61 @@
   flex-shrink: 0;
 }
 
+.venue-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(146, 72, 122, 0.08) 0%, rgba(236, 72, 153, 0.08) 100%);
+  border-radius: 8px;
+  border: 1px solid rgba(146, 72, 122, 0.15);
+}
+
+.venue-card-price-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.venue-price .rupee-icon-card {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-purple);
+  flex-shrink: 0;
+  line-height: 1;
+  font-family: Arial, sans-serif;
+}
+
+.venue-price > span:not(.venue-card-price-label):not(.venue-card-price-period):not(.rupee-icon-card) {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-purple);
+}
+
+.venue-card-price-period {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-dark);
+  margin-left: 2px;
+}
+
+.venue-price-icon {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-purple);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.venue-price-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-purple);
+}
+
 .venue-pricing {
   display: flex;
   flex-direction: column;
@@ -883,6 +1124,18 @@
 }
 
 @media (max-width: 768px) {
+  .decoration-category-banner-wrapper {
+    height: 300px;
+  }
+
+  .decoration-category-banner-overlay {
+    padding: 30px 20px;
+  }
+
+  .decoration-category-banner-title {
+    font-size: 2rem;
+  }
+
   .venues-hero {
     padding: 35px 20px 30px;
     margin-bottom: 24px;
@@ -926,8 +1179,14 @@
     min-width: 150px;
   }
 
+  .filters-modal-overlay {
+    padding: 10px;
+  }
+
   .filters-panel {
     padding: 24px;
+    max-height: 95vh;
+    border-radius: 16px;
   }
 
   .filters-content {
@@ -946,6 +1205,18 @@
 }
 
 @media (max-width: 480px) {
+  .decoration-category-banner-wrapper {
+    height: 250px;
+  }
+
+  .decoration-category-banner-overlay {
+    padding: 20px 15px;
+  }
+
+  .decoration-category-banner-title {
+    font-size: 1.5rem;
+  }
+
   .venues-hero {
     padding: 30px 16px 24px;
     margin-bottom: 20px;

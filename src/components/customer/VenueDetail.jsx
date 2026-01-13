@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { publicVenuesAPI, reviewAPI, bookingAPI, paymentAPI, shotlistAPI } from '../../services/customer/api'
+import { publicVenuesAPI, reviewAPI, bookingAPI, paymentAPI, shotlistAPI, authAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import LoginModal from './LoginModal'
 import SEO from '../SEO'
@@ -691,6 +691,8 @@ import './VenueDetail.css'
             type: venueData.category?.name || venueData.categoryId?.name || venueData.venueType || 'Venue',
             price: venueData.price || venueData.pricingInfo?.rentalPrice || 0,
             pricingInfo: venueData.pricingInfo || null,
+            decorationCategoryId: venueData.decorationCategoryId || null,
+            priceDisplay: venueData.priceDisplay || (venueData.price > 0 ? `${venueData.price.toFixed(2)} Lakh` : 'Price on request'),
             rooms: venueData.rooms || 0,
             capacity: venueData.capacity ? 
               (typeof venueData.capacity === 'object' ? 
@@ -935,6 +937,35 @@ import './VenueDetail.css'
 
     checkShotlistStatus()
   }, [venue?.id])
+
+  // Load profile data when booking modal opens
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!showBookingModal) return
+      
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      try {
+        const response = await authAPI.getProfile()
+        if (response.data?.user) {
+          const user = response.data.user
+          // Auto-fill contact information from profile
+          setBookingForm(prev => ({
+            ...prev,
+            fullName: prev.fullName || user.name || '',
+            email: prev.email || user.email || '',
+            phone: prev.phone || user.phone || ''
+          }))
+        }
+      } catch (error) {
+        // Silently fail - user can still fill form manually
+        console.log('Could not load profile data:', error.message)
+      }
+    }
+
+    loadProfileData()
+  }, [showBookingModal])
 
   // Force SEO update when venue data changes (must be before early returns)
   useEffect(() => {
@@ -2041,6 +2072,47 @@ import './VenueDetail.css'
 
         {/* Right Side Buttons */}
         <div className="slider-right-buttons">
+          {/* Show price only for decoration venues */}
+          {venue.decorationCategoryId && (venue.price > 0 || venue.pricingInfo?.rentalPrice > 0) && (
+            <div className="slider-price-display">
+              <div className="slider-price-header">
+                <span className="slider-price-title">Starting Price</span>
+              </div>
+              <div className="slider-price-separator"></div>
+              <div className="slider-price-content">
+                <div className="slider-price-left">
+                  <span className="rupee-icon">₹</span>
+                  <span className="slider-price-value">
+                    {(() => {
+                      let priceText = '';
+                      if (venue.pricingInfo?.rentalPrice > 0) {
+                        priceText = venue.pricingInfo.rentalPrice.toLocaleString('en-IN');
+                      } else if (venue.priceDisplay && venue.priceDisplay !== 'Price on request') {
+                        // Remove any currency symbols and extract number
+                        priceText = venue.priceDisplay.replace(/[₹$]/g, '').trim();
+                        // If it contains Lakh, keep that part
+                        if (venue.priceDisplay.includes('Lakh')) {
+                          const numPart = priceText.replace(/[^0-9.]/g, '');
+                          priceText = numPart + ' Lakh';
+                        } else {
+                          priceText = priceText.replace(/[^0-9.]/g, '');
+                        }
+                      } else if (venue.price > 0) {
+                        priceText = venue.price.toLocaleString('en-IN');
+                      } else {
+                        priceText = 'Price on request';
+                      }
+                      return priceText;
+                    })()}
+                  </span>
+                </div>
+                <div className="slider-price-right">
+                  <span className="slider-price-type">Decor Price</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {(venue.bookingButtonEnabled === true || venue.bookingButtonEnabled === undefined) && (
             <button 
               className="slider-action-btn book-btn" 

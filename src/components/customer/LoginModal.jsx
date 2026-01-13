@@ -3,6 +3,7 @@ import { auth, googleProvider } from '../../config/firebase'
 import { signInWithPopup, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth'
 import { authAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
+import { forceLogout } from '../../utils/auth/logout'
 import './LoginModal.css'
 
 function LoginModal({ isOpen, onClose, onLoginSuccess }) {
@@ -23,6 +24,14 @@ function LoginModal({ isOpen, onClose, onLoginSuccess }) {
         if (idToken) {
           const response = await authAPI.googleLogin(idToken, 'customer')
           if (response.data?.token && response.data?.user) {
+            // Check if user is blocked (shouldn't happen if backend is working, but double check)
+            if (response.data?.user?.isBlocked) {
+              toast.error('Your account has been blocked. Please contact support for assistance.')
+              setLoading(false)
+              forceLogout('blocked', '/')
+              return
+            }
+            
             localStorage.setItem('token', response.data.token)
             localStorage.setItem('user', JSON.stringify(response.data.user))
             
@@ -63,7 +72,13 @@ function LoginModal({ isOpen, onClose, onLoginSuccess }) {
       }
     } catch (error) {
       console.error('Google login error:', error)
-      toast.error(error.message || 'Google login failed')
+      // Handle blocked user error specifically
+      if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+        toast.error(error.response?.data?.error || error.response?.data?.message || 'Your account has been blocked. Please contact support.')
+        forceLogout('blocked', '/')
+      } else {
+        toast.error(error.response?.data?.error || error.response?.data?.message || error.message || 'Google login failed')
+      }
       setLoading(false)
     }
   }

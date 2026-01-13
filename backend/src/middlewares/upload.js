@@ -17,6 +17,7 @@ const vendorStaffUploadsDir = path.join(__dirname, '../../uploads/vendor-staff')
 const vendorCategoryUploadsDir = path.join(__dirname, '../../uploads/vendor-categories');
 const decorationCategoryUploadsDir = path.join(__dirname, '../../uploads/decoration-categories');
 const occasionSpecialUploadsDir = path.join(__dirname, '../../uploads/occasion-specials');
+const emailLogoUploadsDir = path.join(__dirname, '../../uploads/email-logos');
 if (!fs.existsSync(venuesUploadsDir)) {
   fs.mkdirSync(venuesUploadsDir, { recursive: true });
 }
@@ -46,6 +47,9 @@ if (!fs.existsSync(staffUploadsDir)) {
 }
 if (!fs.existsSync(vendorStaffUploadsDir)) {
   fs.mkdirSync(vendorStaffUploadsDir, { recursive: true });
+}
+if (!fs.existsSync(emailLogoUploadsDir)) {
+  fs.mkdirSync(emailLogoUploadsDir, { recursive: true });
 }
 
 // Configure storage for venues
@@ -246,6 +250,20 @@ const bannerUpload = multer({
   fileFilter: fileFilter
 });
 
+// Configure storage for email logos
+const emailLogoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, emailLogoUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
 // Configure multer for videos
 const videoUpload = multer({
   storage: videoStorage,
@@ -253,6 +271,15 @@ const videoUpload = multer({
     fileSize: 100 * 1024 * 1024 // 100MB limit for videos
   },
   fileFilter: videoFileFilter
+});
+
+// Configure multer for email logos
+const emailLogoUpload = multer({
+  storage: emailLogoStorage,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB limit for logos
+  },
+  fileFilter: fileFilter
 });
 
 // Middleware for single image upload
@@ -317,8 +344,11 @@ export const uploadCategoryImage = categoryUpload.single('image');
 // Middleware for vendor category image upload
 export const uploadVendorCategoryImage = vendorCategoryUpload.single('image');
 
-// Middleware for decoration category image upload
-export const uploadDecorationCategoryImage = decorationCategoryUpload.single('image');
+// Middleware for decoration category image upload (supports both image and bannerImage)
+export const uploadDecorationCategoryImage = decorationCategoryUpload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'bannerImage', maxCount: 1 }
+]);
 
 // Middleware for occasion special image upload
 export const uploadOccasionSpecialImage = occasionSpecialUpload.single('image');
@@ -336,6 +366,9 @@ export const uploadMenuImage = (req, res, next) => {
 
 // Middleware for banner image upload
 export const uploadBannerImage = bannerUpload.single('image');
+
+// Middleware for email logo upload
+export const uploadEmailLogo = emailLogoUpload.single('logo');
 
 // Middleware for video upload
 export const uploadVideo = videoUpload.single('video');

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Footer from '../../components/customer/Footer'
 import SEO from '../../components/SEO'
-import { publicBannersAPI, publicDecorationCategoriesAPI, publicOccasionSpecialsAPI } from '../../services/customer/api'
+import { publicBannersAPI, publicDecorationCategoriesAPI, publicOccasionSpecialsAPI, publicVenuesAPI } from '../../services/customer/api'
+import { createSlug } from '../../utils/customer/slug'
 import toast from 'react-hot-toast'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, Navigation } from 'swiper/modules'
@@ -17,10 +18,28 @@ function Decoration() {
   const [decorationCategories, setDecorationCategories] = useState([])
   const [occasionSpecials, setOccasionSpecials] = useState([])
   const [birthdayBanner, setBirthdayBanner] = useState(null)
+  const [birthdayVenues, setBirthdayVenues] = useState([])
+  const [babyBanner, setBabyBanner] = useState(null)
+  const [babyVenues, setBabyVenues] = useState([])
+  const [romanticBanner, setRomanticBanner] = useState(null)
+  const [romanticVenues, setRomanticVenues] = useState([])
+  const [sameDayBanner, setSameDayBanner] = useState(null)
+  const [sameDayVenues, setSameDayVenues] = useState([])
+  const [corporateBanner, setCorporateBanner] = useState(null)
+  const [corporateVenues, setCorporateVenues] = useState([])
   const [loading, setLoading] = useState(true)
   const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [occasionSpecialsLoading, setOccasionSpecialsLoading] = useState(true)
   const [birthdayBannerLoading, setBirthdayBannerLoading] = useState(true)
+  const [birthdayVenuesLoading, setBirthdayVenuesLoading] = useState(true)
+  const [babyBannerLoading, setBabyBannerLoading] = useState(true)
+  const [babyVenuesLoading, setBabyVenuesLoading] = useState(true)
+  const [romanticBannerLoading, setRomanticBannerLoading] = useState(true)
+  const [romanticVenuesLoading, setRomanticVenuesLoading] = useState(true)
+  const [sameDayBannerLoading, setSameDayBannerLoading] = useState(true)
+  const [sameDayVenuesLoading, setSameDayVenuesLoading] = useState(true)
+  const [corporateBannerLoading, setCorporateBannerLoading] = useState(true)
+  const [corporateVenuesLoading, setCorporateVenuesLoading] = useState(true)
   const swiperRef = useRef(null)
 
   // Helper function to get banner image URL
@@ -28,14 +47,32 @@ function Decoration() {
     if (!image) {
       return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&h=400&fit=crop'
     }
-    if (image.startsWith('/uploads/')) {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
-    }
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/banners/${image}`
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's a banner
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/banners/${encodedImage}`
   }
 
   // Helper function to get category image URL
@@ -43,14 +80,35 @@ function Decoration() {
     if (!image) {
       return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=300&h=300&fit=crop'
     }
-    if (image.startsWith('/uploads/')) {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
-    }
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/decoration-categories/${image}`
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      const finalUrl = `${baseUrl}${encodedPath}`
+      return finalUrl
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      const finalUrl = `${baseUrl}/${encodedPath}`
+      return finalUrl
+    }
+    
+    // Handle just filename - assume it's a decoration category
+    const encodedImage = encodeURIComponent(image)
+    const finalUrl = `${baseUrl}/uploads/decoration-categories/${encodedImage}`
+    return finalUrl
   }
 
   // Helper function to get occasion special image URL
@@ -58,31 +116,174 @@ function Decoration() {
     if (!image) {
       return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=300&h=300&fit=crop'
     }
-    if (image.startsWith('/uploads/')) {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
-    }
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/occasion-specials/${image}`
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's an occasion special
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/occasion-specials/${encodedImage}`
+  }
+
+  // Helper function to get venue image URL
+  const getVenueImageUrl = (images) => {
+    if (!images || images.length === 0) {
+      return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+    }
+    const image = Array.isArray(images) ? images[0] : images
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image
+    }
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    // Handle full path starting with /uploads/
+    if (image.startsWith('/uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
+    }
+    
+    // Handle path starting with uploads/ (without leading /)
+    if (image.startsWith('uploads/')) {
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}/${encodedPath}`
+    }
+    
+    // Handle just filename - assume it's a venue image
+    const encodedImage = encodeURIComponent(image)
+    return `${baseUrl}/uploads/venues/${encodedImage}`
+  }
+
+  // Helper function to format location
+  const formatLocation = (location) => {
+    if (!location) return 'Location not specified'
+    if (typeof location === 'object' && location.city) {
+      return `${location.city}${location.state ? `, ${location.state}` : ''}`
+    }
+    if (typeof location === 'string') {
+      return location.length > 20 ? `${location.substring(0, 20)}...` : location
+    }
+    return 'Location not specified'
+  }
+
+  // Helper function to format price
+  const formatPrice = (venue) => {
+    // Try to get price from various possible fields
+    if (venue.pricingInfo?.vegPerPlate) {
+      return { price: `₹${venue.pricingInfo.vegPerPlate}`, suffix: 'per plate' }
+    }
+    if (venue.pricingInfo?.nonVegPerPlate) {
+      return { price: `₹${venue.pricingInfo.nonVegPerPlate}`, suffix: 'per plate' }
+    }
+    if (venue.minPricePerPlateVeg) {
+      return { price: `₹${venue.minPricePerPlateVeg}`, suffix: 'per plate' }
+    }
+    if (venue.minPricePerPlateNonVeg) {
+      return { price: `₹${venue.minPricePerPlateNonVeg}`, suffix: 'per plate' }
+    }
+    if (venue.pricePerPlate?.veg) {
+      return { price: `₹${venue.pricePerPlate.veg}`, suffix: 'per plate' }
+    }
+    if (venue.pricePerPlate?.nonVeg) {
+      return { price: `₹${venue.pricePerPlate.nonVeg}`, suffix: 'per plate' }
+    }
+    if (venue.pricingInfo?.rentalPrice) {
+      return { price: `₹${venue.pricingInfo.rentalPrice}`, suffix: 'per day' }
+    }
+    if (venue.minPrice) {
+      return { price: `₹${venue.minPrice}`, suffix: 'per day' }
+    }
+    if (venue.price) {
+      return { price: `₹${venue.price}`, suffix: 'per day' }
+    }
+    return { price: '₹4999', suffix: 'per day' } // Default price like in the image
   }
 
   useEffect(() => {
     const fetchBanners = async () => {
       try {
         setLoading(true)
-        const response = await publicBannersAPI.getAll()
+        
+        // First, fetch all banners to find the herobanner category ID
+        const allBannersResponse = await publicBannersAPI.getAll()
+        
+        let allBannersData = []
+        if (allBannersResponse.data) {
+          if (allBannersResponse.data.banners && Array.isArray(allBannersResponse.data.banners)) {
+            allBannersData = allBannersResponse.data.banners
+          } else if (Array.isArray(allBannersResponse.data)) {
+            allBannersData = allBannersResponse.data
+          } else if (allBannersResponse.data.data && Array.isArray(allBannersResponse.data.data)) {
+            allBannersData = allBannersResponse.data.data
+          }
+        }
+        
+        // Find the herobanner category ID from banners
+        const heroBannerCategory = allBannersData.find(banner => 
+          banner.categoryId && 
+          (banner.categoryId.name || banner.categoryId) && 
+          (banner.categoryId.name?.toLowerCase() === 'herobanner' || 
+           (typeof banner.categoryId === 'string' && banner.categoryId.toLowerCase() === 'herobanner'))
+        )
         
         let bannersData = []
-        if (response.data) {
-          if (response.data.banners && Array.isArray(response.data.banners)) {
-            bannersData = response.data.banners
-          } else if (Array.isArray(response.data)) {
-            bannersData = response.data
-          } else if (response.data.data && Array.isArray(response.data.data)) {
-            bannersData = response.data.data
+        
+        // Get categoryId - handle both populated object and string ID
+        let heroBannerCategoryId = null
+        if (heroBannerCategory && heroBannerCategory.categoryId) {
+          if (typeof heroBannerCategory.categoryId === 'object' && heroBannerCategory.categoryId._id) {
+            heroBannerCategoryId = heroBannerCategory.categoryId._id
+          } else if (typeof heroBannerCategory.categoryId === 'string') {
+            heroBannerCategoryId = heroBannerCategory.categoryId
           }
+        }
+        
+        if (heroBannerCategoryId) {
+          // Fetch banners filtered by herobanner category ID from API (as per requirement)
+          const filteredResponse = await publicBannersAPI.getAll({ categoryId: heroBannerCategoryId })
+          
+          if (filteredResponse.data) {
+            if (filteredResponse.data.banners && Array.isArray(filteredResponse.data.banners)) {
+              bannersData = filteredResponse.data.banners
+            } else if (Array.isArray(filteredResponse.data)) {
+              bannersData = filteredResponse.data
+            } else if (filteredResponse.data.data && Array.isArray(filteredResponse.data.data)) {
+              bannersData = filteredResponse.data.data
+            }
+          }
+        } else {
+          // If herobanner category not found, filter client-side as fallback
+          bannersData = allBannersData.filter(banner => {
+            if (!banner.categoryId) return false
+            if (typeof banner.categoryId === 'object' && banner.categoryId.name) {
+              return banner.categoryId.name.toLowerCase() === 'herobanner'
+            }
+            return false
+          })
         }
         
         setBanners(bannersData)
@@ -192,6 +393,1360 @@ function Decoration() {
     fetchBirthdayBanner()
   }, [])
 
+  // Fetch baby banner (babysection category)
+  useEffect(() => {
+    const fetchBabyBanner = async () => {
+      try {
+        setBabyBannerLoading(true)
+        // First, fetch all banners to find the babysection category ID
+        const allBannersResponse = await publicBannersAPI.getAll()
+        
+        let allBannersData = []
+        if (allBannersResponse.data) {
+          if (allBannersResponse.data.banners && Array.isArray(allBannersResponse.data.banners)) {
+            allBannersData = allBannersResponse.data.banners
+          } else if (Array.isArray(allBannersResponse.data)) {
+            allBannersData = allBannersResponse.data
+          } else if (allBannersResponse.data.data && Array.isArray(allBannersResponse.data.data)) {
+            allBannersData = allBannersResponse.data.data
+          }
+        }
+        
+        // Find the babysection category ID from banners
+        const babyBannerCategory = allBannersData.find(banner => 
+          banner.categoryId && 
+          (banner.categoryId.name || banner.categoryId) && 
+          (banner.categoryId.name?.toLowerCase() === 'babysection' || 
+           (typeof banner.categoryId === 'string' && banner.categoryId.toLowerCase() === 'babysection'))
+        )
+        
+        let babyBannerData = null
+        
+        // Get categoryId - handle both populated object and string ID
+        let babyBannerCategoryId = null
+        if (babyBannerCategory && babyBannerCategory.categoryId) {
+          if (typeof babyBannerCategory.categoryId === 'object' && babyBannerCategory.categoryId._id) {
+            babyBannerCategoryId = babyBannerCategory.categoryId._id
+          } else if (typeof babyBannerCategory.categoryId === 'string') {
+            babyBannerCategoryId = babyBannerCategory.categoryId
+          }
+        }
+        
+        if (babyBannerCategoryId) {
+          // Fetch banners filtered by babysection category ID from API
+          const filteredResponse = await publicBannersAPI.getAll({ categoryId: babyBannerCategoryId })
+          
+          if (filteredResponse.data) {
+            if (filteredResponse.data.banners && Array.isArray(filteredResponse.data.banners)) {
+              babyBannerData = filteredResponse.data.banners[0] || null
+            } else if (Array.isArray(filteredResponse.data) && filteredResponse.data.length > 0) {
+              babyBannerData = filteredResponse.data[0]
+            } else if (filteredResponse.data.data && Array.isArray(filteredResponse.data.data) && filteredResponse.data.data.length > 0) {
+              babyBannerData = filteredResponse.data.data[0]
+            }
+          }
+        } else {
+          // If babysection category not found, filter client-side as fallback
+          const filteredBanners = allBannersData.filter(banner => {
+            if (!banner.categoryId) return false
+            if (typeof banner.categoryId === 'object' && banner.categoryId.name) {
+              return banner.categoryId.name.toLowerCase() === 'babysection'
+            }
+            return false
+          })
+          babyBannerData = filteredBanners[0] || null
+        }
+        
+        if (babyBannerData) {
+          setBabyBanner(babyBannerData)
+        }
+      } catch (error) {
+        console.error('Error fetching baby banner:', error)
+      } finally {
+        setBabyBannerLoading(false)
+      }
+    }
+
+    fetchBabyBanner()
+  }, [])
+
+  // Fetch romantic banner (romanticsection category)
+  useEffect(() => {
+    const fetchRomanticBanner = async () => {
+      try {
+        setRomanticBannerLoading(true)
+        // First, fetch all banners to find the romanticsection category ID
+        const allBannersResponse = await publicBannersAPI.getAll()
+        
+        let allBannersData = []
+        if (allBannersResponse.data) {
+          if (allBannersResponse.data.banners && Array.isArray(allBannersResponse.data.banners)) {
+            allBannersData = allBannersResponse.data.banners
+          } else if (Array.isArray(allBannersResponse.data)) {
+            allBannersData = allBannersResponse.data
+          } else if (allBannersResponse.data.data && Array.isArray(allBannersResponse.data.data)) {
+            allBannersData = allBannersResponse.data.data
+          }
+        }
+        
+        // Find the romanticsection category ID from banners
+        const romanticBannerCategory = allBannersData.find(banner => 
+          banner.categoryId && 
+          (banner.categoryId.name || banner.categoryId) && 
+          (banner.categoryId.name?.toLowerCase() === 'romanticsection' || 
+           (typeof banner.categoryId === 'string' && banner.categoryId.toLowerCase() === 'romanticsection'))
+        )
+        
+        let romanticBannerData = null
+        
+        // Get categoryId - handle both populated object and string ID
+        let romanticBannerCategoryId = null
+        if (romanticBannerCategory && romanticBannerCategory.categoryId) {
+          if (typeof romanticBannerCategory.categoryId === 'object' && romanticBannerCategory.categoryId._id) {
+            romanticBannerCategoryId = romanticBannerCategory.categoryId._id
+          } else if (typeof romanticBannerCategory.categoryId === 'string') {
+            romanticBannerCategoryId = romanticBannerCategory.categoryId
+          }
+        }
+        
+        if (romanticBannerCategoryId) {
+          // Fetch banners filtered by romanticsection category ID from API
+          const filteredResponse = await publicBannersAPI.getAll({ categoryId: romanticBannerCategoryId })
+          
+          if (filteredResponse.data) {
+            if (filteredResponse.data.banners && Array.isArray(filteredResponse.data.banners)) {
+              romanticBannerData = filteredResponse.data.banners[0] || null
+            } else if (Array.isArray(filteredResponse.data) && filteredResponse.data.length > 0) {
+              romanticBannerData = filteredResponse.data[0]
+            } else if (filteredResponse.data.data && Array.isArray(filteredResponse.data.data) && filteredResponse.data.data.length > 0) {
+              romanticBannerData = filteredResponse.data.data[0]
+            }
+          }
+        } else {
+          // If romanticsection category not found, filter client-side as fallback
+          const filteredBanners = allBannersData.filter(banner => {
+            if (!banner.categoryId) return false
+            if (typeof banner.categoryId === 'object' && banner.categoryId.name) {
+              return banner.categoryId.name.toLowerCase() === 'romanticsection'
+            }
+            return false
+          })
+          romanticBannerData = filteredBanners[0] || null
+        }
+        
+        if (romanticBannerData) {
+          setRomanticBanner(romanticBannerData)
+        }
+      } catch (error) {
+        console.error('Error fetching romantic banner:', error)
+      } finally {
+        setRomanticBannerLoading(false)
+      }
+    }
+
+    fetchRomanticBanner()
+  }, [])
+
+  // Fetch same day banner (samedaysection category)
+  useEffect(() => {
+    const fetchSameDayBanner = async () => {
+      try {
+        setSameDayBannerLoading(true)
+        // First, fetch all banners to find the samedaysection category ID
+        const allBannersResponse = await publicBannersAPI.getAll()
+        
+        let allBannersData = []
+        if (allBannersResponse.data) {
+          if (allBannersResponse.data.banners && Array.isArray(allBannersResponse.data.banners)) {
+            allBannersData = allBannersResponse.data.banners
+          } else if (Array.isArray(allBannersResponse.data)) {
+            allBannersData = allBannersResponse.data
+          } else if (allBannersResponse.data.data && Array.isArray(allBannersResponse.data.data)) {
+            allBannersData = allBannersResponse.data.data
+          }
+        }
+        
+        // Find the samedaysection category ID from banners
+        const sameDayBannerCategory = allBannersData.find(banner => 
+          banner.categoryId && 
+          (banner.categoryId.name || banner.categoryId) && 
+          (banner.categoryId.name?.toLowerCase() === 'samedaysection' || 
+           (typeof banner.categoryId === 'string' && banner.categoryId.toLowerCase() === 'samedaysection'))
+        )
+        
+        let sameDayBannerData = null
+        
+        // Get categoryId - handle both populated object and string ID
+        let sameDayBannerCategoryId = null
+        if (sameDayBannerCategory && sameDayBannerCategory.categoryId) {
+          if (typeof sameDayBannerCategory.categoryId === 'object' && sameDayBannerCategory.categoryId._id) {
+            sameDayBannerCategoryId = sameDayBannerCategory.categoryId._id
+          } else if (typeof sameDayBannerCategory.categoryId === 'string') {
+            sameDayBannerCategoryId = sameDayBannerCategory.categoryId
+          }
+        }
+        
+        if (sameDayBannerCategoryId) {
+          // Fetch banners filtered by samedaysection category ID from API
+          const filteredResponse = await publicBannersAPI.getAll({ categoryId: sameDayBannerCategoryId })
+          
+          if (filteredResponse.data) {
+            if (filteredResponse.data.banners && Array.isArray(filteredResponse.data.banners)) {
+              sameDayBannerData = filteredResponse.data.banners[0] || null
+            } else if (Array.isArray(filteredResponse.data) && filteredResponse.data.length > 0) {
+              sameDayBannerData = filteredResponse.data[0]
+            } else if (filteredResponse.data.data && Array.isArray(filteredResponse.data.data) && filteredResponse.data.data.length > 0) {
+              sameDayBannerData = filteredResponse.data.data[0]
+            }
+          }
+        } else {
+          // If samedaysection category not found, filter client-side as fallback
+          const filteredBanners = allBannersData.filter(banner => {
+            if (!banner.categoryId) return false
+            if (typeof banner.categoryId === 'object' && banner.categoryId.name) {
+              return banner.categoryId.name.toLowerCase() === 'samedaysection'
+            }
+            return false
+          })
+          sameDayBannerData = filteredBanners[0] || null
+        }
+        
+        if (sameDayBannerData) {
+          setSameDayBanner(sameDayBannerData)
+        }
+      } catch (error) {
+        console.error('Error fetching same day banner:', error)
+      } finally {
+        setSameDayBannerLoading(false)
+      }
+    }
+
+    fetchSameDayBanner()
+  }, [])
+
+  // Fetch corporate banner (corporatesection category)
+  useEffect(() => {
+    const fetchCorporateBanner = async () => {
+      try {
+        setCorporateBannerLoading(true)
+        // First, fetch all banners to find the corporatesection category ID
+        const allBannersResponse = await publicBannersAPI.getAll()
+        
+        let allBannersData = []
+        if (allBannersResponse.data) {
+          if (allBannersResponse.data.banners && Array.isArray(allBannersResponse.data.banners)) {
+            allBannersData = allBannersResponse.data.banners
+          } else if (Array.isArray(allBannersResponse.data)) {
+            allBannersData = allBannersResponse.data
+          } else if (allBannersResponse.data.data && Array.isArray(allBannersResponse.data.data)) {
+            allBannersData = allBannersResponse.data.data
+          }
+        }
+        
+        // Find the corporatesection category ID from banners
+        const corporateBannerCategory = allBannersData.find(banner => 
+          banner.categoryId && 
+          (banner.categoryId.name || banner.categoryId) && 
+          (banner.categoryId.name?.toLowerCase() === 'corporatesection' || 
+           (typeof banner.categoryId === 'string' && banner.categoryId.toLowerCase() === 'corporatesection'))
+        )
+        
+        let corporateBannerData = null
+        
+        // Get categoryId - handle both populated object and string ID
+        let corporateBannerCategoryId = null
+        if (corporateBannerCategory && corporateBannerCategory.categoryId) {
+          if (typeof corporateBannerCategory.categoryId === 'object' && corporateBannerCategory.categoryId._id) {
+            corporateBannerCategoryId = corporateBannerCategory.categoryId._id
+          } else if (typeof corporateBannerCategory.categoryId === 'string') {
+            corporateBannerCategoryId = corporateBannerCategory.categoryId
+          }
+        }
+        
+        if (corporateBannerCategoryId) {
+          // Fetch banners filtered by corporatesection category ID from API
+          const filteredResponse = await publicBannersAPI.getAll({ categoryId: corporateBannerCategoryId })
+          
+          if (filteredResponse.data) {
+            if (filteredResponse.data.banners && Array.isArray(filteredResponse.data.banners)) {
+              corporateBannerData = filteredResponse.data.banners[0] || null
+            } else if (Array.isArray(filteredResponse.data) && filteredResponse.data.length > 0) {
+              corporateBannerData = filteredResponse.data[0]
+            } else if (filteredResponse.data.data && Array.isArray(filteredResponse.data.data) && filteredResponse.data.data.length > 0) {
+              corporateBannerData = filteredResponse.data.data[0]
+            }
+          }
+        } else {
+          // If corporatesection category not found, filter client-side as fallback
+          const filteredBanners = allBannersData.filter(banner => {
+            if (!banner.categoryId) return false
+            if (typeof banner.categoryId === 'object' && banner.categoryId.name) {
+              return banner.categoryId.name.toLowerCase() === 'corporatesection'
+            }
+            return false
+          })
+          corporateBannerData = filteredBanners[0] || null
+        }
+        
+        if (corporateBannerData) {
+          setCorporateBanner(corporateBannerData)
+        }
+      } catch (error) {
+        console.error('Error fetching corporate banner:', error)
+      } finally {
+        setCorporateBannerLoading(false)
+      }
+    }
+
+    fetchCorporateBanner()
+  }, [])
+
+  // Fetch birthday venues from decoration categories and occasion specials
+  useEffect(() => {
+    const fetchBirthdayVenues = async () => {
+      try {
+        setBirthdayVenuesLoading(true)
+        
+        console.log('🔍 Fetching birthday venues...')
+        console.log('Decoration Categories:', decorationCategories)
+        console.log('Occasion Specials:', occasionSpecials)
+        
+        // Find decoration categories with "birthday" in name
+        const birthdayDecorationCategories = decorationCategories.filter(cat => 
+          cat.name && cat.name.toLowerCase().includes('birthday')
+        )
+        
+        // Find occasion specials with "birthday" in name
+        const birthdayOccasionSpecials = occasionSpecials.filter(special => 
+          special.name && special.name.toLowerCase().includes('birthday')
+        )
+        
+        console.log('🎂 Birthday Decoration Categories:', birthdayDecorationCategories)
+        console.log('🎂 Birthday Occasion Specials:', birthdayOccasionSpecials)
+        
+        // Collect all venue IDs to avoid duplicates
+        const venueIds = new Set()
+        const allVenues = []
+        
+        // Fetch venues for birthday decoration categories
+        for (const category of birthdayDecorationCategories) {
+          try {
+            const categoryId = category._id || category.id
+            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
+            
+            // Try active status first, then fallback to approved
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              decorationCategoryId: categoryId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
+            
+            // Parse venues data
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            // If no venues found with active status, try approved status
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                decorationCategoryId: categoryId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
+              
+              // Parse venues data again
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for decoration category ${category.name}:`, error)
+          }
+        }
+        
+        // Fetch venues for birthday occasion specials
+        for (const special of birthdayOccasionSpecials) {
+          try {
+            const specialId = special._id || special.id
+            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
+            
+            // Try active status first, then fallback to approved
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              occasionSpecialId: specialId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            // If no venues found with active status, try approved status
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                occasionSpecialId: specialId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              // Parse venues data again
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
+            
+            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
+          }
+        }
+        
+        console.log(`🎉 Total unique venues found: ${allVenues.length}`)
+        
+        // Format venues for display (limit to 5)
+        const formattedVenues = allVenues.slice(0, 5).map(venue => {
+          let ratingValue = 0
+          if (venue.rating) {
+            if (typeof venue.rating === 'object' && venue.rating.average !== undefined) {
+              ratingValue = Number(venue.rating.average) || 0
+            } else if (typeof venue.rating === 'number') {
+              ratingValue = venue.rating
+            }
+          }
+          
+          let reviewsCount = 0
+          if (venue.reviewCount !== undefined) {
+            reviewsCount = Number(venue.reviewCount) || 0
+          } else if (venue.rating && typeof venue.rating === 'object' && venue.rating.totalReviews !== undefined) {
+            reviewsCount = Number(venue.rating.totalReviews) || 0
+          }
+          
+          const priceInfo = formatPrice(venue)
+          return {
+            id: venue._id || venue.id,
+            name: venue.name || 'Unnamed Venue',
+            image: getVenueImageUrl(venue.images || venue.image || venue.coverImage),
+            rating: ratingValue,
+            reviews: reviewsCount,
+            location: formatLocation(venue.location),
+            categoryId: venue.categoryId,
+            category: venue.category,
+            price: priceInfo.price,
+            priceSuffix: priceInfo.suffix,
+            pricingInfo: venue.pricingInfo,
+            minPricePerPlateVeg: venue.minPricePerPlateVeg,
+            minPricePerPlateNonVeg: venue.minPricePerPlateNonVeg,
+            pricePerPlate: venue.pricePerPlate,
+            minPrice: venue.minPrice,
+            originalPrice: venue.price
+          }
+        })
+        
+        console.log(`✨ Formatted ${formattedVenues.length} venues for display`)
+        console.log('Formatted Venues:', formattedVenues)
+        
+        setBirthdayVenues(formattedVenues)
+      } catch (error) {
+        console.error('❌ Error fetching birthday venues:', error)
+      } finally {
+        setBirthdayVenuesLoading(false)
+      }
+    }
+
+    // Only fetch if decoration categories and occasion specials are loaded
+    if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
+      console.log('🚀 Starting birthday venues fetch...')
+      fetchBirthdayVenues()
+    } else {
+      console.log('⏳ Waiting for categories/specials to load...', {
+        categoriesLoading,
+        occasionSpecialsLoading,
+        decorationCategoriesCount: decorationCategories.length,
+        occasionSpecialsCount: occasionSpecials.length
+      })
+    }
+  }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
+
+  // Fetch baby venues from decoration categories and occasion specials
+  useEffect(() => {
+    const fetchBabyVenues = async () => {
+      try {
+        setBabyVenuesLoading(true)
+        
+        console.log('🔍 Fetching baby venues...')
+        
+        // Find decoration categories with "baby shower" or "baby welcome" in name
+        const babyDecorationCategories = decorationCategories.filter(cat => 
+          cat.name && (
+            cat.name.toLowerCase().includes('baby shower') || 
+            cat.name.toLowerCase().includes('baby welcome')
+          )
+        )
+        
+        // Find occasion specials with "baby shower" or "baby welcome" in name
+        const babyOccasionSpecials = occasionSpecials.filter(special => 
+          special.name && (
+            special.name.toLowerCase().includes('baby shower') || 
+            special.name.toLowerCase().includes('baby welcome')
+          )
+        )
+        
+        console.log('👶 Baby Decoration Categories:', babyDecorationCategories)
+        console.log('👶 Baby Occasion Specials:', babyOccasionSpecials)
+        
+        // Collect all venue IDs to avoid duplicates
+        const venueIds = new Set()
+        const allVenues = []
+        
+        // Fetch venues for baby decoration categories
+        for (const category of babyDecorationCategories) {
+          try {
+            const categoryId = category._id || category.id
+            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              decorationCategoryId: categoryId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                decorationCategoryId: categoryId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for decoration category ${category.name}:`, error)
+          }
+        }
+        
+        // Fetch venues for baby occasion specials
+        for (const special of babyOccasionSpecials) {
+          try {
+            const specialId = special._id || special.id
+            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              occasionSpecialId: specialId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                occasionSpecialId: specialId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
+            
+            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
+          }
+        }
+        
+        console.log(`🎉 Total unique baby venues found: ${allVenues.length}`)
+        
+        // Format venues for display (limit to 5)
+        const formattedVenues = allVenues.slice(0, 5).map(venue => {
+          let ratingValue = 0
+          if (venue.rating) {
+            if (typeof venue.rating === 'object' && venue.rating.average !== undefined) {
+              ratingValue = Number(venue.rating.average) || 0
+            } else if (typeof venue.rating === 'number') {
+              ratingValue = venue.rating
+            }
+          }
+          
+          let reviewsCount = 0
+          if (venue.reviewCount !== undefined) {
+            reviewsCount = Number(venue.reviewCount) || 0
+          } else if (venue.rating && typeof venue.rating === 'object' && venue.rating.totalReviews !== undefined) {
+            reviewsCount = Number(venue.rating.totalReviews) || 0
+          }
+          
+          const priceInfo = formatPrice(venue)
+          return {
+            id: venue._id || venue.id,
+            name: venue.name || 'Unnamed Venue',
+            image: getVenueImageUrl(venue.images || venue.image || venue.coverImage),
+            rating: ratingValue,
+            reviews: reviewsCount,
+            location: formatLocation(venue.location),
+            categoryId: venue.categoryId,
+            category: venue.category,
+            price: priceInfo.price,
+            priceSuffix: priceInfo.suffix
+          }
+        })
+        
+        console.log(`✨ Formatted ${formattedVenues.length} baby venues for display`)
+        console.log('Formatted Baby Venues:', formattedVenues)
+        
+        setBabyVenues(formattedVenues)
+      } catch (error) {
+        console.error('❌ Error fetching baby venues:', error)
+      } finally {
+        setBabyVenuesLoading(false)
+      }
+    }
+
+    // Only fetch if decoration categories and occasion specials are loaded
+    if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
+      console.log('🚀 Starting baby venues fetch...')
+      fetchBabyVenues()
+    }
+  }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
+
+  // Fetch romantic venues from decoration categories and occasion specials
+  useEffect(() => {
+    const fetchRomanticVenues = async () => {
+      try {
+        setRomanticVenuesLoading(true)
+        
+        console.log('🔍 Fetching romantic venues...')
+        
+        // Find decoration categories with romantic keywords
+        const romanticDecorationCategories = decorationCategories.filter(cat => 
+          cat.name && (
+            cat.name.toLowerCase().includes('first night decoration') || 
+            cat.name.toLowerCase().includes('anniversary decoration') || 
+            cat.name.toLowerCase().includes('candlelight dinner')
+          )
+        )
+        
+        // Find occasion specials with romantic keywords
+        const romanticOccasionSpecials = occasionSpecials.filter(special => 
+          special.name && (
+            special.name.toLowerCase().includes('first night decoration') || 
+            special.name.toLowerCase().includes('anniversary decoration') || 
+            special.name.toLowerCase().includes('candlelight dinner')
+          )
+        )
+        
+        console.log('💕 Romantic Decoration Categories:', romanticDecorationCategories)
+        console.log('💕 Romantic Occasion Specials:', romanticOccasionSpecials)
+        
+        // Collect all venue IDs to avoid duplicates
+        const venueIds = new Set()
+        const allVenues = []
+        
+        // Fetch venues for romantic decoration categories
+        for (const category of romanticDecorationCategories) {
+          try {
+            const categoryId = category._id || category.id
+            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              decorationCategoryId: categoryId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                decorationCategoryId: categoryId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for decoration category ${category.name}:`, error)
+          }
+        }
+        
+        // Fetch venues for romantic occasion specials
+        for (const special of romanticOccasionSpecials) {
+          try {
+            const specialId = special._id || special.id
+            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              occasionSpecialId: specialId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                occasionSpecialId: specialId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
+            
+            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
+          }
+        }
+        
+        console.log(`🎉 Total unique romantic venues found: ${allVenues.length}`)
+        
+        // Format venues for display (limit to 5)
+        const formattedVenues = allVenues.slice(0, 5).map(venue => {
+          let ratingValue = 0
+          if (venue.rating) {
+            if (typeof venue.rating === 'object' && venue.rating.average !== undefined) {
+              ratingValue = Number(venue.rating.average) || 0
+            } else if (typeof venue.rating === 'number') {
+              ratingValue = venue.rating
+            }
+          }
+          
+          let reviewsCount = 0
+          if (venue.reviewCount !== undefined) {
+            reviewsCount = Number(venue.reviewCount) || 0
+          } else if (venue.rating && typeof venue.rating === 'object' && venue.rating.totalReviews !== undefined) {
+            reviewsCount = Number(venue.rating.totalReviews) || 0
+          }
+          
+          const priceInfo = formatPrice(venue)
+          return {
+            id: venue._id || venue.id,
+            name: venue.name || 'Unnamed Venue',
+            image: getVenueImageUrl(venue.images || venue.image || venue.coverImage),
+            rating: ratingValue,
+            reviews: reviewsCount,
+            location: formatLocation(venue.location),
+            categoryId: venue.categoryId,
+            category: venue.category,
+            price: priceInfo.price,
+            priceSuffix: priceInfo.suffix
+          }
+        })
+        
+        console.log(`✨ Formatted ${formattedVenues.length} romantic venues for display`)
+        console.log('Formatted Romantic Venues:', formattedVenues)
+        
+        setRomanticVenues(formattedVenues)
+      } catch (error) {
+        console.error('❌ Error fetching romantic venues:', error)
+      } finally {
+        setRomanticVenuesLoading(false)
+      }
+    }
+
+    // Only fetch if decoration categories and occasion specials are loaded
+    if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
+      console.log('🚀 Starting romantic venues fetch...')
+      fetchRomanticVenues()
+    }
+  }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
+
+  // Fetch same day venues from decoration categories and occasion specials
+  useEffect(() => {
+    const fetchSameDayVenues = async () => {
+      try {
+        setSameDayVenuesLoading(true)
+        
+        console.log('🔍 Fetching same day venues...')
+        
+        // Find decoration categories with same day keywords
+        const sameDayDecorationCategories = decorationCategories.filter(cat => {
+          if (!cat.name) return false
+          const nameLower = cat.name.toLowerCase()
+          return (
+            nameLower.includes('games') && nameLower.includes('activities') ||
+            nameLower.includes('games & activities') ||
+            nameLower.includes('same day') && nameLower.includes('decoration') ||
+            nameLower.includes('same day decoration') ||
+            nameLower === 'games & activities' ||
+            nameLower === 'same day decorations'
+          )
+        })
+        
+        // Find occasion specials with same day keywords
+        const sameDayOccasionSpecials = occasionSpecials.filter(special => {
+          if (!special.name) return false
+          const nameLower = special.name.toLowerCase()
+          return (
+            nameLower.includes('games') && nameLower.includes('activities') ||
+            nameLower.includes('games & activities') ||
+            nameLower.includes('same day') && nameLower.includes('decoration') ||
+            nameLower.includes('same day decoration') ||
+            nameLower === 'games & activities' ||
+            nameLower === 'same day decorations'
+          )
+        })
+        
+        console.log('⚡ Same Day Decoration Categories:', sameDayDecorationCategories)
+        console.log('⚡ Same Day Occasion Specials:', sameDayOccasionSpecials)
+        
+        // Collect all venue IDs to avoid duplicates
+        const venueIds = new Set()
+        const allVenues = []
+        
+        // Fetch venues for same day decoration categories
+        for (const category of sameDayDecorationCategories) {
+          try {
+            const categoryId = category._id || category.id
+            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              decorationCategoryId: categoryId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                decorationCategoryId: categoryId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for decoration category ${category.name}:`, error)
+          }
+        }
+        
+        // Fetch venues for same day occasion specials
+        for (const special of sameDayOccasionSpecials) {
+          try {
+            const specialId = special._id || special.id
+            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              occasionSpecialId: specialId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                occasionSpecialId: specialId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
+            
+            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
+          }
+        }
+        
+        console.log(`🎉 Total unique same day venues found: ${allVenues.length}`)
+        
+        // Format venues for display (limit to 5)
+        const formattedVenues = allVenues.slice(0, 5).map(venue => {
+          let ratingValue = 0
+          if (venue.rating) {
+            if (typeof venue.rating === 'object' && venue.rating.average !== undefined) {
+              ratingValue = Number(venue.rating.average) || 0
+            } else if (typeof venue.rating === 'number') {
+              ratingValue = venue.rating
+            }
+          }
+          
+          let reviewsCount = 0
+          if (venue.reviewCount !== undefined) {
+            reviewsCount = Number(venue.reviewCount) || 0
+          } else if (venue.rating && typeof venue.rating === 'object' && venue.rating.totalReviews !== undefined) {
+            reviewsCount = Number(venue.rating.totalReviews) || 0
+          }
+          
+          const priceInfo = formatPrice(venue)
+          return {
+            id: venue._id || venue.id,
+            name: venue.name || 'Unnamed Venue',
+            image: getVenueImageUrl(venue.images || venue.image || venue.coverImage),
+            rating: ratingValue,
+            reviews: reviewsCount,
+            location: formatLocation(venue.location),
+            categoryId: venue.categoryId,
+            category: venue.category,
+            price: priceInfo.price,
+            priceSuffix: priceInfo.suffix
+          }
+        })
+        
+        console.log(`✨ Formatted ${formattedVenues.length} same day venues for display`)
+        console.log('Formatted Same Day Venues:', formattedVenues)
+        
+        setSameDayVenues(formattedVenues)
+      } catch (error) {
+        console.error('❌ Error fetching same day venues:', error)
+      } finally {
+        setSameDayVenuesLoading(false)
+      }
+    }
+
+    // Only fetch if decoration categories and occasion specials are loaded
+    if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
+      console.log('🚀 Starting same day venues fetch...')
+      fetchSameDayVenues()
+    }
+  }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
+
+  // Fetch corporate venues from decoration categories and occasion specials
+  useEffect(() => {
+    const fetchCorporateVenues = async () => {
+      try {
+        setCorporateVenuesLoading(true)
+        
+        console.log('🔍 Fetching corporate venues...')
+        
+        // Find decoration categories with corporate events keywords
+        const corporateDecorationCategories = decorationCategories.filter(cat => {
+          if (!cat.name) return false
+          const nameLower = cat.name.toLowerCase()
+          return (
+            nameLower.includes('corporate') && nameLower.includes('event') ||
+            nameLower.includes('corporate event') ||
+            nameLower === 'corporate events'
+          )
+        })
+        
+        // Find occasion specials with corporate events keywords
+        const corporateOccasionSpecials = occasionSpecials.filter(special => {
+          if (!special.name) return false
+          const nameLower = special.name.toLowerCase()
+          return (
+            nameLower.includes('corporate') && nameLower.includes('event') ||
+            nameLower.includes('corporate event') ||
+            nameLower === 'corporate events'
+          )
+        })
+        
+        console.log('💼 Corporate Decoration Categories:', corporateDecorationCategories)
+        console.log('💼 Corporate Occasion Specials:', corporateOccasionSpecials)
+        
+        // Collect all venue IDs to avoid duplicates
+        const venueIds = new Set()
+        const allVenues = []
+        
+        // Fetch venues for corporate decoration categories
+        for (const category of corporateDecorationCategories) {
+          try {
+            const categoryId = category._id || category.id
+            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              decorationCategoryId: categoryId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                decorationCategoryId: categoryId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for decoration category ${category.name}:`, error)
+          }
+        }
+        
+        // Fetch venues for corporate occasion specials
+        for (const special of corporateOccasionSpecials) {
+          try {
+            const specialId = special._id || special.id
+            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
+            
+            let venuesResponse = await publicVenuesAPI.getAll({ 
+              occasionSpecialId: specialId,
+              status: 'active',
+              limit: '50'
+            })
+            
+            let venuesData = []
+            if (venuesResponse.data) {
+              if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                venuesData = venuesResponse.data.venues
+              } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                venuesData = venuesResponse.data.data
+              } else if (Array.isArray(venuesResponse.data)) {
+                venuesData = venuesResponse.data
+              }
+            }
+            
+            if (venuesData.length === 0) {
+              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
+              venuesResponse = await publicVenuesAPI.getAll({ 
+                occasionSpecialId: specialId,
+                status: 'approved',
+                limit: '50'
+              })
+              
+              if (venuesResponse.data) {
+                if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
+                  venuesData = venuesResponse.data.venues
+                } else if (venuesResponse.data.data && Array.isArray(venuesResponse.data.data)) {
+                  venuesData = venuesResponse.data.data
+                } else if (Array.isArray(venuesResponse.data)) {
+                  venuesData = venuesResponse.data
+                }
+              }
+            }
+            
+            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
+            
+            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
+            
+            venuesData.forEach(venue => {
+              const venueId = venue._id || venue.id
+              if (!venueIds.has(venueId)) {
+                venueIds.add(venueId)
+                allVenues.push(venue)
+              }
+            })
+          } catch (error) {
+            console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
+          }
+        }
+        
+        console.log(`🎉 Total unique corporate venues found: ${allVenues.length}`)
+        
+        // Format venues for display (limit to 5)
+        const formattedVenues = allVenues.slice(0, 5).map(venue => {
+          let ratingValue = 0
+          if (venue.rating) {
+            if (typeof venue.rating === 'object' && venue.rating.average !== undefined) {
+              ratingValue = Number(venue.rating.average) || 0
+            } else if (typeof venue.rating === 'number') {
+              ratingValue = venue.rating
+            }
+          }
+          
+          let reviewsCount = 0
+          if (venue.reviewCount !== undefined) {
+            reviewsCount = Number(venue.reviewCount) || 0
+          } else if (venue.rating && typeof venue.rating === 'object' && venue.rating.totalReviews !== undefined) {
+            reviewsCount = Number(venue.rating.totalReviews) || 0
+          }
+          
+          const priceInfo = formatPrice(venue)
+          return {
+            id: venue._id || venue.id,
+            name: venue.name || 'Unnamed Venue',
+            image: getVenueImageUrl(venue.images || venue.image || venue.coverImage),
+            rating: ratingValue,
+            reviews: reviewsCount,
+            location: formatLocation(venue.location),
+            categoryId: venue.categoryId,
+            category: venue.category,
+            price: priceInfo.price,
+            priceSuffix: priceInfo.suffix
+          }
+        })
+        
+        console.log(`✨ Formatted ${formattedVenues.length} corporate venues for display`)
+        console.log('Formatted Corporate Venues:', formattedVenues)
+        
+        setCorporateVenues(formattedVenues)
+      } catch (error) {
+        console.error('❌ Error fetching corporate venues:', error)
+      } finally {
+        setCorporateVenuesLoading(false)
+      }
+    }
+
+    // Only fetch if decoration categories and occasion specials are loaded
+    if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
+      console.log('🚀 Starting corporate venues fetch...')
+      fetchCorporateVenues()
+    }
+  }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
+
   const handleBannerClick = (banner) => {
     if (banner.link) {
       if (banner.link.startsWith('http://') || banner.link.startsWith('https://')) {
@@ -202,29 +1757,67 @@ function Decoration() {
     }
   }
 
-  if (loading) {
+  // Check if any data is still loading - wait for all sections to load
+  const isMainDataLoading = loading || categoriesLoading || occasionSpecialsLoading ||
+    birthdayBannerLoading || birthdayVenuesLoading ||
+    babyBannerLoading || babyVenuesLoading ||
+    romanticBannerLoading || romanticVenuesLoading ||
+    sameDayBannerLoading || sameDayVenuesLoading ||
+    corporateBannerLoading || corporateVenuesLoading
+
+  if (isMainDataLoading) {
     return (
       <div className="decoration-page">
-        <div className="decoration-container">
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <img 
-              src="/image/venuebook.png" 
-              alt="VenueBook Logo" 
-              style={{ 
-                height: '60px', 
-                width: 'auto', 
-                objectFit: 'contain',
-                marginBottom: '20px',
-                margin: '0 auto 20px',
-                animation: 'pulse 2s ease-in-out infinite'
-              }}
-              onError={(e) => {
-                e.target.onerror = null
-                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiByeD0iMTIiIGZpbGw9InVybCgjZ3JhZGllbnQpIi8+CjxzdmcgeD0iMTgiIHk9IjE4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDNjMS42NiAwIDMgMS4zNCAzIDNzLTEuMzQgMy0zIDMtMy0xLjM0LTMtMyAxLjM0LTMgMy0zem0wIDE0LjJjLTIuNjcgMC04IDEuMzQtOCA0djEuOGgxNnYtMS44YzAtMi42Ni01LjMzLTQtOC00eiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50IiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6Izk0NDg3QTtzdG9wLW9wYWNpdHk6MSIgLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRUM0ODk5O3N0b3Atb3BhY2l0eToxIiAvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPg=='
-              }}
-            />
-            <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-            <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading banners...</p>
+        <SEO 
+          title="Decoration | ShubhVenue"
+          description="Explore decoration categories and occasion specials"
+          keywords="decoration, party decoration, event decoration"
+        />
+        <div className="decoration-shimmer-loader">
+          {/* Hero Banner Shimmer */}
+          <div className="decoration-shimmer-hero"></div>
+          
+          {/* Categories Section Shimmer */}
+          <div className="decoration-shimmer-section">
+            <div className="decoration-shimmer-heading"></div>
+            <div className="decoration-shimmer-grid">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="decoration-shimmer-card">
+                  <div className="decoration-shimmer-image"></div>
+                  <div className="decoration-shimmer-content">
+                    <div className="decoration-shimmer-title"></div>
+                    <div className="decoration-shimmer-text"></div>
+                    <div className="decoration-shimmer-row">
+                      <div className="decoration-shimmer-rating"></div>
+                      <div className="decoration-shimmer-price"></div>
+                    </div>
+                    <div className="decoration-shimmer-button"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Birthday Section Shimmer */}
+          <div className="decoration-shimmer-section">
+            <div className="decoration-shimmer-heading"></div>
+            <div className="decoration-shimmer-banner"></div>
+            <div className="decoration-shimmer-grid">
+              {[...Array(5)].map((_, index) => (
+                <div key={index} className="decoration-shimmer-card">
+                  <div className="decoration-shimmer-image"></div>
+                  <div className="decoration-shimmer-content">
+                    <div className="decoration-shimmer-title"></div>
+                    <div className="decoration-shimmer-text"></div>
+                    <div className="decoration-shimmer-row">
+                      <div className="decoration-shimmer-rating"></div>
+                      <div className="decoration-shimmer-price"></div>
+                    </div>
+                    <div className="decoration-shimmer-button"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <Footer />
@@ -461,6 +2054,615 @@ function Decoration() {
                   loading="lazy"
                 />
               </div>
+              
+              {/* Birthday Venues Section */}
+              {birthdayVenuesLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading birthday venues...</p>
+                </div>
+              ) : birthdayVenues.length > 0 ? (
+                <div className="birthday-venues-section">
+                  <div className="birthday-venues-grid">
+                    {birthdayVenues.map((venue) => (
+                      <div 
+                        key={venue.id} 
+                        className="birthday-venue-card clickable"
+                        onClick={() => {
+                          const venueSlug = createSlug(venue.name)
+                          const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                          const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                          
+                          const url = venueCategorySlug 
+                            ? `/venue/${venueCategorySlug}/${venueSlug}`
+                            : `/venue/${venueSlug}`
+                          
+                          navigate(url)
+                        }}
+                      >
+                        <div className="birthday-venue-image-wrapper">
+                          <img 
+                            src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
+                            alt={venue.name} 
+                            className="birthday-venue-image"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                            }}
+                          />
+                        </div>
+                        <div className="birthday-venue-content">
+                          <h4 className="birthday-venue-name">{venue.name}</h4>
+                          <div className="birthday-venue-location-text">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{venue.location || 'At your location'}</span>
+                          </div>
+                          <div className="birthday-venue-rating-price-row">
+                            <div className="birthday-venue-rating">
+                              <div className="birthday-rating-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg 
+                                    key={star} 
+                                    width="14" 
+                                    height="14" 
+                                    viewBox="0 0 24 24" 
+                                    fill={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"} 
+                                    stroke={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"}
+                                    strokeWidth="2"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="birthday-rating-value">
+                                {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : '4.0'}
+                              </span>
+                            </div>
+                            <div className="birthday-venue-price">
+                              <span className="birthday-price-amount">{venue.price}</span>
+                              <span className="birthday-price-suffix"> {venue.priceSuffix}</span>
+                            </div>
+                          </div>
+                          <button 
+                            className="birthday-venue-book-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const venueSlug = createSlug(venue.name)
+                              const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                              const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                              
+                              const url = venueCategorySlug 
+                                ? `/venue/${venueCategorySlug}/${venueSlug}`
+                                : `/venue/${venueSlug}`
+                              
+                              navigate(url)
+                            }}
+                          >
+                            BOOK NOW
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {birthdayVenues.length > 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                      <button 
+                        className="birthday-view-more-btn"
+                        onClick={() => navigate('/birthday-venues')}
+                      >
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Baby Section */}
+          {babyBanner && (
+            <div className="baby-banner-section">
+              <h2 className="baby-banner-heading">Baby Shower & Welcome Your Little One</h2>
+              <div 
+                className={`baby-banner-wrapper ${babyBanner.link ? 'clickable' : ''}`}
+                onClick={() => handleBannerClick(babyBanner)}
+              >
+                <img 
+                  src={getBannerImageUrl(babyBanner.image)} 
+                  alt={babyBanner.title || 'Baby Section Banner'} 
+                  className="baby-banner-image"
+                  loading="lazy"
+                />
+              </div>
+              
+              {/* Baby Venues Section */}
+              {babyVenuesLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading baby venues...</p>
+                </div>
+              ) : babyVenues.length > 0 ? (
+                <div className="baby-venues-section">
+                  <div className="baby-venues-grid">
+                    {babyVenues.map((venue) => (
+                      <div 
+                        key={venue.id} 
+                        className="baby-venue-card clickable"
+                        onClick={() => {
+                          const venueSlug = createSlug(venue.name)
+                          const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                          const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                          
+                          const url = venueCategorySlug 
+                            ? `/venue/${venueCategorySlug}/${venueSlug}`
+                            : `/venue/${venueSlug}`
+                          
+                          navigate(url)
+                        }}
+                      >
+                        <div className="baby-venue-image-wrapper">
+                          <img 
+                            src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
+                            alt={venue.name} 
+                            className="baby-venue-image"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                            }}
+                          />
+                        </div>
+                        <div className="baby-venue-content">
+                          <h4 className="baby-venue-name">{venue.name}</h4>
+                          <div className="baby-venue-location-text">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{venue.location || 'At your location'}</span>
+                          </div>
+                          <div className="baby-venue-rating-price-row">
+                            <div className="baby-venue-rating">
+                              <div className="baby-rating-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg 
+                                    key={star} 
+                                    width="14" 
+                                    height="14" 
+                                    viewBox="0 0 24 24" 
+                                    fill={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"} 
+                                    stroke={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"}
+                                    strokeWidth="2"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="baby-rating-value">
+                                {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : '4.0'}
+                              </span>
+                            </div>
+                            <div className="baby-venue-price">
+                              <span className="baby-price-amount">{venue.price}</span>
+                              <span className="baby-price-suffix"> {venue.priceSuffix}</span>
+                            </div>
+                          </div>
+                          <button 
+                            className="baby-venue-book-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const venueSlug = createSlug(venue.name)
+                              const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                              const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                              
+                              const url = venueCategorySlug 
+                                ? `/venue/${venueCategorySlug}/${venueSlug}`
+                                : `/venue/${venueSlug}`
+                              
+                              navigate(url)
+                            }}
+                          >
+                            BOOK NOW
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {babyVenues.length > 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                      <button 
+                        className="baby-view-more-btn"
+                        onClick={() => navigate('/baby-venues')}
+                      >
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Romantic Section */}
+          {romanticBanner && (
+            <div className="romantic-banner-section">
+              <h2 className="romantic-banner-heading">First Night Decorations, Anniversary & Candlelight Dinner</h2>
+              <div 
+                className={`romantic-banner-wrapper ${romanticBanner.link ? 'clickable' : ''}`}
+                onClick={() => handleBannerClick(romanticBanner)}
+              >
+                <img 
+                  src={getBannerImageUrl(romanticBanner.image)} 
+                  alt={romanticBanner.title || 'Romantic Section Banner'} 
+                  className="romantic-banner-image"
+                  loading="lazy"
+                />
+              </div>
+              
+              {/* Romantic Venues Section */}
+              {romanticVenuesLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading romantic venues...</p>
+                </div>
+              ) : romanticVenues.length > 0 ? (
+                <div className="romantic-venues-section">
+                  <div className="romantic-venues-grid">
+                    {romanticVenues.map((venue) => (
+                      <div 
+                        key={venue.id} 
+                        className="romantic-venue-card clickable"
+                        onClick={() => {
+                          const venueSlug = createSlug(venue.name)
+                          const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                          const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                          
+                          const url = venueCategorySlug 
+                            ? `/venue/${venueCategorySlug}/${venueSlug}`
+                            : `/venue/${venueSlug}`
+                          
+                          navigate(url)
+                        }}
+                      >
+                        <div className="romantic-venue-image-wrapper">
+                          <img 
+                            src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
+                            alt={venue.name} 
+                            className="romantic-venue-image"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                            }}
+                          />
+                        </div>
+                        <div className="romantic-venue-content">
+                          <h4 className="romantic-venue-name">{venue.name}</h4>
+                          <div className="romantic-venue-location-text">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{venue.location || 'At your location'}</span>
+                          </div>
+                          <div className="romantic-venue-rating-price-row">
+                            <div className="romantic-venue-rating">
+                              <div className="romantic-rating-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg 
+                                    key={star} 
+                                    width="14" 
+                                    height="14" 
+                                    viewBox="0 0 24 24" 
+                                    fill={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"} 
+                                    stroke={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"}
+                                    strokeWidth="2"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="romantic-rating-value">
+                                {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : '4.0'}
+                              </span>
+                            </div>
+                            <div className="romantic-venue-price">
+                              <span className="romantic-price-amount">{venue.price}</span>
+                              <span className="romantic-price-suffix"> {venue.priceSuffix}</span>
+                            </div>
+                          </div>
+                          <button 
+                            className="romantic-venue-book-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const venueSlug = createSlug(venue.name)
+                              const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                              const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                              
+                              const url = venueCategorySlug 
+                                ? `/venue/${venueCategorySlug}/${venueSlug}`
+                                : `/venue/${venueSlug}`
+                              
+                              navigate(url)
+                            }}
+                          >
+                            BOOK NOW
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {romanticVenues.length > 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                      <button 
+                        className="romantic-view-more-btn"
+                        onClick={() => navigate('/romantic-venues')}
+                      >
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Same Day Section */}
+          {(sameDayBanner || (!sameDayVenuesLoading && sameDayVenues.length >= 0)) && (
+            <div className="same-day-banner-section">
+              <h2 className="same-day-banner-heading">Games & Activities & Same Day Decorations</h2>
+              {sameDayBanner && (
+                <div 
+                  className={`same-day-banner-wrapper ${sameDayBanner.link ? 'clickable' : ''}`}
+                  onClick={() => handleBannerClick(sameDayBanner)}
+                >
+                  <img 
+                    src={getBannerImageUrl(sameDayBanner.image)} 
+                    alt={sameDayBanner.title || 'Same Day Section Banner'} 
+                    className="same-day-banner-image"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+              
+              {/* Same Day Venues Section */}
+              {sameDayVenuesLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading same day venues...</p>
+                </div>
+              ) : sameDayVenues.length > 0 ? (
+                <div className="same-day-venues-section">
+                  <div className="same-day-venues-grid">
+                    {sameDayVenues.map((venue) => (
+                      <div 
+                        key={venue.id} 
+                        className="same-day-venue-card clickable"
+                        onClick={() => {
+                          const venueSlug = createSlug(venue.name)
+                          const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                          const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                          
+                          const url = venueCategorySlug 
+                            ? `/venue/${venueCategorySlug}/${venueSlug}`
+                            : `/venue/${venueSlug}`
+                          
+                          navigate(url)
+                        }}
+                      >
+                        <div className="same-day-venue-image-wrapper">
+                          <img 
+                            src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
+                            alt={venue.name} 
+                            className="same-day-venue-image"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                            }}
+                          />
+                        </div>
+                        <div className="same-day-venue-content">
+                          <h4 className="same-day-venue-name">{venue.name}</h4>
+                          <div className="same-day-venue-location-text">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{venue.location || 'At your location'}</span>
+                          </div>
+                          <div className="same-day-venue-rating-price-row">
+                            <div className="same-day-venue-rating">
+                              <div className="same-day-rating-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg 
+                                    key={star} 
+                                    width="14" 
+                                    height="14" 
+                                    viewBox="0 0 24 24" 
+                                    fill={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"} 
+                                    stroke={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"}
+                                    strokeWidth="2"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="same-day-rating-value">
+                                {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : '4.0'}
+                              </span>
+                            </div>
+                            <div className="same-day-venue-price">
+                              <span className="same-day-price-amount">{venue.price}</span>
+                              <span className="same-day-price-suffix"> {venue.priceSuffix}</span>
+                            </div>
+                          </div>
+                          <button 
+                            className="same-day-venue-book-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const venueSlug = createSlug(venue.name)
+                              const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                              const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                              
+                              const url = venueCategorySlug 
+                                ? `/venue/${venueCategorySlug}/${venueSlug}`
+                                : `/venue/${venueSlug}`
+                              
+                              navigate(url)
+                            }}
+                          >
+                            BOOK NOW
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {sameDayVenues.length > 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                      <button 
+                        className="same-day-view-more-btn"
+                        onClick={() => navigate('/same-day-venues')}
+                      >
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <p style={{ color: 'var(--gray-medium)', fontSize: '1.1rem' }}>No venues found for Games & Activities & Same Day Decorations at the moment.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Corporate Section */}
+          {(corporateBanner || (!corporateVenuesLoading && corporateVenues.length >= 0)) && (
+            <div className="corporate-banner-section">
+              <h2 className="corporate-banner-heading">Corporate Events</h2>
+              {corporateBanner && (
+                <div 
+                  className={`corporate-banner-wrapper ${corporateBanner.link ? 'clickable' : ''}`}
+                  onClick={() => handleBannerClick(corporateBanner)}
+                >
+                  <img 
+                    src={getBannerImageUrl(corporateBanner.image)} 
+                    alt={corporateBanner.title || 'Corporate Section Banner'} 
+                    className="corporate-banner-image"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+              
+              {/* Corporate Venues Section */}
+              {corporateVenuesLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading corporate venues...</p>
+                </div>
+              ) : corporateVenues.length > 0 ? (
+                <div className="corporate-venues-section">
+                  <div className="corporate-venues-grid">
+                    {corporateVenues.map((venue) => (
+                      <div 
+                        key={venue.id} 
+                        className="corporate-venue-card clickable"
+                        onClick={() => {
+                          const venueSlug = createSlug(venue.name)
+                          const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                          const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                          
+                          const url = venueCategorySlug 
+                            ? `/venue/${venueCategorySlug}/${venueSlug}`
+                            : `/venue/${venueSlug}`
+                          
+                          navigate(url)
+                        }}
+                      >
+                        <div className="corporate-venue-image-wrapper">
+                          <img 
+                            src={getVenueImageUrl(venue.images || venue.image || venue.coverImage)} 
+                            alt={venue.name} 
+                            className="corporate-venue-image"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                            }}
+                          />
+                        </div>
+                        <div className="corporate-venue-content">
+                          <h4 className="corporate-venue-name">{venue.name}</h4>
+                          <div className="corporate-venue-location-text">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                              <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{venue.location || 'At your location'}</span>
+                          </div>
+                          <div className="corporate-venue-rating-price-row">
+                            <div className="corporate-venue-rating">
+                              <div className="corporate-rating-stars">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <svg 
+                                    key={star} 
+                                    width="14" 
+                                    height="14" 
+                                    viewBox="0 0 24 24" 
+                                    fill={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"} 
+                                    stroke={star <= Math.round(venue.rating) ? "#fbbf24" : "#e5e7eb"}
+                                    strokeWidth="2"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="corporate-rating-value">
+                                {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : '4.0'}
+                              </span>
+                            </div>
+                            <div className="corporate-venue-price">
+                              <span className="corporate-price-amount">{venue.price}</span>
+                              <span className="corporate-price-suffix"> {venue.priceSuffix}</span>
+                            </div>
+                          </div>
+                          <button 
+                            className="corporate-venue-book-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const venueSlug = createSlug(venue.name)
+                              const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
+                              const venueCategorySlug = categoryName ? createSlug(categoryName) : null
+                              
+                              const url = venueCategorySlug 
+                                ? `/venue/${venueCategorySlug}/${venueSlug}`
+                                : `/venue/${venueSlug}`
+                              
+                              navigate(url)
+                            }}
+                          >
+                            BOOK NOW
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {corporateVenues.length > 0 && (
+                    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                      <button 
+                        className="corporate-view-more-btn"
+                        onClick={() => navigate('/corporate-venues')}
+                      >
+                        View More
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
+                  <p style={{ color: 'var(--gray-medium)', fontSize: '1.1rem' }}>No venues found for Corporate Events at the moment.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

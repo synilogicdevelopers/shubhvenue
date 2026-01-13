@@ -19,12 +19,19 @@ function Categories() {
     }
     if (image.startsWith('/uploads/')) {
       const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
+      // Split path and encode only the filename part to handle special characters
+      const pathParts = image.split('/')
+      const filename = pathParts.pop()
+      const encodedFilename = encodeURIComponent(filename)
+      const encodedPath = pathParts.join('/') + '/' + encodedFilename
+      return `${baseUrl}${encodedPath}`
     }
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/categories/${image}`
+    // Encode the filename when constructing the full path
+    const encodedImage = encodeURIComponent(image)
+    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/categories/${encodedImage}`
   }
 
   // Load categories

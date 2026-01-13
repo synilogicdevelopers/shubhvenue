@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { bookingAPI, paymentAPI } from '../../services/customer/api'
+import { bookingAPI, paymentAPI, authAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
 import Footer from '../../components/customer/Footer'
 import LoginModal from '../../components/customer/LoginModal'
@@ -63,13 +63,36 @@ function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
 
-  // Check authentication on mount
+  // Check authentication and load profile data on mount
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
       toast.error('Please login to continue with booking')
       setShowLoginModal(true)
+      return
     }
+
+    // Fetch profile data and auto-fill form fields
+    const loadProfileData = async () => {
+      try {
+        const response = await authAPI.getProfile()
+        if (response.data?.user) {
+          const user = response.data.user
+          // Auto-fill contact information from profile
+          setFormData(prev => ({
+            ...prev,
+            fullName: user.name || prev.fullName,
+            email: user.email || prev.email,
+            phone: user.phone || prev.phone
+          }))
+        }
+      } catch (error) {
+        // Silently fail - user can still fill form manually
+        console.log('Could not load profile data:', error.message)
+      }
+    }
+
+    loadProfileData()
   }, [])
 
   // Load Razorpay script if needed (for Razorpay Direct payment method)

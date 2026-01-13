@@ -130,7 +130,19 @@ function VendorCategories() {
                   <div className="vendor-category-image-wrapper">
                     {category.image ? (
                       <img
-                        src={category.image.startsWith('http') ? category.image : `${getImageBaseUrl()}${category.image}`}
+                        src={category.image.startsWith('http') ? category.image : (() => {
+                          const baseUrl = getImageBaseUrl()
+                          // Split path and encode only the filename part to handle special characters
+                          if (category.image.startsWith('/')) {
+                            const pathParts = category.image.split('/')
+                            const filename = pathParts.pop()
+                            const encodedFilename = encodeURIComponent(filename)
+                            const encodedPath = pathParts.join('/') + '/' + encodedFilename
+                            return `${baseUrl}${encodedPath}`
+                          }
+                          const encodedImage = encodeURIComponent(category.image)
+                          return `${baseUrl}/${encodedImage}`
+                        })()}
                         alt={category.name}
                         className="vendor-category-image"
                         onError={(e) => {

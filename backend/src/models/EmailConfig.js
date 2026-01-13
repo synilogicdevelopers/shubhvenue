@@ -29,8 +29,8 @@ emailConfigSchema.statics.getConfig = async function() {
       smtpPassword: 'PHtE6r1eRe662md69BdR4qW4EsXxNo99r+llKlJEsocXXPEDH00Hoo1/ljHlrxwuBPJBFfDKyNg9suua5biHJTm8YD4fXGqyqK3sx/VYSPOZsbq6x00euFoTc0fUUYfset5s1yTeu9vdNA==',
       smtpHost: 'smtp.zeptomail.in',
       mailDriver: 'smtp',
-      smtpPort: 465,
-      smtpSecurity: 'ssl',
+      smtpPort: 587, // ZeptoMail recommended: 587 with STARTTLS (more reliable than 465 with SSL)
+      smtpSecurity: 'tls',
       smtpAuthDomain: 'true',
       smtpAddress: 'no-reply@synilogicitsolution.com',
       emailFromAddress: 'no-reply@synilogicitsolution.com',

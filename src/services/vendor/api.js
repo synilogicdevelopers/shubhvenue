@@ -1,4 +1,6 @@
 import axios from 'axios'
+import toast from 'react-hot-toast'
+import { forceLogout } from '../../utils/auth/logout'
 
 // Server base URL - use localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api'
@@ -30,12 +32,34 @@ api.interceptors.request.use(
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Check if response is HTML (error page) instead of JSON
+    const contentType = response.headers?.['content-type'] || ''
+    if (contentType.includes('text/html')) {
+      console.error('Server returned HTML instead of JSON:', response)
+      return Promise.reject(new Error('Server error: Invalid response format'))
+    }
+    return response
+  },
   (error) => {
+    // Check if error response is HTML
+    if (error.response) {
+      const contentType = error.response.headers?.['content-type'] || ''
+      if (contentType.includes('text/html')) {
+        console.error('Server returned HTML error page:', error.response)
+        error.message = 'Server error: Please check server logs'
+        error.isHtmlError = true
+      }
+    }
+    
     if (error.response?.status === 401) {
-      localStorage.removeItem('vendor_token')
-      localStorage.removeItem('vendor_user')
-      window.location.href = '/vendor/login'
+      // Session expired - force logout
+      toast.error('Session expired. Please login again.')
+      forceLogout('expired', '/vendor/login')
+    } else if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+      // User is blocked - logout immediately and clear all data
+      toast.error('Your account has been blocked. Please contact support.')
+      forceLogout('blocked', '/vendor/login')
     }
     return Promise.reject(error)
   }
@@ -230,6 +254,14 @@ export const vendorStaffAPI = {
     return api.put(`/vendor/staff/${id}`, data);
   },
   delete: (id) => api.delete(`/vendor/staff/${id}`),
+}
+
+// Vendor Plans APIs
+export const vendorPlansAPI = {
+  getAll: () => api.get('/vendor/plans'),
+  getSubscriptions: () => api.get('/vendor/subscriptions'),
+  purchase: (data) => api.post('/vendor/plans/purchase', data),
+  verifyPayment: (data) => api.post('/vendor/plans/verify-payment', data),
 }
 
 export default api

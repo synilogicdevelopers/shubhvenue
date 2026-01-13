@@ -562,6 +562,18 @@ export const createBooking = async (req, res) => {
       
       // Populate venue for response
       await lead.populate('venueId', 'name location price capacity images coverImage image');
+      await lead.populate('customerId', 'name email phone');
+
+      // Send lead notification to admin (non-blocking)
+      try {
+        const { sendLeadNotificationToAdmin } = await import('../utils/emailService.js');
+        sendLeadNotificationToAdmin(lead).catch(err => 
+          console.error('Error sending lead notification to admin:', err)
+        );
+      } catch (emailError) {
+        console.error('Error setting up lead email notification:', emailError);
+        // Don't fail the lead creation if email fails
+      }
 
       return res.status(201).json({
         success: true,
@@ -667,6 +679,33 @@ export const createBooking = async (req, res) => {
     
     await booking.populate('customerId', 'name email phone');
     await booking.populate('venueId', 'name location price capacity images coverImage image');
+
+    // Send email notifications (non-blocking)
+    try {
+      const { sendBookingConfirmationEmail, sendBookingNotificationToAdmin } = await import('../utils/emailService.js');
+      
+      // Get customer email - priority: req.user.email > populated customerId.email > bookingData.email
+      const customerEmail = req.user?.email || booking.customerId?.email || req.body.email || booking.email || null;
+      if (customerEmail) {
+        console.log('📧 Sending booking confirmation email to customer:', customerEmail);
+        sendBookingConfirmationEmail(booking, customerEmail).catch(err => 
+          console.error('Error sending booking confirmation email to customer:', err)
+        );
+      } else {
+        console.log('⚠️  No customer email found, skipping booking confirmation email');
+        console.log('   req.user?.email:', req.user?.email);
+        console.log('   booking.customerId?.email:', booking.customerId?.email);
+        console.log('   req.body.email:', req.body.email);
+      }
+      
+      // Send notification to admin
+      sendBookingNotificationToAdmin(booking).catch(err => 
+        console.error('Error sending booking notification to admin:', err)
+      );
+    } catch (emailError) {
+      console.error('Error setting up email notifications:', emailError);
+      // Don't fail the booking creation if email fails
+    }
 
     res.status(201).json({
       success: true,
@@ -975,12 +1014,74 @@ export const updateBookingStatus = async (req, res) => {
         // Log error but don't fail the booking status update
         console.error('Error creating ledger entry for booking:', ledgerError);
       }
+
+      // Send confirmation email to customer when vendor confirms booking
+      try {
+        const { sendVendorBookingConfirmationEmail } = await import('../utils/emailService.js');
+        
+        // Populate customer data for email
+        await booking.populate('customerId', 'name email phone');
+        await booking.populate('venueId', 'name location price capacity images coverImage image');
+        
+        // Get customer email - priority: populated customerId.email > booking.email
+        const customerEmail = booking.customerId?.email || booking.email || null;
+        if (customerEmail) {
+          console.log('📧 Sending booking confirmation email to customer (vendor confirmed):', customerEmail);
+          sendVendorBookingConfirmationEmail(booking, customerEmail).catch(err => 
+            console.error('Error sending vendor booking confirmation email to customer:', err)
+          );
+        } else {
+          console.log('⚠️  No customer email found for booking confirmation');
+        }
+      } catch (emailError) {
+        console.error('Error setting up vendor booking confirmation email:', emailError);
+        // Don't fail the booking status update if email fails
+      }
     } else if (status === 'cancelled' || status === 'failed') {
       await Lead.findOneAndUpdate(
         { bookingId: booking._id },
         { status: 'lost' }, // Mark lead as lost when booking is cancelled/failed
         { new: true }
       );
+      
+      // Send cancellation emails (non-blocking)
+      if (status === 'cancelled') {
+        try {
+          const { sendBookingCancellationEmail, getAdminEmails } = await import('../utils/emailService.js');
+          
+          // Populate venue to get vendor details
+          await booking.populate('venueId', 'vendorId');
+          const venue = await Venue.findById(booking.venueId._id || booking.venueId).populate('vendorId');
+          
+          // Send to customer
+          const customerEmail = booking.customerId?.email || booking.email || null;
+          if (customerEmail) {
+            sendBookingCancellationEmail(booking, customerEmail, 'customer').catch(err => 
+              console.error('Error sending cancellation email to customer:', err)
+            );
+          }
+          
+          // Send to vendor if venue exists
+          if (venue && venue.vendorId && venue.vendorId.email) {
+            sendBookingCancellationEmail(booking, venue.vendorId.email, 'vendor').catch(err => 
+              console.error('Error sending cancellation email to vendor:', err)
+            );
+          }
+          
+          // Send to admin
+          const adminEmails = await getAdminEmails();
+          if (adminEmails.length > 0) {
+            adminEmails.forEach(adminEmail => {
+              sendBookingCancellationEmail(booking, adminEmail, 'admin').catch(err => 
+                console.error('Error sending cancellation email to admin:', err)
+              );
+            });
+          }
+        } catch (emailError) {
+          console.error('Error setting up cancellation email notifications:', emailError);
+          // Don't fail the cancellation if email fails
+        }
+      }
     }
 
     await booking.populate('customerId', 'name email phone');

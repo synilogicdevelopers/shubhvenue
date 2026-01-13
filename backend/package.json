@@ -26,7 +26,9 @@
     "create-menus": "node src/scripts/createMenus.js",
     "test-bookings": "node test_booking_apis.js",
     "test-vendor": "node test_vendor_delete_reject.js",
-    "test-banners": "node test_banner_api.js"
+    "test-banners": "node test_banner_api.js",
+    "test-monthly-revenue-email": "node test-monthly-revenue-email.js",
+    "seed-email-templates": "node seed-email-templates.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -45,6 +47,7 @@
     "mongoose": "^8.6.0",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "razorpay": "^2.9.6"
   },

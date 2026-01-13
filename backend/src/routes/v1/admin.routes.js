@@ -40,8 +40,17 @@ import {
   getEmailConfig,
   updateEmailConfig,
   testEmail,
+  testTemplateEmail,
+  getEmailTemplates,
+  getEmailTemplateById,
+  createEmailTemplate,
+  updateEmailTemplate,
+  deleteEmailTemplate,
+  toggleEmailTemplateActive,
   getGoogleMapsConfig,
   updateGoogleMapsConfig,
+  getPlanSubscriptionsConfig,
+  updatePlanSubscriptionsConfig,
   getBanners,
   getBannerById,
   createBanner,
@@ -83,7 +92,7 @@ import {
   deleteContact,
 } from '../../controllers/admin.controller.js';
 import Payout from '../../models/Payout.js';
-import { uploadBannerImage, uploadVideo, uploadVenueMedia, uploadStaffImage, uploadVendorCategoryImage, handleUploadError } from '../../middlewares/upload.js';
+import { uploadBannerImage, uploadVideo, uploadVenueMedia, uploadStaffImage, uploadVendorCategoryImage, uploadEmailLogo, handleUploadError } from '../../middlewares/upload.js';
 import {
   createRole,
   getRoles,
@@ -112,7 +121,16 @@ import {
   updateVendorCategory,
   deleteVendorCategory,
   updateVendorCategoryForVendor,
-  getVendorCategoriesPublic
+  getVendorCategoriesPublic,
+  getPlans,
+  getPlanById,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getVendorPlanSubscriptions,
+  getPendingVerificationRequests,
+  approveVerificationRequest,
+  rejectVerificationRequest
 } from '../../controllers/admin.controller.js';
 
 const router = Router();
@@ -185,8 +203,20 @@ router.put('/payment-config', requirePermission('edit_settings'), updatePaymentC
 router.get('/email-config', requirePermission('view_settings'), getEmailConfig);
 router.put('/email-config', requirePermission('edit_settings'), updateEmailConfig);
 router.post('/email-config/test', requirePermission('edit_settings'), testEmail);
+
+// Email Templates routes
+router.get('/email-templates', requirePermission('view_settings'), getEmailTemplates);
+router.get('/email-templates/:id', requirePermission('view_settings'), getEmailTemplateById);
+router.post('/email-templates/test', requirePermission('edit_settings'), testTemplateEmail);
+router.post('/email-templates', requirePermission('edit_settings'), uploadEmailLogo, handleUploadError, createEmailTemplate);
+router.put('/email-templates/:id', requirePermission('edit_settings'), uploadEmailLogo, handleUploadError, updateEmailTemplate);
+router.delete('/email-templates/:id', requirePermission('edit_settings'), deleteEmailTemplate);
+router.put('/email-templates/:id/toggle-active', requirePermission('edit_settings'), toggleEmailTemplateActive);
+
 router.get('/google-maps-config', requirePermission('view_settings'), getGoogleMapsConfig);
 router.put('/google-maps-config', requirePermission('edit_settings'), updateGoogleMapsConfig);
+router.get('/plan-subscriptions-config', requirePermission('view_settings'), getPlanSubscriptionsConfig);
+router.put('/plan-subscriptions-config', requirePermission('edit_settings'), updatePlanSubscriptionsConfig);
 
 // Banner Category routes
 router.get('/banner-categories', requirePermission('view_banners'), getBannerCategories);
@@ -271,6 +301,17 @@ router.post('/vendor-categories', requirePermission('edit_vendors'), uploadVendo
 router.put('/vendor-categories/:id', requirePermission('edit_vendors'), uploadVendorCategoryImage, handleUploadError, updateVendorCategory);
 router.delete('/vendor-categories/:id', requirePermission('edit_vendors'), deleteVendorCategory);
 router.put('/vendors/:vendorId/category', requirePermission('edit_vendors'), updateVendorCategoryForVendor);
+
+// Plan routes (Admin only)
+router.get('/plans', requirePermission('view_vendors'), getPlans);
+router.get('/plans/:id', requirePermission('view_vendors'), getPlanById);
+router.post('/plans', requirePermission('edit_vendors'), createPlan);
+router.put('/plans/:id', requirePermission('edit_vendors'), updatePlan);
+router.delete('/plans/:id', requirePermission('edit_vendors'), deletePlan);
+router.get('/plan-subscriptions', requirePermission('view_vendors'), getVendorPlanSubscriptions);
+router.get('/verification-requests/pending', requirePermission('view_vendors'), getPendingVerificationRequests);
+router.put('/verification-requests/:id/approve', requirePermission('edit_vendors'), approveVerificationRequest);
+router.put('/verification-requests/:id/reject', requirePermission('edit_vendors'), rejectVerificationRequest);
 
 export default router;
 

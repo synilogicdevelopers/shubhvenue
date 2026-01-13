@@ -286,8 +286,8 @@ export const Videos = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Videos</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and upload videos</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Banner Video</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and upload banner videos</p>
         </div>
         <Button onClick={() => handleOpenModal()}>
           <Plus className="w-4 h-4 mr-2" />
@@ -302,7 +302,7 @@ export const Videos = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search videos..."
+              placeholder="Search banner videos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -311,7 +311,7 @@ export const Videos = () => {
 
           {/* Total Count */}
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total Videos: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
+            Total Banner Videos: <span className="font-medium text-gray-900 dark:text-gray-100">{totalItems}</span>
           </div>
 
           {/* Table */}
@@ -338,12 +338,12 @@ export const Videos = () => {
                       </div>
                       <div>
                         <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          {searchTerm ? 'No videos match your search' : 'No videos yet'}
+                          {searchTerm ? 'No banner videos match your search' : 'No banner videos yet'}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                           {searchTerm 
                             ? 'Try adjusting your search terms'
-                            : 'Create your first video to showcase your services'
+                            : 'Create your first banner video to showcase your services'
                           }
                         </p>
                         {!searchTerm && (

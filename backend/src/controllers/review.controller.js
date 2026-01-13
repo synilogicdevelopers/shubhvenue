@@ -106,10 +106,31 @@ export const createReview = async (req, res) => {
 
     // Populate user and venue details
     await review.populate('userId', 'name email');
-    await review.populate('venueId', 'name');
+    await review.populate('venueId', 'name vendorId slug');
 
     // Update venue rating info
     await updateVenueRating(venueId);
+
+    // Send email notification to vendor (non-blocking)
+    try {
+      const { sendReviewNotificationToVendor } = await import('../utils/emailService.js');
+      
+      // Get vendor email from venue
+      if (review.venueId?.vendorId) {
+        const User = (await import('../models/User.js')).default;
+        const vendor = await User.findById(review.venueId.vendorId).select('email name');
+        
+        if (vendor && vendor.email) {
+          console.log('📧 Sending review notification to vendor:', vendor.email);
+          sendReviewNotificationToVendor(review, vendor.email).catch(err => 
+            console.error('Error sending review notification to vendor:', err)
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error('Error setting up review notification email:', emailError);
+      // Don't fail the review creation if email fails
+    }
 
     res.status(201).json({
       success: true,
@@ -563,8 +584,27 @@ export const addReplyToReview = async (req, res) => {
 
     // Populate user and venue details
     await review.populate('userId', 'name email');
-    await review.populate('venueId', 'name');
+    await review.populate('venueId', 'name slug');
     await review.populate('reply.repliedBy', 'name email');
+
+    // Send email notification to customer (non-blocking)
+    try {
+      const { sendReviewReplyNotificationToCustomer } = await import('../utils/emailService.js');
+      
+      // Get customer email
+      const customerEmail = review.userId?.email || null;
+      if (customerEmail) {
+        console.log('📧 Sending review reply notification to customer:', customerEmail);
+        sendReviewReplyNotificationToCustomer(review, customerEmail).catch(err => 
+          console.error('Error sending review reply notification to customer:', err)
+        );
+      } else {
+        console.log('⚠️  No customer email found for review reply notification');
+      }
+    } catch (emailError) {
+      console.error('Error setting up review reply notification email:', emailError);
+      // Don't fail the reply if email fails
+    }
 
     res.json({
       success: true,
@@ -650,8 +690,27 @@ export const updateReplyToReview = async (req, res) => {
 
     // Populate user and venue details
     await review.populate('userId', 'name email');
-    await review.populate('venueId', 'name');
+    await review.populate('venueId', 'name slug');
     await review.populate('reply.repliedBy', 'name email');
+
+    // Send email notification to customer when reply is updated (non-blocking)
+    try {
+      const { sendReviewReplyNotificationToCustomer } = await import('../utils/emailService.js');
+      
+      // Get customer email
+      const customerEmail = review.userId?.email || null;
+      if (customerEmail) {
+        console.log('📧 Sending review reply update notification to customer:', customerEmail);
+        sendReviewReplyNotificationToCustomer(review, customerEmail).catch(err => 
+          console.error('Error sending review reply update notification to customer:', err)
+        );
+      } else {
+        console.log('⚠️  No customer email found for review reply update notification');
+      }
+    } catch (emailError) {
+      console.error('Error setting up review reply update notification email:', emailError);
+      // Don't fail the reply update if email fails
+    }
 
     res.json({
       success: true,

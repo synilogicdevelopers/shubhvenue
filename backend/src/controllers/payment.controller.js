@@ -673,7 +673,34 @@ export const verifyPayment = async (req, res) => {
     await lead.save();
     
     await booking.populate('customerId', 'name email phone');
-    await booking.populate('venueId', 'name location price capacity');
+    await booking.populate('venueId', 'name location price capacity images coverImage image');
+
+    // Send email notifications (non-blocking)
+    try {
+      const { sendBookingConfirmationEmail, sendBookingNotificationToAdmin } = await import('../utils/emailService.js');
+      
+      // Get customer email - priority: bookingData.email > req.user.email > populated customerId.email
+      const customerEmail = bookingData.email || req.user?.email || booking.customerId?.email || booking.email || null;
+      if (customerEmail) {
+        console.log('📧 Sending booking confirmation email to customer:', customerEmail);
+        sendBookingConfirmationEmail(booking, customerEmail).catch(err => 
+          console.error('Error sending booking confirmation email to customer:', err)
+        );
+      } else {
+        console.log('⚠️  No customer email found, skipping booking confirmation email');
+        console.log('   bookingData.email:', bookingData.email);
+        console.log('   req.user?.email:', req.user?.email);
+        console.log('   booking.customerId?.email:', booking.customerId?.email);
+      }
+      
+      // Send notification to admin
+      sendBookingNotificationToAdmin(booking).catch(err => 
+        console.error('Error sending booking notification to admin:', err)
+      );
+    } catch (emailError) {
+      console.error('Error setting up email notifications:', emailError);
+      // Don't fail the payment verification if email fails
+    }
 
     res.json({
       success: true,
@@ -855,7 +882,30 @@ export const verifyPaymentForLead = async (req, res) => {
     
     // Populate booking for response
     await booking.populate('customerId', 'name email phone');
-    await booking.populate('venueId', 'name location price capacity');
+    await booking.populate('venueId', 'name location price capacity images coverImage image');
+    
+    // Send email notifications (non-blocking)
+    try {
+      const { sendBookingConfirmationEmail, sendBookingNotificationToAdmin } = await import('../utils/emailService.js');
+      
+      // Get customer email from lead or populated customerId
+      const customerEmail = lead.email || booking.customerId?.email || booking.email || null;
+      if (customerEmail) {
+        sendBookingConfirmationEmail(booking, customerEmail).catch(err => 
+          console.error('Error sending booking confirmation email to customer:', err)
+        );
+      } else {
+        console.log('⚠️  No customer email found, skipping booking confirmation email');
+      }
+      
+      // Send notification to admin
+      sendBookingNotificationToAdmin(booking).catch(err => 
+        console.error('Error sending booking notification to admin:', err)
+      );
+    } catch (emailError) {
+      console.error('Error setting up email notifications:', emailError);
+      // Don't fail the payment verification if email fails
+    }
     
     res.json({
       success: true,

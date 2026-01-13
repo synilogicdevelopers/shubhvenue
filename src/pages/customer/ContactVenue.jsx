@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Footer from '../../components/customer/Footer'
-import { bookingAPI } from '../../services/customer/api'
+import { bookingAPI, authAPI } from '../../services/customer/api'
 import SEO from '../../components/SEO'
 import './Booking.css'
 
@@ -19,6 +19,33 @@ function ContactVenue() {
       navigate('/venues')
     }
   }, [venueData, navigate])
+
+  // Load profile data on mount to auto-fill contact information
+  useEffect(() => {
+    const loadProfileData = async () => {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      try {
+        const response = await authAPI.getProfile()
+        if (response.data?.user) {
+          const user = response.data.user
+          // Auto-fill contact information from profile
+          setFormData(prev => ({
+            ...prev,
+            fullName: prev.fullName || user.name || '',
+            email: prev.email || user.email || '',
+            phone: prev.phone || user.phone || ''
+          }))
+        }
+      } catch (error) {
+        // Silently fail - user can still fill form manually
+        console.log('Could not load profile data:', error.message)
+      }
+    }
+
+    loadProfileData()
+  }, [])
 
   const venue = venueData
     ? {

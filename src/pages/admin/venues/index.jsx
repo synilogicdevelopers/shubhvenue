@@ -8,7 +8,7 @@ import { venuesAPI, vendorsAPI, categoriesAPI, menusAPI, vendorCategoriesAPI } f
 import { getImageUrl } from '../../../utils/admin/imageUrl';
 import { hasPermission } from '../../../utils/admin/permissions';
 import toast from 'react-hot-toast';
-import { Check, X, MapPin, Users, DollarSign, Calendar, MessageSquare, User, Plus, Play, Video, Edit, Eye } from 'lucide-react';
+import { Check, X, MapPin, Users, DollarSign, Calendar, MessageSquare, User, Plus, Play, Video, Edit, Eye, CheckCircle2, XCircle } from 'lucide-react';
 
 export const Venues = () => {
   const [venues, setVenues] = useState([]);
@@ -540,6 +540,19 @@ export const Venues = () => {
     }
   };
 
+  const handleVerifyVenue = async (id, verified) => {
+    setActionLoading(true);
+    try {
+      await venuesAPI.update(id, { verifiedListing: verified });
+      toast.success(`Venue ${verified ? 'verified' : 'unverified'} successfully`);
+      fetchVenues();
+    } catch (error) {
+      toast.error(`Failed to ${verified ? 'verify' : 'unverify'} venue`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Get form configuration from selected vendor category
   const formConfig = useMemo(() => {
     // If vendor category is selected in dropdown, use that
@@ -1053,9 +1066,17 @@ export const Venues = () => {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {venue.name}
                   </h3>
-                  <Badge variant={venue.status === 'approved' ? 'success' : venue.status === 'pending' ? 'warning' : 'danger'}>
-                    {venue.status}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={venue.status === 'approved' ? 'success' : venue.status === 'pending' ? 'warning' : 'danger'}>
+                      {venue.status}
+                    </Badge>
+                    {venue.verifiedListing && (
+                      <Badge variant="success" className="flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Vendor Information */}
@@ -1158,6 +1179,33 @@ export const Venues = () => {
                       </Button>
                     )}
                   </div>
+                  {hasPermission('edit_venues') && (
+                    <div className="flex gap-2">
+                      {venue.verifiedListing ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleVerifyVenue(venue._id, false)} 
+                          className="flex-1"
+                          disabled={actionLoading}
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Unverify
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleVerifyVenue(venue._id, true)} 
+                          className="flex-1"
+                          disabled={actionLoading}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                          Verify
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -5,6 +5,7 @@ const bookingSchema = new mongoose.Schema(
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
     venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', required: false }, // Optional if venueName is provided
     venueName: { type: String, trim: true }, // Manual venue name (used when venueId is not provided)
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }, // Vendor who created this booking (for manual venue bookings)
     date: { type: Date, required: true },
     dateFrom: { type: Date }, // Marriage start date
     dateTo: { type: Date }, // Marriage end date

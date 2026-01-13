@@ -10,6 +10,9 @@ import Testimonials from './Testimonials'
 import FAQ from './FAQ'
 import Footer from './Footer'
 import SEO from '../SEO'
+import { authAPI } from '../../services/customer/api'
+import { forceLogout } from '../../utils/auth/logout'
+import toast from 'react-hot-toast'
 import './Home.css'
 
 function Home() {
@@ -62,6 +65,57 @@ function Home() {
   const handleFAQLoadComplete = useCallback((loaded) => {
     updateLoadingState('faq', loaded)
   }, [updateLoadingState])
+
+  // Check user status on mount/refresh (welcome API)
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          // No token - user not logged in, skip check
+          return
+        }
+
+        const response = await authAPI.welcome()
+        
+        if (response.data?.isBlocked) {
+          // User is blocked - logout immediately
+          toast.error('Your account has been blocked. Please contact support.')
+          forceLogout('blocked', '/')
+        } else if (response.data?.isDeleted) {
+          // User is deleted - logout immediately
+          toast.error('Your account has been deleted. Please contact support.')
+          forceLogout('deleted', '/')
+        }
+        // If user is authenticated and not blocked, continue normally
+      } catch (error) {
+        // If error response indicates blocked user
+        if (error.response?.status === 403 && error.response?.data?.isBlocked) {
+          toast.error('Your account has been blocked. Please contact support.')
+          forceLogout('blocked', '/')
+        } else {
+          // Other errors - silently fail (don't break the page)
+          console.error('Welcome API error:', error)
+        }
+      }
+    }
+
+    // Call on mount and when page becomes visible (handles refresh)
+    checkUserStatus()
+    
+    // Also check when page becomes visible (handles tab switching/refresh)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkUserStatus()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   return (
     <>

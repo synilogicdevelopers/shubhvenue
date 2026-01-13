@@ -1,3 +1,5 @@
+import { forceLogout } from '../../utils/auth/logout';
+
 // Server base URL - use localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://shubhvenue.com/api';
 
@@ -24,9 +26,23 @@ const apiRequest = async (endpoint, options = {}) => {
       localStorage.removeItem('user');
     }
 
+    if (response.status === 403) {
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData.isBlocked) {
+        // User is blocked - logout immediately and clear all data
+        forceLogout('blocked', '/');
+        // Create error with response data for proper handling
+        const error = new Error(errorData.error || errorData.message || 'Your account has been blocked. Please contact support.');
+        error.response = { status: 403, data: errorData };
+        throw error;
+      }
+    }
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(error.message || error.error || 'Request failed');
+      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+      const error = new Error(errorData.message || errorData.error || 'Request failed');
+      error.response = { status: response.status, data: errorData };
+      throw error;
     }
 
     return {
@@ -135,6 +151,7 @@ export const authAPI = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
+  welcome: () => apiRequest('/auth/welcome'),
 };
 
 // Review APIs (requires authentication)

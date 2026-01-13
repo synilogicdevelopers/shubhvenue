@@ -15,7 +15,6 @@ export const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all'); // 'all' means all users except vendors
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingUser, setLoadingUser] = useState(false);
@@ -26,15 +25,14 @@ export const Users = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [roleFilter]);
+  }, []);
 
   const fetchUsers = async () => {
     try {
       // Users section should only show customers, not vendors
       // Vendors should be managed in the Vendors section
-      const params = roleFilter !== 'all' ? { role: roleFilter } : { role: 'customer' };
       // Always exclude vendors from Users section
-      const response = await usersAPI.getAll(params);
+      const response = await usersAPI.getAll({ role: 'customer' });
       // Filter out vendors just in case API returns them
       const filteredUsers = (response.data || []).filter(user => user.role !== 'vendor');
       setUsers(filteredUsers);
@@ -144,9 +142,7 @@ export const Users = () => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phone?.includes(searchTerm);
     
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
+    return matchesSearch;
   });
 
   // Pagination logic
@@ -156,10 +152,10 @@ export const Users = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, roleFilter]);
+  }, [searchTerm]);
 
   const getRoleBadge = (role) => {
     const colors = {
@@ -190,7 +186,7 @@ export const Users = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          {/* Filters */}
+          {/* Search */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -204,17 +200,6 @@ export const Users = () => {
                 />
               </div>
             </div>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
-            >
-              <option value="all">All Users</option>
-              <option value="customer">Customer</option>
-              <option value="affiliate">Affiliate</option>
-              <option value="admin">Admin</option>
-              {/* Vendor option removed - vendors should be managed in Vendors section */}
-            </select>
           </div>
 
           {/* Total Count */}
