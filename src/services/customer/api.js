@@ -82,6 +82,11 @@ export const publicLegalPagesAPI = {
   getByType: (type) => apiRequest(`/legal-pages/${type}`),
 };
 
+// Public Homepage Content APIs (no auth required)
+export const publicHomepageContentAPI = {
+  getByType: (type) => apiRequest(`/homepage-content/${type}`),
+};
+
 // Public Contact APIs (no auth required)
 export const publicContactAPI = {
   submit: (data) => apiRequest('/contact', {

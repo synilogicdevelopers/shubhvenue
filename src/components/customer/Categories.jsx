@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay } from 'swiper/modules'
@@ -7,7 +7,7 @@ import 'swiper/css/navigation'
 import './Categories.css'
 import { publicCategoriesAPI } from '../../services/customer/api'
 
-function Categories() {
+function Categories({ onLoadComplete }) {
   const navigate = useNavigate()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -51,11 +51,14 @@ function Categories() {
         console.error('Error loading categories:', error)
       } finally {
         setLoading(false)
+        if (onLoadComplete) {
+          onLoadComplete()
+        }
       }
     }
 
     loadCategories()
-  }, [])
+  }, [onLoadComplete])
 
 
   const handleCategoryClick = (category) => {
@@ -168,4 +171,3 @@ function Categories() {
 }
 
 export default Categories
-

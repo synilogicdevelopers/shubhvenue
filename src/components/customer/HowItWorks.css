@@ -1,6 +1,6 @@
 /* How it Works Section */
 .how-it-works {
-  padding: 50px 24px 60px 24px;
+  padding: 40px 24px 50px 24px;
   background: var(--white);
   position: relative;
   overflow: hidden;
@@ -57,14 +57,14 @@
   letter-spacing: 0;
 }
 
-.steps-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 24px;
-  margin-top: 50px;
-  position: relative;
-}
+  .steps-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 24px;
+    margin-top: 40px;
+    position: relative;
+  }
 
 .step {
   flex: 1 1 0;
@@ -274,7 +274,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .how-it-works {
-    padding: 40px 24px 50px 24px;
+    padding: 30px 24px 40px 24px;
   }
 
   .how-it-works-title {
@@ -319,7 +319,7 @@
 
 @media (max-width: 768px) {
   .how-it-works {
-    padding: 30px 20px 40px 20px;
+    padding: 25px 20px 35px 20px;
   }
 
   .how-it-works-title {
@@ -366,7 +366,7 @@
 
 @media (max-width: 480px) {
   .how-it-works {
-    padding: 25px 16px 35px 16px;
+    padding: 20px 16px 30px 16px;
   }
 
   .how-it-works-title {

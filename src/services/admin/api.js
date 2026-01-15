@@ -424,6 +424,13 @@ export const legalPagesAPI = {
   update: (type, data) => api.put(`/admin/legal-pages/${type}`, data),
 };
 
+// Homepage Content APIs (Admin)
+export const homepageContentAPI = {
+  getAll: () => api.get('/admin/homepage-content'),
+  getByType: (type) => api.get(`/admin/homepage-content/${type}`),
+  update: (type, data) => api.put(`/admin/homepage-content/${type}`, data),
+};
+
 // Contact Submissions APIs (Admin)
 export const contactsAPI = {
   getAll: (params) => api.get('/admin/contacts', { params }),

@@ -1,147 +1,154 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import HeroSection from './HeroSection'
 import Categories from './Categories'
+import VenueListingSection from './VenueListingSection'
+import FeaturedVenues from './FeaturedVenues'
+import VendorCategories from './VendorCategories'
 import HowItWorks from './HowItWorks'
 import WhyVenueMonk from './WhyVenueMonk'
-import VendorCategories from './VendorCategories'
-import FeaturedVenues from './FeaturedVenues'
-import CTASection from './CTASection'
 import Testimonials from './Testimonials'
 import FAQ from './FAQ'
+import CTASection from './CTASection'
+import SEOContentSection from './SEOContentSection'
 import Footer from './Footer'
-import SEO from '../SEO'
-import { authAPI } from '../../services/customer/api'
-import { forceLogout } from '../../utils/auth/logout'
-import toast from 'react-hot-toast'
 import './Home.css'
 
 function Home() {
-  const [loadingStates, setLoadingStates] = useState({
-    heroSection: true,
-    featuredVenues: true,
-    testimonials: true,
-    faq: true
+  const [isLoading, setIsLoading] = useState(true)
+  const loadedComponents = useRef({
+    hero: false,
+    categories: false,
+    featuredVenues: false,
+    marriageGarden: false,
+    banquetHall: false,
+    farmHouse: false,
+    hotel: false,
+    resort: false,
+    vendorCategories: false
   })
-  const [showLoader, setShowLoader] = useState(true)
 
-  const updateLoadingState = useCallback((component, isLoaded) => {
-    setLoadingStates(prev => {
-      // Only update if value changed
-      if (prev[component] === !isLoaded) {
-        return prev
-      }
-      return {
-        ...prev,
-        [component]: !isLoaded
-      }
-    })
-  }, [])
-
-  // Check if all data is loaded
-  useEffect(() => {
-    const allLoaded = Object.values(loadingStates).every(loading => !loading)
+  const checkAllLoaded = () => {
+    const allLoaded = Object.values(loadedComponents.current).every(loaded => loaded === true)
     if (allLoaded) {
-      // Small delay for smooth transition
-      const timer = setTimeout(() => {
-        setShowLoader(false)
-      }, 300)
-      return () => clearTimeout(timer)
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 500)
     }
-  }, [loadingStates])
+  }
 
-  // Memoized callbacks
-  const handleHeroLoadComplete = useCallback((loaded) => {
-    updateLoadingState('heroSection', loaded)
-  }, [updateLoadingState])
+  const handleHeroLoadComplete = () => {
+    loadedComponents.current.hero = true
+    checkAllLoaded()
+  }
 
-  const handleFeaturedVenuesLoadComplete = useCallback((loaded) => {
-    updateLoadingState('featuredVenues', loaded)
-  }, [updateLoadingState])
+  const handleFeaturedLoadComplete = () => {
+    loadedComponents.current.featuredVenues = true
+    checkAllLoaded()
+  }
 
-  const handleTestimonialsLoadComplete = useCallback((loaded) => {
-    updateLoadingState('testimonials', loaded)
-  }, [updateLoadingState])
+  const handleCategoriesLoadComplete = () => {
+    loadedComponents.current.categories = true
+    checkAllLoaded()
+  }
 
-  const handleFAQLoadComplete = useCallback((loaded) => {
-    updateLoadingState('faq', loaded)
-  }, [updateLoadingState])
+  const handleMarriageGardenLoadComplete = () => {
+    loadedComponents.current.marriageGarden = true
+    checkAllLoaded()
+  }
 
-  // Check user status on mount/refresh (welcome API)
+  const handleBanquetHallLoadComplete = () => {
+    loadedComponents.current.banquetHall = true
+    checkAllLoaded()
+  }
+
+  const handleFarmHouseLoadComplete = () => {
+    loadedComponents.current.farmHouse = true
+    checkAllLoaded()
+  }
+
+  const handleHotelLoadComplete = () => {
+    loadedComponents.current.hotel = true
+    checkAllLoaded()
+  }
+
+  const handleResortLoadComplete = () => {
+    loadedComponents.current.resort = true
+    checkAllLoaded()
+  }
+
+  const handleVendorCategoriesLoadComplete = () => {
+    loadedComponents.current.vendorCategories = true
+    checkAllLoaded()
+  }
+
+  // Fallback: hide loader after 10 seconds even if components don't notify
   useEffect(() => {
-    const checkUserStatus = async () => {
-      try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          // No token - user not logged in, skip check
-          return
-        }
+    const timeout = setTimeout(() => {
+      setIsLoading(false)
+    }, 10000)
 
-        const response = await authAPI.welcome()
-        
-        if (response.data?.isBlocked) {
-          // User is blocked - logout immediately
-          toast.error('Your account has been blocked. Please contact support.')
-          forceLogout('blocked', '/')
-        } else if (response.data?.isDeleted) {
-          // User is deleted - logout immediately
-          toast.error('Your account has been deleted. Please contact support.')
-          forceLogout('deleted', '/')
-        }
-        // If user is authenticated and not blocked, continue normally
-      } catch (error) {
-        // If error response indicates blocked user
-        if (error.response?.status === 403 && error.response?.data?.isBlocked) {
-          toast.error('Your account has been blocked. Please contact support.')
-          forceLogout('blocked', '/')
-        } else {
-          // Other errors - silently fail (don't break the page)
-          console.error('Welcome API error:', error)
-        }
-      }
-    }
-
-    // Call on mount and when page becomes visible (handles refresh)
-    checkUserStatus()
-    
-    // Also check when page becomes visible (handles tab switching/refresh)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkUserStatus()
-      }
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
+    return () => clearTimeout(timeout)
   }, [])
 
   return (
     <>
-      {/* SEO component will use default values for home page */}
-      <SEO 
-        title="Best Wedding Venues in India | Jaipur, Kota, Delhi, Mumbai | ShubhVenue"
-        description="Find the perfect wedding venue in Jaipur, Kota, Delhi, Mumbai, and all major cities in India. Book banquet halls, hotels, palaces, resorts, and convention centers for your special day. Best venues for weddings, parties, and events."
-        keywords="wedding venues, venues, jaipur venues, kota venues, delhi venues, mumbai venues, banquet halls, wedding halls, marriage venues, event venues, party venues, hotel venues, palace venues, resort venues, convention centers, wedding booking, venue booking, best wedding venues, affordable wedding venues, luxury wedding venues, wedding venues near me, venues in jaipur, venues in kota, venues in delhi, venues in mumbai, venues in rajasthan, venues in india"
-      />
-      {showLoader && (
+      {isLoading && (
         <div className="home-page-loader">
           <div className="home-loader-content">
+            <img 
+              src="/image/logo.png" 
+              alt="ShubhVenue Logo" 
+              className="home-loader-logo"
+              onError={(e) => {
+                e.target.style.display = 'none'
+              }}
+            />
             <div className="home-loading-spinner"></div>
+            <div className="home-loading-text">Loading...</div>
           </div>
         </div>
       )}
-      <div className={`home-content ${showLoader ? 'home-content-hidden' : ''}`}>
+      <div className={`home-content ${isLoading ? 'home-content-hidden' : ''}`}>
         <HeroSection onLoadComplete={handleHeroLoadComplete} />
-        <Categories />
+        <Categories onLoadComplete={handleCategoriesLoadComplete} />
+        <FeaturedVenues onLoadComplete={handleFeaturedLoadComplete} />
+        <VenueListingSection 
+          categoryName="Marriage Garden" 
+          title="Marriage Gardens" 
+          limit={6}
+          onLoadComplete={handleMarriageGardenLoadComplete}
+        />
+        <VenueListingSection 
+          categoryName="Banquet Hall" 
+          title="Banquet Halls" 
+          limit={6}
+          onLoadComplete={handleBanquetHallLoadComplete}
+        />
+        <VenueListingSection 
+          categoryName="Farm House" 
+          title="Farm Houses" 
+          limit={6}
+          onLoadComplete={handleFarmHouseLoadComplete}
+        />
+        <VenueListingSection 
+          categoryName="Hotel" 
+          title="Hotels" 
+          limit={6}
+          onLoadComplete={handleHotelLoadComplete}
+        />
+        <VenueListingSection 
+          categoryName="Resort" 
+          title="Resorts" 
+          limit={6}
+          onLoadComplete={handleResortLoadComplete}
+        />
+        <VendorCategories onLoadComplete={handleVendorCategoriesLoadComplete} />
         <HowItWorks />
         <WhyVenueMonk />
-        <VendorCategories />
-        <FeaturedVenues onLoadComplete={handleFeaturedVenuesLoadComplete} />
+        <Testimonials />
+        <FAQ />
         <CTASection />
-        <Testimonials onLoadComplete={handleTestimonialsLoadComplete} />
-        <FAQ onLoadComplete={handleFAQLoadComplete} />
+        <SEOContentSection />
         <Footer />
       </div>
     </>
@@ -149,4 +156,3 @@ function Home() {
 }
 
 export default Home
-

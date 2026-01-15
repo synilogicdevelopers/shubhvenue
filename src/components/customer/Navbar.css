@@ -493,6 +493,31 @@
   transition: all 0.3s;
 }
 
+.hamburger-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  background: var(--gray-light);
+  color: var(--text-dark);
+  transition: all 0.3s;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.hamburger-menu-btn:hover {
+  color: var(--primary-purple);
+  border-color: var(--primary-purple);
+  background: #f4ecff;
+}
+
+.hamburger-menu-btn svg {
+  flex-shrink: 0;
+}
+
 .navbar-bottom {
   display: flex;
   align-items: center;
@@ -886,6 +911,13 @@
   font-weight: 500;
   padding: 12px 0;
   border-bottom: 1px solid #E5E7EB;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
 
 .sidebar-link:hover {
@@ -895,6 +927,43 @@
 .sidebar-link.active {
   color: var(--primary-purple);
   font-weight: 600;
+}
+
+.sidebar-menu-wrapper {
+  width: 100%;
+}
+
+.sidebar-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-submenu {
+  padding-left: 20px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-submenu-item {
+  display: flex;
+  align-items: center;
+  color: var(--text-dark);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.sidebar-submenu-item:hover {
+  color: var(--primary-purple);
 }
 
 .sidebar-phone {
@@ -1094,6 +1163,10 @@
     display: none;
   }
 
+  .hamburger-menu-btn {
+    display: inline-flex;
+  }
+
   .mobile-search-btn {
     display: inline-flex;
   }
@@ -1140,6 +1213,12 @@
     height: 60px;
     min-width: 60px;
     max-width: 60px;
+  }
+
+  .hamburger-menu-btn {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
   }
 
   .mobile-search-btn {
@@ -1234,6 +1313,12 @@
     height: 55px;
     min-width: 55px;
     max-width: 55px;
+  }
+
+  .hamburger-menu-btn {
+    width: 34px;
+    height: 34px;
+    padding: 5px;
   }
 
   .mobile-search-btn {
@@ -1378,6 +1463,12 @@
     height: 50px;
     min-width: 50px;
     max-width: 50px;
+  }
+
+  .hamburger-menu-btn {
+    width: 32px;
+    height: 32px;
+    padding: 4px;
   }
 
   .mobile-search-btn {

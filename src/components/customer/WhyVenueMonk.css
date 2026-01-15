@@ -1,6 +1,6 @@
 /* Why VenueMonk Section */
 .why-venuemonk {
-  padding: 80px 24px;
+  padding: 50px 24px;
   background: var(--white);
 }
 
@@ -43,13 +43,13 @@
   letter-spacing: 0;
 }
 
-.features-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 32px;
-  margin-top: 80px;
-}
+  .features-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 32px;
+    margin-top: 50px;
+  }
 
 .feature {
   flex: 1;
@@ -203,7 +203,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .why-venuemonk {
-    padding: 60px 24px;
+    padding: 40px 24px;
   }
 
   .why-venuemonk-title {
@@ -251,7 +251,7 @@
 
 @media (max-width: 768px) {
   .why-venuemonk {
-    padding: 50px 20px;
+    padding: 35px 20px;
   }
 
   .why-venuemonk-title {
@@ -308,7 +308,7 @@
 
 @media (max-width: 480px) {
   .why-venuemonk {
-    padding: 40px 16px;
+    padding: 30px 16px;
   }
 
   .why-venuemonk-title {

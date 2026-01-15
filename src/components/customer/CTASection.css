@@ -1,6 +1,6 @@
 /* CTA Section */
 .cta-section {
-  padding: 80px 24px;
+  padding: 50px 24px;
   background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-purple-dark) 100%);
   color: var(--white);
   position: relative;
@@ -34,10 +34,10 @@
   transform: rotate(-180deg);
 }
 
-.cta-content {
-  text-align: center;
-  margin-bottom: 60px;
-}
+  .cta-content {
+    text-align: center;
+    margin-bottom: 40px;
+  }
 
 .cta-title {
   font-size: 48px;
@@ -152,7 +152,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .cta-section {
-    padding: 60px 24px;
+    padding: 40px 24px;
   }
 
   .cta-title {
@@ -190,7 +190,7 @@
 
 @media (max-width: 768px) {
   .cta-section {
-    padding: 50px 20px;
+    padding: 35px 20px;
   }
 
   .cta-title {
@@ -252,7 +252,7 @@
 
 @media (max-width: 480px) {
   .cta-section {
-    padding: 40px 16px;
+    padding: 30px 16px;
   }
 
   .cta-title {

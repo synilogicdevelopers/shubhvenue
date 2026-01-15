@@ -410,7 +410,19 @@ const Venue = () => {
           }
           
           // Client-side guard: hide vendor deactivated venues (vendorActive === false)
-          const visibleVenues = venuesData.filter(v => v.vendorActive !== false)
+          let visibleVenues = venuesData.filter(v => v.vendorActive !== false)
+          
+          // Filter out Decoration category venues unless user is specifically viewing decoration category
+          if (!decorationCategoryId) {
+            visibleVenues = visibleVenues.filter(venue => {
+              // Check if venue belongs to Decoration category
+              const categoryName = venue.categoryId?.name || venue.category?.name || venue.venueType || ''
+              const isDecoration = categoryName && categoryName.toLowerCase().includes('decoration')
+              // Also check if venue has decorationCategoryId (decoration venues have this field)
+              const hasDecorationCategoryId = venue.decorationCategoryId
+              return !isDecoration && !hasDecorationCategoryId
+            })
+          }
 
           // Optimize: Process data more efficiently with batch processing
           const formattedVenues = visibleVenues.map(venue => {

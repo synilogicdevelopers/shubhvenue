@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import './Navbar.css'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { auth, googleProvider } from '../../config/firebase'
 import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth'
 import { authAPI, publicVenuesAPI, publicMenusAPI } from '../../services/customer/api'
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 
 function Navbar({ isSidebarOpen, toggleSidebar }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -26,6 +27,7 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
   const [suggestions, setSuggestions] = useState(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [expandedMenuId, setExpandedMenuId] = useState(null)
   const searchTimeoutRef = useRef(null)
   const suggestionsRef = useRef(null)
 
@@ -545,9 +547,9 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     
     console.log('Navigating with menuId:', menuId, 'menuName:', menuName)
     
-    // Check if menu is "Decoration" - navigate to decoration page
+    // Check if menu is "Decoration" - open in new tab
     if (menuName && menuName.toLowerCase() === 'decoration') {
-      navigate('/decoration')
+      window.open('/decoration', '_blank')
       setActiveMenuId(null)
       return false
     }
@@ -744,6 +746,18 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
           <div className="navbar-right">
             <button
               type="button"
+              className="hamburger-menu-btn"
+              onClick={toggleSidebar}
+              aria-label="Open menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <button
+              type="button"
               className={`mobile-search-btn ${isMobileSearchOpen ? 'active' : ''}`}
               onClick={() => setIsMobileSearchOpen(prev => !prev)}
               aria-label="Search venues"
@@ -869,7 +883,7 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
                   >
                     <button
                       type="button"
-                      className="nav-link nav-menu-trigger"
+                      className={`nav-link nav-menu-trigger ${location.pathname === '/decoration' && menu.name && menu.name.toLowerCase() === 'decoration' ? 'active' : ''}`}
                       onClick={(e) => {
                         if (hasSubmenus) {
                           e.preventDefault()
@@ -1273,13 +1287,80 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
             <NavLink to="/" className="sidebar-link" onClick={toggleSidebar}>
               Home
             </NavLink>
+            {loadingMenus ? (
+              <div className="sidebar-link" style={{ color: 'var(--gray-medium)', cursor: 'default' }}>
+                Loading categories...
+              </div>
+            ) : (
+              menus.map((menu, index) => {
+                const menuId = menu._id || menu.id || index
+                const hasSubmenus = menu.submenus && menu.submenus.length > 0
+
+                return (
+                  <div key={menuId} className="sidebar-menu-wrapper">
+                    <button
+                      type="button"
+                      className="sidebar-link sidebar-menu-trigger"
+                      onClick={() => {
+                        if (hasSubmenus) {
+                          setExpandedMenuId(expandedMenuId === menuId ? null : menuId)
+                        } else {
+                          handleMenuClick({ preventDefault: () => {}, stopPropagation: () => {} }, menu)
+                          toggleSidebar()
+                        }
+                      }}
+                    >
+                      <span>{menu.name}</span>
+                      {hasSubmenus && (
+                        <svg 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                          style={{ 
+                            transform: expandedMenuId === menuId ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.3s ease'
+                          }}
+                        >
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      )}
+                    </button>
+                    {hasSubmenus && expandedMenuId === menuId && (
+                      <div className="sidebar-submenu">
+                        <button
+                          className="sidebar-submenu-item"
+                          onClick={(e) => {
+                            handleMenuClick(e, menu)
+                            toggleSidebar()
+                          }}
+                          style={{ fontWeight: '600', color: 'var(--primary-purple)' }}
+                        >
+                          All {menu.name}
+                        </button>
+                        {menu.submenus.map((submenu) => (
+                          <button
+                            key={submenu._id || submenu.id}
+                            className="sidebar-submenu-item"
+                            onClick={(e) => {
+                              handleSubmenuClick(e, submenu)
+                              toggleSidebar()
+                            }}
+                          >
+                            {submenu.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
             <NavLink to="/booking-history" className="sidebar-link" onClick={toggleSidebar}>
               Bookings
             </NavLink>
-            {/* <a href="#" className="sidebar-link">Win Prizes</a>
-            <a href="#" className="sidebar-link">Real Events</a>
-            <a href="#" className="sidebar-link">Q&A</a>
-            <a href="#" className="sidebar-link">Blog</a> */}
           </div>
           {/* <div className="sidebar-phone">
             <a href="tel:8279220676">827-922-0676</a>

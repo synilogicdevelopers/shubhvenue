@@ -1,0 +1,175 @@
+/* Quotation Section */
+.quotation-section {
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #94487A 0%, #EC4899 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.quotation-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('/image/Flowers.webp') no-repeat center;
+  background-size: cover;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+.quotation-container {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.quotation-content {
+  text-align: center;
+  color: var(--white);
+}
+
+.quotation-title {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--white);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.quotation-description {
+  font-size: 18px;
+  margin-bottom: 40px;
+  opacity: 0.95;
+  line-height: 1.6;
+}
+
+.quotation-event-types {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.quotation-event-btn {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.quotation-event-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.quotation-event-btn.active {
+  background: var(--white);
+  color: var(--primary-purple);
+  border-color: var(--white);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.quotation-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: var(--white);
+  color: var(--primary-purple);
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.quotation-cta-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: #f8f8f8;
+}
+
+.quotation-cta-btn:active {
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .quotation-section {
+    padding: 50px 15px;
+  }
+
+  .quotation-title {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .quotation-description {
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+
+  .quotation-event-types {
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .quotation-event-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .quotation-cta-btn {
+    padding: 14px 32px;
+    font-size: 16px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .quotation-section {
+    padding: 40px 12px;
+  }
+
+  .quotation-title {
+    font-size: 24px;
+  }
+
+  .quotation-description {
+    font-size: 14px;
+    margin-bottom: 25px;
+  }
+
+  .quotation-event-types {
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .quotation-event-btn {
+    padding: 9px 16px;
+    font-size: 13px;
+    flex: 1;
+    min-width: calc(50% - 5px);
+  }
+
+  .quotation-cta-btn {
+    padding: 12px 28px;
+    font-size: 15px;
+  }
+}
+
+

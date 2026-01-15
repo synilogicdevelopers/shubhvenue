@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ad
 import { Button } from '../../../components/admin/ui/Button';
 import { Modal } from '../../../components/admin/ui/Modal';
 import { Input } from '../../../components/admin/ui/Input';
-import { authAPI, paymentConfigAPI, emailConfigAPI, googleMapsConfigAPI, planSubscriptionsConfigAPI, legalPagesAPI } from '../../../services/admin/api';
+import { authAPI, paymentConfigAPI, emailConfigAPI, googleMapsConfigAPI, planSubscriptionsConfigAPI, legalPagesAPI, homepageContentAPI } from '../../../services/admin/api';
 import { setTheme, getTheme } from '../../../utils/theme';
 import toast from 'react-hot-toast';
 import { User, Lock, Moon, Sun, LogOut, Trash2, CreditCard, Eye, EyeOff, MapPin, FileText, ChevronDown, Mail, Package } from 'lucide-react';
@@ -60,6 +60,15 @@ export const Settings = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [planSubscriptionsEnabled, setPlanSubscriptionsEnabled] = useState(true);
   const [planSubscriptionsLoading, setPlanSubscriptionsLoading] = useState(false);
+  const [selectedHomepageContent, setSelectedHomepageContent] = useState('seo-content');
+  const [homepageContentData, setHomepageContentData] = useState({
+    title: '',
+    content: '',
+    cities: [],
+  });
+  const [homepageContentLoading, setHomepageContentLoading] = useState(false);
+  const [homepageContentSaving, setHomepageContentSaving] = useState(false);
+  const [newCity, setNewCity] = useState({ name: '', description: '' });
 
   useEffect(() => {
     fetchProfile();
@@ -68,7 +77,8 @@ export const Settings = () => {
     fetchGoogleMapsConfig();
     fetchPlanSubscriptionsConfig();
     fetchLegalPage();
-  }, [selectedLegalPage]);
+    fetchHomepageContent();
+  }, [selectedLegalPage, selectedHomepageContent]);
 
   const fetchProfile = async () => {
     try {
@@ -497,6 +507,99 @@ const handleConfirmAction = async () => {
     } finally {
       setPlanSubscriptionsLoading(false);
     }
+  };
+
+  const fetchHomepageContent = async () => {
+    try {
+      setHomepageContentLoading(true);
+      const response = await homepageContentAPI.getByType(selectedHomepageContent);
+      if (response.data?.success && response.data?.content) {
+        setHomepageContentData({
+          title: response.data.content.title || '',
+          content: response.data.content.content || '',
+          cities: response.data.content.cities || [],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load homepage content:', error);
+      setHomepageContentData({
+        title: selectedHomepageContent === 'seo-content' ? 'About Shubh Venue' : 'Popular Wedding Venue Destinations',
+        content: '',
+        cities: [],
+      });
+    } finally {
+      setHomepageContentLoading(false);
+    }
+  };
+
+  const handleHomepageContentUpdate = async (e) => {
+    e.preventDefault();
+    
+    if (!homepageContentData.title || !homepageContentData.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    
+    if (selectedHomepageContent === 'seo-content') {
+      if (!homepageContentData.content || !homepageContentData.content.trim()) {
+        toast.error('Content is required');
+        return;
+      }
+    } else if (selectedHomepageContent === 'city-seo') {
+      if (!homepageContentData.cities || homepageContentData.cities.length === 0) {
+        toast.error('At least one city is required');
+        return;
+      }
+    }
+    
+    setHomepageContentSaving(true);
+    try {
+      const updateData = {
+        title: homepageContentData.title.trim(),
+        content: selectedHomepageContent === 'seo-content' ? homepageContentData.content.trim() : '',
+        cities: selectedHomepageContent === 'city-seo' ? homepageContentData.cities : undefined,
+      };
+      
+      const response = await homepageContentAPI.update(selectedHomepageContent, updateData);
+      
+      if (response.data?.success) {
+        toast.success('Homepage content updated successfully');
+        fetchHomepageContent();
+      } else {
+        toast.error(response.data?.message || 'Failed to update homepage content');
+      }
+    } catch (error) {
+      console.error('Homepage content update error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update homepage content';
+      toast.error(errorMessage);
+    } finally {
+      setHomepageContentSaving(false);
+    }
+  };
+
+  const handleAddCity = () => {
+    if (!newCity.name || !newCity.name.trim()) {
+      toast.error('City name is required');
+      return;
+    }
+    if (!newCity.description || !newCity.description.trim()) {
+      toast.error('City description is required');
+      return;
+    }
+    
+    setHomepageContentData({
+      ...homepageContentData,
+      cities: [...homepageContentData.cities, { name: newCity.name.trim(), description: newCity.description.trim() }],
+    });
+    setNewCity({ name: '', description: '' });
+  };
+
+  const handleRemoveCity = (index) => {
+    const updatedCities = homepageContentData.cities.filter((_, i) => i !== index);
+    setHomepageContentData({
+      ...homepageContentData,
+      cities: updatedCities,
+    });
   };
 
   return (
@@ -1042,6 +1145,126 @@ const handleConfirmAction = async () => {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Homepage Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Homepage SEO Content
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleHomepageContentUpdate} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Select Content Type</label>
+              <div className="relative">
+                <select
+                  value={selectedHomepageContent}
+                  onChange={(e) => setSelectedHomepageContent(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none"
+                  disabled={homepageContentLoading}
+                >
+                  <option value="seo-content">SEO Content (About Shubh Venue)</option>
+                  <option value="city-seo">City SEO Block</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+              </div>
+            </div>
+            
+            {homepageContentLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Title</label>
+                  <Input
+                    type="text"
+                    value={homepageContentData.title}
+                    onChange={(e) => setHomepageContentData({ ...homepageContentData, title: e.target.value })}
+                    placeholder="Enter content title"
+                    required
+                  />
+                </div>
+                
+                {selectedHomepageContent === 'seo-content' ? (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Content</label>
+                    <textarea
+                      value={homepageContentData.content}
+                      onChange={(e) => setHomepageContentData({ ...homepageContentData, content: e.target.value })}
+                      placeholder="Enter SEO content (supports markdown: ## for H3, ### for H4, [text](url) for links)"
+                      required
+                      rows={20}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">## Heading</code> for H3, <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">### Subheading</code> for H4, and <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">[text](url)</code> for links.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Cities</label>
+                      <div className="space-y-3">
+                        {homepageContentData.cities.map((city, index) => (
+                          <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm mb-1">{city.name}</div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400">{city.description}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCity(index)}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <label className="block text-sm font-medium mb-2">Add New City</label>
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          value={newCity.name}
+                          onChange={(e) => setNewCity({ ...newCity, name: e.target.value })}
+                          placeholder="City name (e.g., Kota)"
+                        />
+                        <textarea
+                          value={newCity.description}
+                          onChange={(e) => setNewCity({ ...newCity, description: e.target.value })}
+                          placeholder="City description (e.g., Discover the best wedding venues in Kota...)"
+                          rows={3}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-y"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleAddCity}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          Add City
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <Button type="submit" loading={homepageContentSaving}>
+                  Update Homepage Content
+                </Button>
+              </>
+            )}
+          </form>
         </CardContent>
       </Card>
 

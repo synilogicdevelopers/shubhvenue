@@ -30,6 +30,7 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   CreditCard,
+  Globe,
 } from 'lucide-react';
 import { cn } from '../../../utils/admin/cn';
 import { getUserPermissions, isAdmin, hasPermission as checkPermission } from '../../../utils/admin/permissions';
@@ -102,6 +103,7 @@ const allMenuItems = [
       { path: '/admin/email-templates', label: 'Email Templates', icon: FileText, permission: 'view_settings' },
       { path: '/admin/company', label: 'Company', icon: Building2, permission: 'view_company' },
       { path: '/admin/contacts', label: 'Contact Us', icon: Mail, permission: 'view_contacts' },
+      { path: '/admin/homepage-content', label: 'Homepage Content', icon: Globe, permission: 'view_legal_pages' },
       { path: '/admin/settings', label: 'General Settings', icon: Settings, permission: 'view_settings' },
     ],
   },

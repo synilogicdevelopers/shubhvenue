@@ -45,6 +45,9 @@ export const Venues = () => {
     openTime: '',
     closeTime: '',
     openDays: [],
+    areasAvailable: [],
+    pricingTypes: [],
+    faq: [],
   });
   
   // Media
@@ -75,6 +78,78 @@ export const Venues = () => {
   
   const weekDays = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  ];
+
+  const areaTypes = [
+    'Indoor Hall – Normal closed hall',
+    'Banquet Hall – Shaadi / function hall',
+    'Ballroom – Luxury, large indoor hall',
+    'Conference Room – Corporate meeting',
+    'Board Room – High-level meetings',
+    'Meeting Room – Small discussions',
+    'Seminar Hall – Training / seminar',
+    'Auditorium – Stage + audience',
+    'Multipurpose Hall – All types events',
+    'Exhibition Hall – Stalls / displays',
+    'Pre-Function Hall – Entry gathering',
+    'Foyer – Waiting / welcome area',
+    'Breakout Room – Session gaps',
+    'VIP Lounge – Special guests',
+    'Green Room – Performers / bride room',
+    'Bridal Suite – Bride preparation room',
+    'Groom Room – Groom preparation',
+    'Dining Hall – Only dining purpose',
+    'AC Hall – Fully air-conditioned',
+    'Non-AC Hall – Without AC',
+    'Lawn – Green open area',
+    'Garden Area – Decorated garden',
+    'Courtyard – Open center space',
+    'Open Ground – Large open field',
+    'Heritage Lawn – Fort / palace lawn',
+    'Beachside Area – Near beach',
+    'Riverfront Area – Near river',
+    'Lake View Area – Lake facing',
+    'Hill View Area – Hill / valley view',
+    'Open Pavilion – Chhatri type',
+    'Mandap Area – Wedding rituals',
+    'Open Stage Area – Performances',
+    'Poolside – Beside swimming pool',
+    'Infinity Pool Area – Luxury pool',
+    'Deck by Pool – Wooden pool deck',
+    'Waterfront Deck – Near water body',
+    'Rooftop Area – Open terrace',
+    'Sky Lounge – Rooftop lounge',
+    'Terrace Garden – Green rooftop',
+    'Open Deck – Elevated open space',
+    'Indoor + Outdoor Area – Hall + lawn',
+    'Hall with Courtyard – Connected spaces',
+    'Banquet + Lawn – Wedding setup',
+    'Ballroom + Pre-function',
+    'Poolside + Lawn',
+    'Rooftop + Indoor Lounge',
+    'Lounge Area – Casual gatherings',
+    'Bar Area – Cocktail party',
+    'Open Bar Setup Area',
+    'Private Party Area',
+    'After-Party Zone',
+    'Dance Floor Area',
+    'Restaurant Area',
+    'Private Dining Room',
+    'Open Dining Area',
+    'Buffet Area',
+    'Live Counter Area',
+    'Stage Area',
+    'Performance Zone',
+    'Cultural Event Area',
+    'DJ Area',
+    'Sound & Light Control Area',
+    'Parking Area',
+    'Valet Area',
+    'Drop-off Zone',
+    'Entrance Plaza',
+    'Registration Area',
+    'Security Check Area',
+    'Other'
   ];
 
   useEffect(() => {
@@ -307,7 +382,31 @@ export const Venues = () => {
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSelectedImage(file);
+      // Validate image dimensions
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const width = img.width;
+        const height = img.height;
+        
+        if (width === 720 && height === 375) {
+          setSelectedImage(file);
+          toast.success('Image selected successfully');
+        } else {
+          toast.error(`Image size must be exactly 720 × 375 px. Current size: ${width} × ${height} px`);
+          e.target.value = ''; // Clear the input
+        }
+      };
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        toast.error('Invalid image file');
+        e.target.value = '';
+      };
+      
+      img.src = objectUrl;
     }
   };
 
@@ -362,6 +461,9 @@ export const Venues = () => {
       openTime: '',
       closeTime: '',
       openDays: [],
+      areasAvailable: [],
+      pricingTypes: [],
+      faq: [],
     });
     setSelectedImage(null);
     setGalleryImages([]);
@@ -437,6 +539,21 @@ export const Venues = () => {
       
       if (formData.rooms !== undefined && formData.rooms !== '') {
         formDataToSend.append('rooms', formData.rooms.toString());
+      }
+      
+      // Areas Available
+      if (formData.areasAvailable && formData.areasAvailable.length > 0) {
+        formDataToSend.append('areasAvailable', JSON.stringify(formData.areasAvailable));
+      }
+      
+      // Pricing Types
+      if (formData.pricingTypes && formData.pricingTypes.length > 0) {
+        formDataToSend.append('pricingTypes', JSON.stringify(formData.pricingTypes));
+      }
+      
+      // FAQ
+      if (formData.faq && formData.faq.length > 0) {
+        formDataToSend.append('faq', JSON.stringify(formData.faq));
       }
       
       // Availability
@@ -692,6 +809,26 @@ export const Venues = () => {
         openTime: venueData.availability?.openTime || '',
         closeTime: venueData.availability?.closeTime || '',
         openDays: Array.isArray(venueData.availability?.openDays) ? venueData.availability.openDays : [],
+        areasAvailable: Array.isArray(venueData.areasAvailable) 
+          ? venueData.areasAvailable.map(area => {
+              // If areaType is not in predefined list, treat it as custom
+              const isCustom = area.areaType && !areaTypes.includes(area.areaType);
+              return {
+                ...area,
+                areaType: isCustom ? 'Other' : area.areaType,
+                customAreaType: isCustom ? area.areaType : (area.customAreaType || '')
+              };
+            })
+          : [],
+        pricingTypes: Array.isArray(venueData.pricingTypes) 
+          ? venueData.pricingTypes.map(p => ({
+              type: p.type || '',
+              price: p.price || 0,
+              vegPrice: p.vegPrice || 0,
+              nonVegPrice: p.nonVegPrice || 0
+            }))
+          : [],
+        faq: Array.isArray(venueData.faq) ? venueData.faq : [],
       });
 
       // Set media
@@ -867,6 +1004,21 @@ export const Venues = () => {
       }
       if (formData.highlights && formData.highlights.length > 0) {
         formData.highlights.filter(h => h.trim()).forEach(highlight => formDataToSend.append('highlights', highlight.trim()));
+      }
+      
+      // Areas Available
+      if (formData.areasAvailable && formData.areasAvailable.length > 0) {
+        formDataToSend.append('areasAvailable', JSON.stringify(formData.areasAvailable));
+      }
+      
+      // Pricing Types
+      if (formData.pricingTypes && formData.pricingTypes.length > 0) {
+        formDataToSend.append('pricingTypes', JSON.stringify(formData.pricingTypes));
+      }
+      
+      // FAQ
+      if (formData.faq && formData.faq.length > 0) {
+        formDataToSend.append('faq', JSON.stringify(formData.faq));
       }
       
       // Availability
@@ -2157,18 +2309,6 @@ export const Venues = () => {
               )}
               
               <div className="grid grid-cols-2 gap-4">
-                {(formConfig === null || formConfig.price !== false) && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹)</label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
                 {(formConfig === null || formConfig.numberOfGuests !== false) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
@@ -2182,6 +2322,126 @@ export const Venues = () => {
                   </div>
                 )}
               </div>
+
+              {/* Multiple Pricing Types */}
+              {(formConfig === null || formConfig.price !== false) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold mb-4">Pricing</h3>
+                  <div className="space-y-4">
+                    {(formData.pricingTypes || []).map((pricing, index) => (
+                      <div key={index} className="p-4 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-800">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Pricing Type *</label>
+                            <select
+                              value={pricing.type || ''}
+                              onChange={(e) => {
+                                const updatedPricing = [...(formData.pricingTypes || [])];
+                                updatedPricing[index] = { 
+                                  ...updatedPricing[index], 
+                                  type: e.target.value,
+                                  price: e.target.value === 'per_plate' ? 0 : (updatedPricing[index].price || 0),
+                                  vegPrice: e.target.value === 'per_plate' ? (updatedPricing[index].vegPrice || 0) : 0,
+                                  nonVegPrice: e.target.value === 'per_plate' ? (updatedPricing[index].nonVegPrice || 0) : 0
+                                };
+                                setFormData({ ...formData, pricingTypes: updatedPricing });
+                              }}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              required
+                            >
+                              <option value="">Select Pricing Type</option>
+                              <option value="per_day">Per Day</option>
+                              <option value="per_plate">Per Plate</option>
+                              <option value="per_km">Per KM</option>
+                              <option value="hours_price">Hours Price</option>
+                            </select>
+                          </div>
+                          {pricing.type === 'per_plate' ? (
+                            <>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Veg Price (₹) *</label>
+                                <input
+                                  type="number"
+                                  value={pricing.vegPrice || ''}
+                                  onChange={(e) => {
+                                    const updatedPricing = [...(formData.pricingTypes || [])];
+                                    updatedPricing[index] = { ...updatedPricing[index], vegPrice: e.target.value ? Number(e.target.value) : 0 };
+                                    setFormData({ ...formData, pricingTypes: updatedPricing });
+                                  }}
+                                  placeholder="Enter veg price per plate"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Non-Veg Price (₹) *</label>
+                                <input
+                                  type="number"
+                                  value={pricing.nonVegPrice || ''}
+                                  onChange={(e) => {
+                                    const updatedPricing = [...(formData.pricingTypes || [])];
+                                    updatedPricing[index] = { ...updatedPricing[index], nonVegPrice: e.target.value ? Number(e.target.value) : 0 };
+                                    setFormData({ ...formData, pricingTypes: updatedPricing });
+                                  }}
+                                  placeholder="Enter non-veg price per plate"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                  required
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Price (₹) *
+                                {pricing.type === 'per_km' && ' (per kilometer)'}
+                                {pricing.type === 'hours_price' && ' (per hour)'}
+                                {pricing.type === 'per_day' && ' (per day)'}
+                              </label>
+                              <input
+                                type="number"
+                                value={pricing.price || ''}
+                                onChange={(e) => {
+                                  const updatedPricing = [...(formData.pricingTypes || [])];
+                                  updatedPricing[index] = { ...updatedPricing[index], price: e.target.value ? Number(e.target.value) : 0 };
+                                  setFormData({ ...formData, pricingTypes: updatedPricing });
+                                }}
+                                placeholder={`Enter price ${pricing.type === 'per_km' ? 'per kilometer' : pricing.type === 'hours_price' ? 'per hour' : 'per day'}`}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                required
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updatedPricing = formData.pricingTypes.filter((_, i) => i !== index);
+                            setFormData({ ...formData, pricingTypes: updatedPricing });
+                          }}
+                          className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                        >
+                          Remove Pricing
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          pricingTypes: [
+                            ...(formData.pricingTypes || []),
+                            { type: '', price: 0, vegPrice: 0, nonVegPrice: 0 }
+                          ]
+                        });
+                      }}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                    >
+                      Add Pricing
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {(formConfig === null || formConfig.description !== false) && (
                 <div>
@@ -2333,6 +2593,230 @@ export const Venues = () => {
             </div>
             )}
 
+            {/* Areas Available - Show if enabled in formConfig */}
+            {(formConfig === null || formConfig.areasAvailable !== false) && (
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-lg font-semibold mb-4">Areas Available</h3>
+                <div className="space-y-4">
+                  {(formData.areasAvailable || []).map((area, index) => (
+                    <div key={index} className="p-4 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Area Name *</label>
+                          <input
+                            type="text"
+                            value={area.vendorAreaName || ''}
+                            onChange={(e) => {
+                              const updatedAreas = [...(formData.areasAvailable || [])];
+                              updatedAreas[index] = { ...updatedAreas[index], vendorAreaName: e.target.value };
+                              setFormData({ ...formData, areasAvailable: updatedAreas });
+                            }}
+                            placeholder="e.g., Main Hall, Garden Area"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Areas Available Type *</label>
+                          <select
+                            value={area.areaType === 'Other' || (area.areaType && !areaTypes.includes(area.areaType)) ? 'Other' : (area.areaType || '')}
+                            onChange={(e) => {
+                              const updatedAreas = [...(formData.areasAvailable || [])];
+                              if (e.target.value === 'Other') {
+                                updatedAreas[index] = { ...updatedAreas[index], areaType: 'Other', customAreaType: area.customAreaType || '' };
+                              } else {
+                                updatedAreas[index] = { ...updatedAreas[index], areaType: e.target.value, customAreaType: '' };
+                              }
+                              setFormData({ ...formData, areasAvailable: updatedAreas });
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Select Area Type</option>
+                            {areaTypes.map((type) => (
+                              <option key={type} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                          {(area.areaType === 'Other' || (area.areaType && !areaTypes.includes(area.areaType))) && (
+                            <input
+                              type="text"
+                              value={area.customAreaType || (area.areaType && !areaTypes.includes(area.areaType) ? area.areaType : '')}
+                              onChange={(e) => {
+                                const updatedAreas = [...(formData.areasAvailable || [])];
+                                updatedAreas[index] = { ...updatedAreas[index], customAreaType: e.target.value, areaType: 'Other' };
+                                setFormData({ ...formData, areasAvailable: updatedAreas });
+                              }}
+                              placeholder="Enter custom area type"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent mt-2"
+                              required
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Seating</label>
+                          <input
+                            type="text"
+                            value={area.seating || ''}
+                            onChange={(e) => {
+                              const updatedAreas = [...(formData.areasAvailable || [])];
+                              updatedAreas[index] = { ...updatedAreas[index], seating: e.target.value };
+                              setFormData({ ...formData, areasAvailable: updatedAreas });
+                            }}
+                            placeholder="e.g., 500, 1000"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Floating</label>
+                          <input
+                            type="text"
+                            value={area.floating || ''}
+                            onChange={(e) => {
+                              const updatedAreas = [...(formData.areasAvailable || [])];
+                              updatedAreas[index] = { ...updatedAreas[index], floating: e.target.value };
+                              setFormData({ ...formData, areasAvailable: updatedAreas });
+                            }}
+                            placeholder="e.g., 200, 500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          />
+                        </div>
+                        {/* Parking fields - Show only when Parking Area is selected */}
+                        {(area.areaType === 'Parking Area' || area.areaType === 'Valet Area' || area.areaType === 'Drop-off Zone') && (
+                          <>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Parking Spaces (कितनी पार्किंग है)</label>
+                              <input
+                                type="text"
+                                value={area.parkingSpaces || ''}
+                                onChange={(e) => {
+                                  const updatedAreas = [...(formData.areasAvailable || [])];
+                                  updatedAreas[index] = { ...updatedAreas[index], parkingSpaces: e.target.value };
+                                  setFormData({ ...formData, areasAvailable: updatedAreas });
+                                }}
+                                placeholder="e.g., 50, 100, 200"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Capacity (कितने वाहन आ सकते हैं)</label>
+                              <input
+                                type="text"
+                                value={area.vehicleCapacity || ''}
+                                onChange={(e) => {
+                                  const updatedAreas = [...(formData.areasAvailable || [])];
+                                  updatedAreas[index] = { ...updatedAreas[index], vehicleCapacity: e.target.value };
+                                  setFormData({ ...formData, areasAvailable: updatedAreas });
+                                }}
+                                placeholder="e.g., 50 cars, 100 vehicles"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedAreas = formData.areasAvailable.filter((_, i) => i !== index);
+                          setFormData({ ...formData, areasAvailable: updatedAreas });
+                        }}
+                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                      >
+                        Remove Area
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        areasAvailable: [
+                          ...(formData.areasAvailable || []),
+                          { vendorAreaName: '', areaType: '', customAreaType: '', seating: '', floating: '', parkingSpaces: '', vehicleCapacity: '' }
+                        ]
+                      });
+                    }}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  >
+                    Add Area
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* FAQ - Show if enabled in formConfig */}
+            {(formConfig === null || formConfig.faq !== false) && (
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-lg font-semibold mb-4">FAQ (Frequently Asked Questions)</h3>
+                <div className="space-y-4">
+                  {(formData.faq || []).map((faqItem, index) => (
+                    <div key={index} className="p-4 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <div className="space-y-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Question *</label>
+                          <input
+                            type="text"
+                            value={faqItem.question || ''}
+                            onChange={(e) => {
+                              const updatedFaq = [...(formData.faq || [])];
+                              updatedFaq[index] = { ...updatedFaq[index], question: e.target.value };
+                              setFormData({ ...formData, faq: updatedFaq });
+                            }}
+                            placeholder="Enter question"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Answer/Description *</label>
+                          <textarea
+                            value={faqItem.answer || ''}
+                            onChange={(e) => {
+                              const updatedFaq = [...(formData.faq || [])];
+                              updatedFaq[index] = { ...updatedFaq[index], answer: e.target.value };
+                              setFormData({ ...formData, faq: updatedFaq });
+                            }}
+                            placeholder="Enter answer/description"
+                            rows={3}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedFaq = formData.faq.filter((_, i) => i !== index);
+                          setFormData({ ...formData, faq: updatedFaq });
+                        }}
+                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                      >
+                        Remove FAQ
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        faq: [
+                          ...(formData.faq || []),
+                          { question: '', answer: '' }
+                        ]
+                      });
+                    }}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  >
+                    Add FAQ
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Availability - Show if enabled in formConfig */}
             {((formConfig === null || formConfig.timing?.enabled !== false) || 
               (formConfig === null || formConfig.openDays?.enabled !== false)) && (
@@ -2392,11 +2876,77 @@ export const Venues = () => {
             )}
 
             {/* Media - Show if enabled in formConfig */}
-            {(formConfig === null || formConfig.galleryImages !== false) && (
+            {((formConfig === null || formConfig.mainImage !== false) || (formConfig === null || formConfig.galleryImages !== false)) && (
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="text-lg font-semibold mb-4">Media</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
+                
+                {/* Main Image - Show if enabled in formConfig */}
+                {(formConfig === null || formConfig.mainImage !== false) && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Main Image <span className="text-xs text-gray-500">(720 × 375 px)</span>
+                    </label>
+                    {editingVenue && editingVenue?.coverImage && !selectedImage && (
+                      <div className="mb-3">
+                        <p className="text-xs text-gray-500 mb-2">Current Main Image:</p>
+                        <div className="relative inline-block">
+                          <img
+                            src={getImageUrl(editingVenue.coverImage)}
+                            alt="Main"
+                            className="w-full max-w-md h-auto object-cover rounded-lg border border-gray-300"
+                            style={{ maxHeight: '375px', width: 'auto' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Clear existing image by setting selectedImage to null
+                              setSelectedImage(null);
+                              // You might want to add a flag to delete existing image
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 hover:opacity-100 transition-opacity"
+                            title="Remove image"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {selectedImage && (
+                      <div className="mb-3">
+                        <p className="text-xs text-gray-500 mb-2">New Main Image:</p>
+                        <div className="relative inline-block">
+                          <img
+                            src={URL.createObjectURL(selectedImage)}
+                            alt="Preview"
+                            className="w-full max-w-md h-auto object-cover rounded-lg border border-gray-300"
+                            style={{ maxHeight: '375px', width: 'auto' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedImage(null)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Recommended size: 720 × 375 px</p>
+                  </div>
+                )}
+                
+                {(formConfig === null || formConfig.galleryImages !== false) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Images</label>
                   
                   {/* Existing Gallery Images */}
                   {editingVenue && existingGalleryUrls.length > 0 && (
@@ -2460,7 +3010,8 @@ export const Venues = () => {
                       </div>
                     </div>
                   )}
-                </div>
+                  </div>
+                )}
               
                 {(formConfig === null || formConfig.videos !== false) && (
                   <div>

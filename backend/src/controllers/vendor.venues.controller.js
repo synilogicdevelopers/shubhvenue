@@ -353,6 +353,9 @@ const formatVenueResponse = async (venue) => {
     about: venueObj.about || venueObj.description || '',
     amenities: [...(venueObj.amenities || []), ...(venueObj.facilities || [])], // Merge facilities into amenities
     highlights: venueObj.highlights || [],
+    areasAvailable: Array.isArray(venueObj.areasAvailable) ? venueObj.areasAvailable : [],
+    services: Array.isArray(venueObj.services) ? venueObj.services.filter(service => service && service.name) : [],
+    faq: Array.isArray(venueObj.faq) ? venueObj.faq.filter(faq => faq && faq.question && faq.answer) : [],
     // Include metaTitle and metaDescription - preserve actual values (even if empty string)
     // Use explicit check to avoid converting null/undefined to empty string incorrectly
     metaTitle: (venueObj.metaTitle !== undefined && venueObj.metaTitle !== null) ? String(venueObj.metaTitle) : '',
@@ -1642,6 +1645,92 @@ export const createVenue = async (req, res) => {
     } else {
       venueData.services = [];
     }
+
+    // Handle areasAvailable - can be JSON string (from FormData) or array
+    let areasAvailableArray = [];
+    if (req.body.areasAvailable) {
+      if (typeof req.body.areasAvailable === 'string') {
+        try {
+          areasAvailableArray = JSON.parse(req.body.areasAvailable);
+        } catch (e) {
+          areasAvailableArray = [];
+        }
+      } else if (Array.isArray(req.body.areasAvailable)) {
+        areasAvailableArray = req.body.areasAvailable;
+      }
+    }
+    // Validate and clean areasAvailable array
+    if (Array.isArray(areasAvailableArray) && areasAvailableArray.length > 0) {
+      venueData.areasAvailable = areasAvailableArray
+        .filter(area => area && area.vendorAreaName && area.vendorAreaName.trim() && area.areaType && area.areaType.trim())
+        .map(area => {
+          // If areaType is "Other" and customAreaType is provided, use customAreaType
+          const finalAreaType = (area.areaType === 'Other' && area.customAreaType && area.customAreaType.trim()) 
+            ? String(area.customAreaType).trim() 
+            : String(area.areaType).trim();
+          
+          return {
+            vendorAreaName: String(area.vendorAreaName).trim(),
+            areaType: finalAreaType,
+            seating: area.seating ? String(area.seating).trim() : undefined,
+            floating: area.floating ? String(area.floating).trim() : undefined
+          };
+        });
+    } else {
+      venueData.areasAvailable = [];
+    }
+
+    // Handle pricingTypes - can be JSON string (from FormData) or array
+    let pricingTypesArray = [];
+    if (req.body.pricingTypes) {
+      if (typeof req.body.pricingTypes === 'string') {
+        try {
+          pricingTypesArray = JSON.parse(req.body.pricingTypes);
+        } catch (e) {
+          pricingTypesArray = [];
+        }
+      } else if (Array.isArray(req.body.pricingTypes)) {
+        pricingTypesArray = req.body.pricingTypes;
+      }
+    }
+    // Validate and clean pricingTypes array
+    if (Array.isArray(pricingTypesArray) && pricingTypesArray.length > 0) {
+      venueData.pricingTypes = pricingTypesArray
+        .filter(p => p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type))
+        .map(p => ({
+          type: p.type,
+          price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
+          vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
+          nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
+        }));
+    } else {
+      venueData.pricingTypes = [];
+    }
+
+    // Handle FAQ - can be JSON string (from FormData) or array
+    let faqArray = [];
+    if (req.body.faq) {
+      if (typeof req.body.faq === 'string') {
+        try {
+          faqArray = JSON.parse(req.body.faq);
+        } catch (e) {
+          faqArray = [];
+        }
+      } else if (Array.isArray(req.body.faq)) {
+        faqArray = req.body.faq;
+      }
+    }
+    // Validate and clean FAQ array
+    if (Array.isArray(faqArray) && faqArray.length > 0) {
+      venueData.faq = faqArray
+        .filter(faq => faq && faq.question && faq.question.trim() && faq.answer && faq.answer.trim())
+        .map(faq => ({
+          question: String(faq.question).trim(),
+          answer: String(faq.answer).trim()
+        }));
+    } else {
+      venueData.faq = [];
+    }
     
     // Handle rooms - can be JSON string (array), array, number (legacy), or string
     if (rooms !== undefined) {
@@ -2051,6 +2140,101 @@ export const updateVenue = async (req, res) => {
           }));
       } else {
         venue.services = [];
+      }
+    }
+
+    // Handle areasAvailable update - can be JSON string (from FormData) or array
+    if (req.body.areasAvailable !== undefined) {
+      let areasAvailableArray = [];
+      if (typeof req.body.areasAvailable === 'string') {
+        try {
+          areasAvailableArray = JSON.parse(req.body.areasAvailable);
+        } catch (e) {
+          areasAvailableArray = [];
+        }
+      } else if (Array.isArray(req.body.areasAvailable)) {
+        areasAvailableArray = req.body.areasAvailable;
+      }
+      if (Array.isArray(areasAvailableArray)) {
+        if (areasAvailableArray.length > 0) {
+          venue.areasAvailable = areasAvailableArray
+            .filter(area => area && area.vendorAreaName && area.vendorAreaName.trim() && area.areaType && area.areaType.trim())
+            .map(area => {
+              // If areaType is "Other" and customAreaType is provided, use customAreaType
+              const finalAreaType = (area.areaType === 'Other' && area.customAreaType && area.customAreaType.trim()) 
+                ? String(area.customAreaType).trim() 
+                : String(area.areaType).trim();
+              
+              return {
+                vendorAreaName: String(area.vendorAreaName).trim(),
+                areaType: finalAreaType,
+                seating: area.seating ? String(area.seating).trim() : undefined,
+                floating: area.floating ? String(area.floating).trim() : undefined
+              };
+            });
+        } else {
+          venue.areasAvailable = [];
+        }
+      } else {
+        venue.areasAvailable = [];
+      }
+    }
+
+    // Handle pricingTypes update
+    if (req.body.pricingTypes !== undefined) {
+      let pricingTypesArray = [];
+      if (typeof req.body.pricingTypes === 'string') {
+        try {
+          pricingTypesArray = JSON.parse(req.body.pricingTypes);
+        } catch (e) {
+          pricingTypesArray = [];
+        }
+      } else if (Array.isArray(req.body.pricingTypes)) {
+        pricingTypesArray = req.body.pricingTypes;
+      }
+      if (Array.isArray(pricingTypesArray)) {
+        if (pricingTypesArray.length > 0) {
+          venue.pricingTypes = pricingTypesArray
+            .filter(p => p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type))
+            .map(p => ({
+              type: p.type,
+              price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
+              vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
+              nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
+            }));
+        } else {
+          venue.pricingTypes = [];
+        }
+      } else {
+        venue.pricingTypes = [];
+      }
+    }
+
+    // Handle FAQ update
+    if (req.body.faq !== undefined) {
+      let faqArray = [];
+      if (typeof req.body.faq === 'string') {
+        try {
+          faqArray = JSON.parse(req.body.faq);
+        } catch (e) {
+          faqArray = [];
+        }
+      } else if (Array.isArray(req.body.faq)) {
+        faqArray = req.body.faq;
+      }
+      if (Array.isArray(faqArray)) {
+        if (faqArray.length > 0) {
+          venue.faq = faqArray
+            .filter(faq => faq && faq.question && faq.question.trim() && faq.answer && faq.answer.trim())
+            .map(faq => ({
+              question: String(faq.question).trim(),
+              answer: String(faq.answer).trim()
+            }));
+        } else {
+          venue.faq = [];
+        }
+      } else {
+        venue.faq = [];
       }
     }
     

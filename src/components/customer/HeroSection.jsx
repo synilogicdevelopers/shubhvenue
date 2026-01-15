@@ -10,7 +10,8 @@ function HeroSection({ onLoadComplete }) {
   const [videoUrl, setVideoUrl] = useState(null)
   const videoRef = useRef(null)
   const [selectedCity, setSelectedCity] = useState('')
-  const [selectedOccasion, setSelectedOccasion] = useState('')
+  const [selectedVenueType, setSelectedVenueType] = useState('')
+  const [selectedEventDate, setSelectedEventDate] = useState('')
   const [cities, setCities] = useState([])
   const [categories, setCategories] = useState([])
   const [loadingCities, setLoadingCities] = useState(false)
@@ -97,22 +98,21 @@ function HeroSection({ onLoadComplete }) {
       urlParams.set('city', selectedCity.trim())
       urlParams.set('state', 'Rajasthan')
     }
-    if (selectedOccasion) {
-      // Find category ID from selected occasion name
-      const category = categories.find(cat => cat.name === selectedOccasion)
+    if (selectedVenueType) {
+      // Find category ID from selected venue type name
+      const category = categories.find(cat => cat.name === selectedVenueType)
       if (category) {
         params.categoryId = category._id
         urlParams.set('categoryId', category._id)
-        urlParams.set('categoryName', encodeURIComponent(selectedOccasion))
+        urlParams.set('categoryName', encodeURIComponent(selectedVenueType))
       }
     }
-    
     // Navigate to venues page with filters and URL params
     const urlString = urlParams.toString()
     navigate(`/venues${urlString ? `?${urlString}` : ''}`, { 
       state: { 
         searchParams: params,
-        categoryName: selectedOccasion || undefined,
+        categoryName: selectedVenueType || undefined,
         categoryId: params.categoryId || undefined
       }
     })
@@ -241,15 +241,25 @@ function HeroSection({ onLoadComplete }) {
       )}
       <div className="hero-overlay"></div>
       <div className="hero-content">
-        <h1 className="hero-title">Find Your Perfect Event Venue</h1>
+        <h1 className="hero-title">Find Your Perfect Wedding Venue</h1>
         <div className="hero-search">
+          <select 
+            className="hero-select"
+            value={selectedVenueType}
+            onChange={(e) => setSelectedVenueType(e.target.value)}
+          >
+            <option value="">Venue Type</option>
+            {categories.map(category => (
+              <option key={category._id} value={category.name}>{category.name}</option>
+            ))}
+          </select>
           <select 
             className="hero-select"
             value={selectedCity}
             onChange={(e) => setSelectedCity(e.target.value)}
             disabled={loadingCities}
           >
-            <option value="">Select City</option>
+            <option value="">City</option>
             {loadingCities ? (
               <option>Loading cities...</option>
             ) : (
@@ -258,21 +268,8 @@ function HeroSection({ onLoadComplete }) {
               ))
             )}
           </select>
-          <select 
-            className="hero-select"
-            value={selectedOccasion}
-            onChange={(e) => setSelectedOccasion(e.target.value)}
-          >
-            <option value="">Select Occasion</option>
-            {categories.map(category => (
-              <option key={category._id} value={category.name}>{category.name}</option>
-            ))}
-          </select>
-          <button className="hero-search-btn" onClick={handleSearch}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
+          <button className="hero-search-btn hero-primary-cta" onClick={handleSearch}>
+            Find Wedding Venues
           </button>
         </div>
       </div>

@@ -386,6 +386,16 @@ function AdminRoutes() {
         }
       />
       <Route
+        path="homepage-content"
+        element={
+          <AdminPrivateRoute>
+            <DashboardLayout>
+              <AdminSettings />
+            </DashboardLayout>
+          </AdminPrivateRoute>
+        }
+      />
+      <Route
         path="banners"
         element={
           <AdminPrivateRoute>

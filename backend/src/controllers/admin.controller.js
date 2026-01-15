@@ -504,6 +504,92 @@ export const createVenueByAdmin = async (req, res) => {
       venueData.services = [];
     }
 
+    // Handle areasAvailable - can be JSON string (from FormData) or array
+    let areasAvailableArray = [];
+    if (body.areasAvailable) {
+      if (typeof body.areasAvailable === 'string') {
+        try {
+          areasAvailableArray = JSON.parse(body.areasAvailable);
+        } catch (e) {
+          areasAvailableArray = [];
+        }
+      } else if (Array.isArray(body.areasAvailable)) {
+        areasAvailableArray = body.areasAvailable;
+      }
+    }
+    // Validate and clean areasAvailable array
+    if (Array.isArray(areasAvailableArray) && areasAvailableArray.length > 0) {
+      venueData.areasAvailable = areasAvailableArray
+        .filter(area => area && area.vendorAreaName && area.vendorAreaName.trim() && area.areaType && area.areaType.trim())
+        .map(area => {
+          // If areaType is "Other" and customAreaType is provided, use customAreaType
+          const finalAreaType = (area.areaType === 'Other' && area.customAreaType && area.customAreaType.trim()) 
+            ? String(area.customAreaType).trim() 
+            : String(area.areaType).trim();
+          
+          return {
+            vendorAreaName: String(area.vendorAreaName).trim(),
+            areaType: finalAreaType,
+            seating: area.seating ? String(area.seating).trim() : undefined,
+            floating: area.floating ? String(area.floating).trim() : undefined
+          };
+        });
+    } else {
+      venueData.areasAvailable = [];
+    }
+
+    // Handle pricingTypes - can be JSON string (from FormData) or array
+    let pricingTypesArray = [];
+    if (body.pricingTypes) {
+      if (typeof body.pricingTypes === 'string') {
+        try {
+          pricingTypesArray = JSON.parse(body.pricingTypes);
+        } catch (e) {
+          pricingTypesArray = [];
+        }
+      } else if (Array.isArray(body.pricingTypes)) {
+        pricingTypesArray = body.pricingTypes;
+      }
+    }
+    // Validate and clean pricingTypes array
+    if (Array.isArray(pricingTypesArray) && pricingTypesArray.length > 0) {
+      venueData.pricingTypes = pricingTypesArray
+        .filter(p => p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type))
+        .map(p => ({
+          type: p.type,
+          price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
+          vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
+          nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
+        }));
+    } else {
+      venueData.pricingTypes = [];
+    }
+
+    // Handle FAQ - can be JSON string (from FormData) or array
+    let faqArray = [];
+    if (body.faq) {
+      if (typeof body.faq === 'string') {
+        try {
+          faqArray = JSON.parse(body.faq);
+        } catch (e) {
+          faqArray = [];
+        }
+      } else if (Array.isArray(body.faq)) {
+        faqArray = body.faq;
+      }
+    }
+    // Validate and clean FAQ array
+    if (Array.isArray(faqArray) && faqArray.length > 0) {
+      venueData.faq = faqArray
+        .filter(faq => faq && faq.question && faq.question.trim() && faq.answer && faq.answer.trim())
+        .map(faq => ({
+          question: String(faq.question).trim(),
+          answer: String(faq.answer).trim()
+        }));
+    } else {
+      venueData.faq = [];
+    }
+
     const rooms = body.rooms !== undefined && body.rooms !== null && body.rooms !== '' ? Number(body.rooms) : undefined;
     if (rooms !== undefined && !Number.isNaN(rooms)) venueData.rooms = rooms;
 
@@ -991,6 +1077,71 @@ export const updateVenueByAdmin = async (req, res) => {
           }));
       } else {
         venue.services = [];
+      }
+    }
+
+    // Handle areasAvailable update
+    if (body.areasAvailable !== undefined) {
+      let areasAvailableArray = [];
+      if (typeof body.areasAvailable === 'string') {
+        try {
+          areasAvailableArray = JSON.parse(body.areasAvailable);
+        } catch (e) {
+          areasAvailableArray = [];
+        }
+      } else if (Array.isArray(body.areasAvailable)) {
+        areasAvailableArray = body.areasAvailable;
+      }
+      if (Array.isArray(areasAvailableArray)) {
+        if (areasAvailableArray.length > 0) {
+          venue.areasAvailable = areasAvailableArray
+            .filter(area => area && area.vendorAreaName && area.vendorAreaName.trim() && area.areaType && area.areaType.trim())
+            .map(area => {
+              // If areaType is "Other" and customAreaType is provided, use customAreaType
+              const finalAreaType = (area.areaType === 'Other' && area.customAreaType && area.customAreaType.trim()) 
+                ? String(area.customAreaType).trim() 
+                : String(area.areaType).trim();
+              
+              return {
+                vendorAreaName: String(area.vendorAreaName).trim(),
+                areaType: finalAreaType,
+                seating: area.seating ? String(area.seating).trim() : undefined,
+                floating: area.floating ? String(area.floating).trim() : undefined
+              };
+            });
+        } else {
+          venue.areasAvailable = [];
+        }
+      } else {
+        venue.areasAvailable = [];
+      }
+    }
+
+    // Handle FAQ update
+    if (body.faq !== undefined) {
+      let faqArray = [];
+      if (typeof body.faq === 'string') {
+        try {
+          faqArray = JSON.parse(body.faq);
+        } catch (e) {
+          faqArray = [];
+        }
+      } else if (Array.isArray(body.faq)) {
+        faqArray = body.faq;
+      }
+      if (Array.isArray(faqArray)) {
+        if (faqArray.length > 0) {
+          venue.faq = faqArray
+            .filter(faq => faq && faq.question && faq.question.trim() && faq.answer && faq.answer.trim())
+            .map(faq => ({
+              question: String(faq.question).trim(),
+              answer: String(faq.answer).trim()
+            }));
+        } else {
+          venue.faq = [];
+        }
+      } else {
+        venue.faq = [];
       }
     }
 

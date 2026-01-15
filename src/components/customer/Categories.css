@@ -1,6 +1,6 @@
 /* Categories Section */
 .categories {
-  padding: 40px 24px 80px 24px;
+  padding: 30px 24px 50px 24px;
   background: var(--white);
   position: relative;
   overflow: hidden;
@@ -159,7 +159,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .categories {
-    padding: 30px 24px 60px 24px;
+    padding: 25px 24px 40px 24px;
   }
 
   .categories-flower {
@@ -170,7 +170,7 @@
 
   .categories-title {
     font-size: 36px;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
   }
 
   .categories-wrapper {
@@ -193,7 +193,7 @@
 
 @media (max-width: 768px) {
   .categories {
-    padding: 25px 20px 50px 20px;
+    padding: 20px 20px 35px 20px;
   }
 
   .categories-flower {
@@ -238,7 +238,7 @@
 
 @media (max-width: 480px) {
   .categories {
-    padding: 20px 16px 40px 16px;
+    padding: 18px 16px 30px 16px;
   }
 
   .categories-flower {

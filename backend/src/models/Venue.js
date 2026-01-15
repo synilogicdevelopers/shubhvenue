@@ -66,6 +66,27 @@ const venueSchema = new mongoose.Schema(
         trim: true
       }
     },
+    // Multiple pricing types - array of pricing objects
+    pricingTypes: [{
+      type: {
+        type: String,
+        enum: ['per_day', 'per_plate', 'per_km', 'hours_price'],
+        required: true
+      },
+      price: {
+        type: Number,
+        default: 0
+      },
+      // For per_plate type
+      vegPrice: {
+        type: Number,
+        default: 0
+      },
+      nonVegPrice: {
+        type: Number,
+        default: 0
+      }
+    }],
     venueType: {
       type: String,
       trim: true
@@ -329,7 +350,49 @@ const venueSchema = new mongoose.Schema(
     metaDescription: {
       type: String,
       trim: true
-    }
+    },
+    // Areas Available - Array of area objects
+    areasAvailable: [{
+      vendorAreaName: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      areaType: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      seating: {
+        type: String,
+        trim: true
+      },
+      floating: {
+        type: String,
+        trim: true
+      },
+      parkingSpaces: {
+        type: String,
+        trim: true
+      },
+      vehicleCapacity: {
+        type: String,
+        trim: true
+      }
+    }],
+    // FAQ - Array of FAQ objects
+    faq: [{
+      question: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      answer: {
+        type: String,
+        required: true,
+        trim: true
+      }
+    }]
   },
   {
     timestamps: true

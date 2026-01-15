@@ -15,7 +15,7 @@ const getImageBaseUrl = () => {
   return apiUrl.replace('/api', '');
 };
 
-function VendorCategories() {
+function VendorCategories({ onLoadComplete }) {
   const navigate = useNavigate()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -44,10 +44,16 @@ function VendorCategories() {
       console.log('Active Categories:', activeCategories)
       setCategories(activeCategories)
       setLoading(false)
+      if (onLoadComplete) {
+        onLoadComplete()
+      }
     } catch (error) {
       console.error('Failed to fetch vendor categories:', error)
       console.error('Error details:', error.response || error.message)
       setLoading(false)
+      if (onLoadComplete) {
+        onLoadComplete()
+      }
     }
   }
 
@@ -119,12 +125,17 @@ function VendorCategories() {
                 <div 
                   className="vendor-category-card"
                   onClick={() => {
-                    navigate(`/venues?vendorCategoryId=${category._id}&vendorCategoryName=${encodeURIComponent(category.name)}`, {
-                      state: {
-                        vendorCategoryId: category._id,
-                        vendorCategoryName: category.name
-                      }
-                    })
+                    // Check if category is "Decoration" - open in new tab
+                    if (category.name && category.name.toLowerCase() === 'decoration') {
+                      window.open('/decoration', '_blank')
+                    } else {
+                      navigate(`/venues?vendorCategoryId=${category._id}&vendorCategoryName=${encodeURIComponent(category.name)}`, {
+                        state: {
+                          vendorCategoryId: category._id,
+                          vendorCategoryName: category.name
+                        }
+                      })
+                    }
                   }}
                 >
                   <div className="vendor-category-image-wrapper">

@@ -7,6 +7,18 @@ import SEO from '../SEO'
 import { createSlug } from '../../utils/customer/slug'
 import './VenueDetail.css'
 
+// FAQ Item Component - Simple text format
+function FAQItem({ question, answer, index }) {
+  if (!question || !answer) return null;
+  
+  return (
+    <div className="faq-item">
+      <div className="faq-question-text">{question}</div>
+      <div className="faq-answer-text">{answer}</div>
+    </div>
+  );
+}
+
     function VenueDetail() {
   const { slug, categorySlug } = useParams()
   const navigate = useNavigate()
@@ -702,6 +714,9 @@ import './VenueDetail.css'
             description: venueData.about || venueData.description || 'No description available',
             amenities: Array.isArray(venueData.amenities) ? venueData.amenities : [],
             highlights: Array.isArray(venueData.highlights) ? venueData.highlights : [],
+            areasAvailable: Array.isArray(venueData.areasAvailable) ? venueData.areasAvailable : [],
+            services: Array.isArray(venueData.services) ? venueData.services.filter(service => service && service.name) : [],
+            faq: Array.isArray(venueData.faq) ? venueData.faq.filter(faq => faq && faq.question && faq.answer) : [],
             policies: {
               checkIn: formatTime12Hour(venueData.availability?.openTime) || 'Not specified',
               checkOut: formatTime12Hour(venueData.availability?.closeTime) || 'Not specified',
@@ -2231,30 +2246,204 @@ import './VenueDetail.css'
               </div>
             </div>
 
-            {/* Description */}
+            {/* Areas Available - Right after header */}
+            {venue.areasAvailable && Array.isArray(venue.areasAvailable) && venue.areasAvailable.length > 0 && (
             <div className="venue-section">
-              <h2 className="section-title">About This Venue</h2>
-              <p className="venue-description">{venue.description}</p>
+                <h2 className="section-title">Areas Available ({venue.areasAvailable.length})</h2>
+                <div className="areas-available-grid">
+                  {venue.areasAvailable.map((area, index) => {
+                    // Function to get image based on area type
+                    const getAreaImage = (areaType) => {
+                      const type = (areaType || '').toLowerCase();
+                      
+                      // INDOOR TYPES
+                      if (type.includes('indoor') || 
+                          type.includes('hall') || 
+                          type.includes('ballroom') || 
+                          type.includes('conference') || 
+                          type.includes('board room') || 
+                          type.includes('meeting room') || 
+                          type.includes('seminar') || 
+                          type.includes('auditorium') || 
+                          type.includes('multipurpose') || 
+                          type.includes('exhibition') || 
+                          type.includes('pre-function') || 
+                          type.includes('foyer') || 
+                          type.includes('breakout') || 
+                          type.includes('vip lounge') || 
+                          type.includes('green room') || 
+                          type.includes('bridal suite') || 
+                          type.includes('groom room') || 
+                          type.includes('dining hall') || 
+                          type.includes('ac hall') || 
+                          type.includes('non-ac hall') ||
+                          type.includes('banquet hall')) {
+                        return '/image/INDOOR.png';
+                      }
+                      
+                      // OUTDOOR TYPES
+                      if (type.includes('outdoor') || 
+                          type.includes('lawn') || 
+                          type.includes('garden') || 
+                          type.includes('courtyard') || 
+                          type.includes('open ground') || 
+                          type.includes('heritage lawn') || 
+                          type.includes('beachside') || 
+                          type.includes('riverfront') || 
+                          type.includes('lake view') || 
+                          type.includes('hill view') || 
+                          type.includes('open pavilion') || 
+                          type.includes('mandap') || 
+                          type.includes('open stage')) {
+                        return '/image/OUTDOOR.png';
+                      }
+                      
+                      // POOL & WATER AREAS
+                      if (type.includes('pool') || 
+                          type.includes('poolside') || 
+                          type.includes('infinity pool') || 
+                          type.includes('deck by pool') || 
+                          type.includes('waterfront')) {
+                        return '/image/Pool.png';
+                      }
+                      
+                      // ROOFTOP / ELEVATED
+                      if (type.includes('rooftop') || 
+                          type.includes('sky lounge') || 
+                          type.includes('terrace') || 
+                          type.includes('open deck') ||
+                          type.includes('elevated')) {
+                        return '/image/restaurant.png';
+                      }
+                      
+                      // COMBINATION AREAS
+                      if (type.includes('indoor + outdoor') || 
+                          type.includes('hall with courtyard') || 
+                          type.includes('banquet + lawn') || 
+                          type.includes('ballroom + pre-function') || 
+                          type.includes('poolside + lawn') || 
+                          type.includes('rooftop + indoor') ||
+                          type.includes('combination')) {
+                        return '/image/restaurant.png';
+                      }
+                      
+                      // PARTY & SOCIAL AREAS
+                      if (type.includes('lounge') || 
+                          type.includes('bar area') || 
+                          type.includes('open bar') || 
+                          type.includes('private party') || 
+                          type.includes('after-party') || 
+                          type.includes('dance floor')) {
+                        return '/image/party.png';
+                      }
+                      
+                      // FOOD-RELATED AREAS
+                      if (type.includes('restaurant') || 
+                          type.includes('dining room') || 
+                          type.includes('open dining') || 
+                          type.includes('buffet') || 
+                          type.includes('live counter')) {
+                        return '/image/food.png';
+                      }
+                      
+                      // ENTERTAINMENT & SPECIAL
+                      if (type.includes('stage') || 
+                          type.includes('performance') || 
+                          type.includes('cultural event') || 
+                          type.includes('dj area') || 
+                          type.includes('sound & light') ||
+                          type.includes('entertainment')) {
+                        return '/image/ENTERTAINMENT.png';
+                      }
+                      
+                      // UTILITY & SUPPORT AREAS
+                      if (type.includes('parking') || 
+                          type.includes('valet') || 
+                          type.includes('drop-off') || 
+                          type.includes('entrance') || 
+                          type.includes('registration') || 
+                          type.includes('security check')) {
+                        return '/image/parked-car.png';
+                      }
+                      
+                      // Default fallback
+                      return '/image/area.png';
+                    };
+                    
+                    // Determine area type for display
+                    const areaType = area.areaType || '';
+                    const isIndoor = areaType.toLowerCase().includes('indoor') || 
+                                    areaType.toLowerCase().includes('hall') || 
+                                    areaType.toLowerCase().includes('ballroom') ||
+                                    areaType.toLowerCase().includes('room');
+                    const isOutdoor = areaType.toLowerCase().includes('outdoor') || 
+                                     areaType.toLowerCase().includes('lawn') || 
+                                     areaType.toLowerCase().includes('garden') ||
+                                     areaType.toLowerCase().includes('courtyard');
+                    const isBoth = (isIndoor && isOutdoor) || areaType.toLowerCase().includes('both') || areaType.toLowerCase().includes('combination');
+                    
+                    return (
+                      <div key={index} className="area-item">
+                        <div className="area-image-wrapper">
+                          <img 
+                            src={getAreaImage(areaType)} 
+                            alt={areaType || 'Area'} 
+                            className="area-image"
+                            onError={(e) => {
+                              e.target.src = '/image/area.png';
+                            }}
+                          />
             </div>
-
-            {/* Highlights */}
-            {venue.highlights && venue.highlights.length > 0 && (
-              <div className="venue-section">
-                <h2 className="section-title">Highlights</h2>
-                <ul className="highlights-list">
-                  {venue.highlights.map((highlight, index) => (
-                    <li key={index}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                      {highlight}
-                    </li>
-                  ))}
-                </ul>
+                        <div className="area-content">
+                          <div className="area-capacity">
+                            {/* Show parking info for parking areas */}
+                            {(area.areaType === 'Parking Area' || area.areaType === 'Valet Area' || area.areaType === 'Drop-off Zone') ? (
+                              <>
+                                {area.parkingSpaces && (
+                                  <span className="capacity-item">
+                                    <strong>{area.parkingSpaces}</strong> Parking Spaces
+                                  </span>
+                                )}
+                                {area.parkingSpaces && area.vehicleCapacity && <span className="capacity-separator"> | </span>}
+                                {area.vehicleCapacity && (
+                                  <span className="capacity-item">
+                                    <strong>{area.vehicleCapacity}</strong> Vehicles
+                                  </span>
+                                )}
+                                {!area.parkingSpaces && !area.vehicleCapacity && (
+                                  <span className="capacity-item">Parking Available</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {area.seating && (
+                                  <span className="capacity-item">
+                                    <strong>{area.seating}</strong> Seating
+                                  </span>
+                                )}
+                                {area.seating && area.floating && <span className="capacity-separator"> | </span>}
+                                {area.floating && (
+                                  <span className="capacity-item">
+                                    <strong>{area.floating}</strong> Floating
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <div className="area-name">{area.vendorAreaName || area.name || 'Unnamed Area'}</div>
+                          <div className="area-type">
+                            {isBoth ? 'Indoor & Outdoor' : isIndoor ? 'Indoor' : isOutdoor ? 'Outdoor' : areaType || 'Area'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Amenities */}
+            {/* Amenities - Right after Areas Available */}
+            {venue.amenities && Array.isArray(venue.amenities) && venue.amenities.length > 0 && (
             <div className="venue-section">
               <h2 className="section-title">Amenities</h2>
               <div className="amenities-grid">
@@ -2268,38 +2457,26 @@ import './VenueDetail.css'
                 ))}
               </div>
             </div>
+            )}
 
-            {/* Policies */}
+            {/* Highlights */}
+            {venue.highlights && venue.highlights.length > 0 && (
             <div className="venue-section">
-              <h2 className="section-title">Policies & Guidelines</h2>
-              <div className="policies-grid">
-                <div className="policy-item">
-                  <span className="policy-label">Check-in</span>
-                  <span className="policy-value">{venue.policies.checkIn}</span>
+                <h2 className="section-title">Highlights</h2>
+                <ul className="highlights-list">
+                  {venue.highlights.map((highlight, index) => (
+                    <li key={index}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      {highlight}
+                    </li>
+                  ))}
+                </ul>
                 </div>
-                <div className="policy-item">
-                  <span className="policy-label">Check-out</span>
-                  <span className="policy-value">{venue.policies.checkOut}</span>
-                </div>
-                <div className="policy-item">
-                  <span className="policy-label">Cancellation</span>
-                  <span className="policy-value">{venue.policies.cancellation}</span>
-                </div>
-                <div className="policy-item">
-                  <span className="policy-label">Pets</span>
-                  <span className="policy-value">{venue.policies.pets}</span>
-                </div>
-                <div className="policy-item">
-                  <span className="policy-label">Smoking</span>
-                  <span className="policy-value">{venue.policies.smoking}</span>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Portfolio & Albums */}
-            <div className="venue-section">
-              <h2 className="section-title">Portfolio & Albums</h2>
-              <div className="album-images-grid" style={{ marginTop: '24px' }}>
                 {(() => {
                   // Collect all photos from albums
                   const allPhotos = []
@@ -2324,7 +2501,10 @@ import './VenueDetail.css'
                   const uniquePhotos = [...new Set(allPhotos)]
                   
                   return uniquePhotos.length > 0 ? (
-                    uniquePhotos.map((image, index) => (
+                <div className="venue-section">
+                  <h2 className="section-title">Portfolio & Albums</h2>
+                  <div className="album-images-grid" style={{ marginTop: '24px' }}>
+                    {uniquePhotos.map((image, index) => (
                       <div 
                         key={index} 
                         className="album-image-item"
@@ -2333,15 +2513,11 @@ import './VenueDetail.css'
                       >
                         <img src={image} alt={`Gallery ${index + 1}`} />
                       </div>
-                    ))
-                  ) : (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#666' }}>
-                      No photos available
+                    ))}
                     </div>
-                  )
-                })()}
               </div>
-            </div>
+              ) : null;
+            })()}
 
             {/* Videos - Only show if videos exist */}
             {venue.videos && Array.isArray(venue.videos) && venue.videos.length > 0 && (
@@ -2382,6 +2558,94 @@ import './VenueDetail.css'
                       </div>
                       <h3 className="video-title">{video.title}</h3>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* About This Venue - Right before Reviews */}
+            {venue.description && venue.description.trim() && (
+              <div className="venue-section">
+                <h2 className="section-title">About This Venue</h2>
+                <p className="venue-description">{venue.description}</p>
+              </div>
+            )}
+
+            {/* Policies & Guidelines - Right after About This Venue */}
+            {venue.policies && (
+              (venue.policies.checkIn || venue.policies.checkOut || venue.policies.cancellation || venue.policies.pets || venue.policies.smoking) && (
+                <div className="venue-section">
+                  <h2 className="section-title">Policies & Guidelines</h2>
+                  <div className="policies-grid">
+                    {venue.policies.checkIn && (
+                      <div className="policy-item">
+                        <span className="policy-label">Check-in</span>
+                        <span className="policy-value">{venue.policies.checkIn}</span>
+                      </div>
+                    )}
+                    {venue.policies.checkOut && (
+                      <div className="policy-item">
+                        <span className="policy-label">Check-out</span>
+                        <span className="policy-value">{venue.policies.checkOut}</span>
+                      </div>
+                    )}
+                    {venue.policies.cancellation && (
+                      <div className="policy-item">
+                        <span className="policy-label">Cancellation</span>
+                        <span className="policy-value">{venue.policies.cancellation}</span>
+                      </div>
+                    )}
+                    {venue.policies.pets && (
+                      <div className="policy-item">
+                        <span className="policy-label">Pets</span>
+                        <span className="policy-value">{venue.policies.pets}</span>
+                      </div>
+                    )}
+                    {venue.policies.smoking && (
+                      <div className="policy-item">
+                        <span className="policy-label">Smoking</span>
+                        <span className="policy-value">{venue.policies.smoking}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* Services Section */}
+            {venue.services && Array.isArray(venue.services) && venue.services.length > 0 && (
+              <div className="venue-section">
+                <h2 className="section-title">Services</h2>
+                <div className="services-grid">
+                  {venue.services.map((service, index) => (
+                    <div key={index} className="service-item">
+                      <div className="service-header">
+                        <h3 className="service-name">{service.name}</h3>
+                        {service.price !== null && service.price !== undefined && (
+                          <span className="service-price">₹{service.price.toLocaleString('en-IN')}</span>
+                        )}
+                      </div>
+                      {service.description && (
+                        <p className="service-description">{service.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* FAQ Section */}
+            {venue.faq && Array.isArray(venue.faq) && venue.faq.length > 0 && (
+              <div className="venue-section">
+                <h2 className="section-title">Frequently Asked Questions</h2>
+                <div className="faq-container">
+                  {venue.faq.map((faqItem, index) => (
+                    <FAQItem 
+                      key={index}
+                      question={faqItem.question}
+                      answer={faqItem.answer}
+                      index={index}
+                    />
                   ))}
                 </div>
               </div>

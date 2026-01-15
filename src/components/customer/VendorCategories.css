@@ -1,5 +1,5 @@
 .vendor-categories {
-  padding: 60px 20px;
+  padding: 40px 20px;
   background: #f9fafb;
 }
 
@@ -144,7 +144,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .vendor-categories {
-    padding: 40px 15px;
+    padding: 30px 15px;
   }
 
   .vendor-categories-title {

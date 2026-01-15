@@ -52,7 +52,10 @@ const defaultFormConfig = {
     decorationCategory: true,
     occasionSpecial: true,
     videos: true,
-    galleryImages: true
+    galleryImages: true,
+    mainImage: true,
+    areasAvailable: true,
+    faq: true
   },
   booking: {
     date: true,
@@ -456,6 +459,15 @@ export const VendorCategoryFormEditor = ({ formConfig: initialConfig, onChange, 
                 description="Image gallery upload"
               />
 
+              {/* Main Image */}
+              <CustomCheckbox
+                checked={formConfig.venue.mainImage}
+                onChange={(e) => updateConfig('venue.mainImage', e.target.checked)}
+                label="Main Image"
+                icon={ImageIcon}
+                description="Main image (720 × 375 px)"
+              />
+
               {/* Highlights */}
               <CustomCheckbox
                 checked={formConfig.venue.highlights}
@@ -508,6 +520,24 @@ export const VendorCategoryFormEditor = ({ formConfig: initialConfig, onChange, 
                 label="Gender"
                 icon={Users}
                 description="Gender-specific options"
+              />
+
+              {/* Areas Available */}
+              <CustomCheckbox
+                checked={formConfig.venue.areasAvailable}
+                onChange={(e) => updateConfig('venue.areasAvailable', e.target.checked)}
+                label="Areas Available"
+                icon={Home}
+                description="Venue areas with type, seating, and floating options"
+              />
+
+              {/* FAQ */}
+              <CustomCheckbox
+                checked={formConfig.venue.faq}
+                onChange={(e) => updateConfig('venue.faq', e.target.checked)}
+                label="FAQ"
+                icon={FileText}
+                description="Frequently asked questions with question and answer"
               />
             </div>
 

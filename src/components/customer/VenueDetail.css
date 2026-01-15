@@ -898,6 +898,195 @@
   flex-shrink: 0;
 }
 
+/* Areas Available Grid - 2 columns */
+.areas-available-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .areas-available-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.area-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--gray-light);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.area-item:hover {
+  background: #F3F4F6;
+  border-color: #E5E7EB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.area-image-wrapper {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border-radius: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid #E5E7EB;
+}
+
+.area-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* FAQ Section - Box Layout */
+.faq-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faq-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.faq-item:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.faq-question-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  line-height: 1.6;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.faq-answer-text {
+  font-size: 15px;
+  color: var(--text-dark);
+  line-height: 1.7;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Services Section */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.service-item {
+  padding: 20px;
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.service-item:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.service-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.service-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+  flex: 1;
+  line-height: 1.5;
+}
+
+.service-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary-purple);
+  white-space: nowrap;
+}
+
+.service-description {
+  font-size: 14px;
+  color: var(--gray-dark);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.area-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.area-capacity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--gray-dark);
+}
+
+.capacity-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.capacity-item strong {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.capacity-separator {
+  color: #D1D5DB;
+}
+
+.area-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-top: 2px;
+}
+
+.area-type {
+  font-size: 13px;
+  color: var(--gray-dark);
+  text-transform: capitalize;
+}
+
 /* Policies Grid */
 .policies-grid {
   display: grid;

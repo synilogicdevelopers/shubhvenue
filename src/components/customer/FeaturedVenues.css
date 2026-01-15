@@ -1,6 +1,6 @@
 /* Featured Venues Section */
 .featured-venues {
-  padding: 80px 24px;
+  padding: 50px 24px;
   background: var(--white);
 }
 
@@ -43,12 +43,12 @@
   letter-spacing: 0;
 }
 
-.venues-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  margin-top: 60px;
-}
+  .venues-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-top: 40px;
+  }
 
 .venue-card {
   background: var(--white);
@@ -283,7 +283,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .featured-venues {
-    padding: 60px 24px;
+    padding: 40px 24px;
   }
 
   .featured-venues-title {
@@ -303,7 +303,7 @@
 
 @media (max-width: 768px) {
   .featured-venues {
-    padding: 50px 20px;
+    padding: 35px 20px;
   }
 
   .featured-venues-title {
@@ -336,7 +336,7 @@
 
 @media (max-width: 480px) {
   .featured-venues {
-    padding: 40px 16px;
+    padding: 30px 16px;
   }
 
   .featured-venues-title {

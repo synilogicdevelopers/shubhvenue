@@ -91,6 +91,11 @@ import {
   updateContactStatus,
   deleteContact,
 } from '../../controllers/admin.controller.js';
+import {
+  getAllHomepageContent,
+  getHomepageContentByType,
+  updateHomepageContent,
+} from '../../controllers/homepageContent.controller.js';
 import Payout from '../../models/Payout.js';
 import { uploadBannerImage, uploadVideo, uploadVenueMedia, uploadStaffImage, uploadVendorCategoryImage, uploadEmailLogo, handleUploadError } from '../../middlewares/upload.js';
 import {
@@ -266,6 +271,11 @@ router.put('/company', requirePermission('edit_company'), updateCompany);
 router.get('/legal-pages', requirePermission('view_legal_pages'), getLegalPages);
 router.get('/legal-pages/:type', requirePermission('view_legal_pages'), getLegalPageByType);
 router.put('/legal-pages/:type', requirePermission('edit_legal_pages'), updateLegalPage);
+
+// Homepage Content routes
+router.get('/homepage-content', requirePermission('view_legal_pages'), getAllHomepageContent);
+router.get('/homepage-content/:type', requirePermission('view_legal_pages'), getHomepageContentByType);
+router.put('/homepage-content/:type', requirePermission('edit_legal_pages'), updateHomepageContent);
 
 // Contact Submissions routes
 router.get('/contacts', requirePermission('view_contacts'), getContacts);
