@@ -68,11 +68,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 100px;
+  min-width: 140px;
   flex-shrink: 0;
   cursor: pointer;
   transition: all 0.3s ease;
-  padding: 8px;
+  padding: 12px;
   border-radius: 12px;
 }
 
@@ -82,11 +82,11 @@
 }
 
 .category-icon {
-  width: 85px;
-  height: 85px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   border: 3px solid #E5E7EB;
   transition: all 0.3s ease;
   background: var(--white);
@@ -110,7 +110,7 @@
 }
 
 .category-label {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-dark);
   text-align: center;
@@ -182,12 +182,12 @@
   }
 
   .category-icon {
-    width: 75px;
-    height: 75px;
+    width: 100px;
+    height: 100px;
   }
 
   .category-label {
-    font-size: 13px;
+    font-size: 15px;
   }
 }
 
@@ -216,18 +216,18 @@
   }
 
   .category-item {
-    min-width: 90px;
-    padding: 6px;
+    min-width: 120px;
+    padding: 10px;
   }
 
   .category-icon {
-    width: 70px;
-    height: 70px;
-    margin-bottom: 8px;
+    width: 90px;
+    height: 90px;
+    margin-bottom: 10px;
   }
 
   .category-label {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .category-arrow {
@@ -261,19 +261,19 @@
   }
 
   .category-item {
-    min-width: 80px;
-    padding: 4px;
+    min-width: 100px;
+    padding: 8px;
   }
 
   .category-icon {
-    width: 65px;
-    height: 65px;
-    margin-bottom: 6px;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 8px;
     border-width: 2px;
   }
 
   .category-label {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .category-arrow {

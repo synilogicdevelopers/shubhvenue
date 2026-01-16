@@ -9,3 +9,4 @@ router.get('/:type', getPublicHomepageContent);
 export default router;
 
 
+

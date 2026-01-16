@@ -78,6 +78,7 @@ function Categories({ onLoadComplete }) {
         className="categories-flower"
       />
       <div className="categories-container">
+        <h2 className="categories-title">Top Venue Category</h2>
         <div className="categories-wrapper">
           <button 
             className="category-arrow category-arrow-prev" 
@@ -108,23 +109,23 @@ function Categories({ onLoadComplete }) {
               }}
               breakpoints={{
                 320: {
-                  slidesPerView: 3,
+                  slidesPerView: 2.5,
                   spaceBetween: 16,
                 },
                 480: {
-                  slidesPerView: 4,
+                  slidesPerView: 3,
                   spaceBetween: 18,
                 },
                 768: {
-                  slidesPerView: 5,
+                  slidesPerView: 4,
                   spaceBetween: 20,
                 },
                 1024: {
-                  slidesPerView: 6,
+                  slidesPerView: 5,
                   spaceBetween: 24,
                 },
                 1200: {
-                  slidesPerView: 7,
+                  slidesPerView: 6,
                   spaceBetween: 24,
                 },
               }}
@@ -139,7 +140,8 @@ function Categories({ onLoadComplete }) {
                     <div className="category-icon">
                       <img 
                         src={category.image} 
-                        alt={category.name} 
+                        alt={category.name}
+                        loading="lazy"
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=200&h=200&fit=crop'
                         }} 
