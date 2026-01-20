@@ -1,14 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './VenueListingSection.css'
-import { publicVenuesAPI, publicCategoriesAPI } from '../../services/customer/api'
+import { publicVenuesAPI, publicCategoriesAPI, shotlistAPI } from '../../services/customer/api'
 import { createSlug } from '../../utils/customer/slug'
+import toast from 'react-hot-toast'
 
 function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete }) {
   const navigate = useNavigate()
   const [venues, setVenues] = useState([])
   const [loading, setLoading] = useState(true)
   const [categoryId, setCategoryId] = useState(null)
+  const [likedVenues, setLikedVenues] = useState(new Set())
+  const [togglingVenueId, setTogglingVenueId] = useState(null)
+
+  // Generate device ID for tracking
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('deviceId')
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      localStorage.setItem('deviceId', deviceId)
+    }
+    return deviceId
+  }
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
@@ -88,11 +101,7 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
           }
           
           if (category) {
-            console.log(`Found category "${category.name}" (ID: ${category._id}) for search term "${categoryName}"`)
             setCategoryId(category._id)
-          } else {
-            console.warn(`Category not found for "${categoryName}". Available categories:`, 
-              response.data.categories.map(c => c.name))
           }
         }
       } catch (error) {
@@ -111,9 +120,7 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
     if (!categoryId && categoryName) {
       // Set a timeout to try fetching by name if categoryId doesn't load
       const timeoutId = setTimeout(() => {
-        if (!categoryId) {
-          console.warn(`Category ID not found for "${categoryName}", attempting to fetch venues anyway...`)
-        }
+        // Category ID loading timeout
       }, 2000)
       return () => clearTimeout(timeoutId)
     }
@@ -123,7 +130,6 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
     const fetchVenues = async () => {
       try {
         setLoading(true)
-        console.log(`Fetching venues for categoryId: ${categoryId}, categoryName: "${categoryName}"`)
         const response = await publicVenuesAPI.getAll({
           categoryId: categoryId,
           status: 'active',
@@ -142,12 +148,9 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
         } else if (response.data?.results && Array.isArray(response.data.results)) {
           venuesData = response.data.results
         }
-        
-        console.log(`Fetched ${venuesData.length} venues for category "${categoryName}" (categoryId: ${categoryId})`)
 
         // If no active venues, try approved
         if (venuesData.length === 0) {
-          console.log(`No active venues found for category ${categoryId}, trying approved status...`)
           const approvedResponse = await publicVenuesAPI.getAll({
             categoryId: categoryId,
             status: 'approved',
@@ -156,13 +159,11 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
           
           if (approvedResponse.data?.success && approvedResponse.data?.data) {
             venuesData = Array.isArray(approvedResponse.data.data) ? approvedResponse.data.data : []
-            console.log(`Found ${venuesData.length} approved venues`)
           }
         }
 
         // Filter out venues where vendorActive is false (client-side safety check)
         const activeVenues = venuesData.filter(venue => venue.vendorActive !== false)
-        console.log(`Filtered venues: ${activeVenues.length} active out of ${venuesData.length} total for category "${categoryName}"`)
 
         const formattedVenues = activeVenues.slice(0, limit).map(venue => {
           let ratingValue = 0
@@ -209,6 +210,73 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
 
     fetchVenues()
   }, [categoryId, categoryName, limit, onLoadComplete])
+
+  // Check shortlist status for all venues
+  useEffect(() => {
+    const checkShortlistStatus = async () => {
+      if (venues.length === 0) return
+      
+      try {
+        const deviceId = getDeviceId()
+        const statusPromises = venues.map(async (venue) => {
+          try {
+            const venueId = venue.id
+            const response = await shotlistAPI.checkStatus(venueId, deviceId)
+            return { venueId, isLiked: response.data?.isLiked || false }
+          } catch (error) {
+            return { venueId: venue.id, isLiked: false }
+          }
+        })
+        
+        const statuses = await Promise.all(statusPromises)
+        const likedSet = new Set()
+        statuses.forEach(({ venueId, isLiked }) => {
+          if (isLiked) likedSet.add(venueId)
+        })
+        setLikedVenues(likedSet)
+      } catch (error) {
+        console.error('Error checking shortlist status:', error)
+      }
+    }
+
+    checkShortlistStatus()
+  }, [venues])
+
+  // Handle toggle like/unlike
+  const handleToggleLike = async (e, venueId) => {
+    e.stopPropagation() // Prevent card click
+    
+    try {
+      setTogglingVenueId(venueId)
+      const deviceId = getDeviceId()
+      const response = await shotlistAPI.toggleLike(venueId, deviceId)
+      
+      if (response.data?.success) {
+        const isLiked = response.data.isLiked
+        setLikedVenues(prev => {
+          const newSet = new Set(prev)
+          if (isLiked) {
+            newSet.add(venueId)
+          } else {
+            newSet.delete(venueId)
+          }
+          return newSet
+        })
+        if (isLiked) {
+          toast.success('Venue added to shortlist')
+        } else {
+          toast.success('Venue removed from shortlist')
+        }
+      } else {
+        toast.error(response.data?.error || 'Failed to update shortlist')
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      toast.error(error.message || 'Failed to update shortlist')
+    } finally {
+      setTogglingVenueId(null)
+    }
+  }
 
   const handleViewAll = () => {
     navigate(`/venues?categoryId=${categoryId}&categoryName=${encodeURIComponent(categoryName)}`, {
@@ -267,36 +335,64 @@ function VenueListingSection({ categoryName, title, limit = 6, onLoadComplete })
                     e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
                   }}
                 />
+                <button
+                  className={`venue-shortlist-btn ${likedVenues.has(venue.id) ? 'liked' : ''}`}
+                  onClick={(e) => handleToggleLike(e, venue.id)}
+                  disabled={togglingVenueId === venue.id}
+                  title={likedVenues.has(venue.id) ? 'Remove from shortlist' : 'Add to shortlist'}
+                >
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill={likedVenues.has(venue.id) ? "currentColor" : "none"} 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                  >
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                </button>
               </div>
               <div className="venue-listing-content">
                 <h3 className="venue-listing-name">{venue.name}</h3>
-                <div className="venue-listing-info">
-                  <div className="venue-listing-location">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    <span>{venue.location}</span>
-                  </div>
-                  {venue.capacity && (
-                    <div className="venue-listing-capacity">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                      </svg>
-                      <span>{venue.capacity} Guests</span>
-                    </div>
-                  )}
-                </div>
-                {venue.rating > 0 && (
+                {venue.rating > 0 && venue.reviews > 0 && (
                   <div className="venue-listing-rating">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="#FFB800"
+                      stroke="#FFB800"
+                      strokeWidth="2"
+                      style={{ flexShrink: 0 }}
+                    >
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     <span>{venue.rating.toFixed(1)}</span>
-                    {venue.reviews > 0 && <span className="venue-listing-reviews">({venue.reviews})</span>}
+                  </div>
+                )}
+                <div className="venue-listing-location">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>{venue.location}</span>
+                  {venue.type && (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                      </svg>
+                      <span>{venue.type}</span>
+                    </>
+                  )}
+                </div>
+                {venue.capacity && (
+                  <div className="venue-listing-tags">
+                    <span className="venue-listing-tag">{venue.capacity} Guests</span>
                   </div>
                 )}
               </div>

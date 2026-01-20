@@ -26,13 +26,27 @@ function Home() {
     resort: false,
     vendorCategories: false
   })
+  const hasShownContent = useRef(false)
 
   const checkAllLoaded = () => {
-    const allLoaded = Object.values(loadedComponents.current).every(loaded => loaded === true)
-    if (allLoaded) {
+    // Progressive loading: show content after critical components load
+    const criticalComponents = ['hero', 'categories']
+    const criticalLoaded = criticalComponents.every(key => loadedComponents.current[key] === true)
+    
+    // Show content if critical components are loaded OR if featured venues are loaded
+    if ((criticalLoaded || loadedComponents.current.featuredVenues) && !hasShownContent.current) {
+      hasShownContent.current = true
       setTimeout(() => {
         setIsLoading(false)
-      }, 500)
+      }, 300)
+    }
+    
+    // Also check if all loaded (optional - but doesn't block showing content)
+    const allLoaded = Object.values(loadedComponents.current).every(loaded => loaded === true)
+    if (allLoaded && isLoading) {
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 300)
     }
   }
 
@@ -81,11 +95,14 @@ function Home() {
     checkAllLoaded()
   }
 
-  // Fallback: hide loader after 10 seconds even if components don't notify
+  // Fallback: hide loader after 3 seconds to ensure fast page load
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setIsLoading(false)
-    }, 10000)
+      if (!hasShownContent.current) {
+        hasShownContent.current = true
+        setIsLoading(false)
+      }
+    }, 3000)
 
     return () => clearTimeout(timeout)
   }, [])

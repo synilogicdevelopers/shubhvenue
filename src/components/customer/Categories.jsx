@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Autoplay } from 'swiper/modules'
@@ -11,6 +11,7 @@ function Categories({ onLoadComplete }) {
   const navigate = useNavigate()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
+  const hasNotified = useRef(false)
 
   // Helper function to get category image URL
   const getCategoryImageUrl = (image) => {
@@ -34,8 +35,14 @@ function Categories({ onLoadComplete }) {
     return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/categories/${encodedImage}`
   }
 
-  // Load categories
+  // Load categories - notify parent immediately, don't block
   useEffect(() => {
+    // Notify parent immediately that component is ready (non-blocking)
+    if (onLoadComplete && !hasNotified.current) {
+      hasNotified.current = true
+      onLoadComplete()
+    }
+
     const loadCategories = async () => {
       try {
         setLoading(true)
@@ -51,9 +58,6 @@ function Categories({ onLoadComplete }) {
         console.error('Error loading categories:', error)
       } finally {
         setLoading(false)
-        if (onLoadComplete) {
-          onLoadComplete()
-        }
       }
     }
 
@@ -90,8 +94,13 @@ function Categories({ onLoadComplete }) {
           </button>
           
           {loading ? (
-            <div style={{ padding: '20px', textAlign: 'center', width: '100%' }}>
-              Loading categories...
+            <div className="categories-skeleton">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="category-skeleton-item">
+                  <div className="category-skeleton-icon"></div>
+                  <div className="category-skeleton-label"></div>
+                </div>
+              ))}
             </div>
           ) : categories.length > 0 ? (
             <Swiper

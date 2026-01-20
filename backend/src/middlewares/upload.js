@@ -268,7 +268,7 @@ const emailLogoStorage = multer.diskStorage({
 const videoUpload = multer({
   storage: videoStorage,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB limit for videos
+    fileSize: 500 * 1024 * 1024 // 500MB limit for videos (increased from 100MB)
   },
   fileFilter: videoFileFilter
 });
@@ -313,7 +313,7 @@ export const uploadVenueMedia = multer({
     }
   }),
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100MB limit (for videos)
+    fileSize: 500 * 1024 * 1024 // 500MB limit (for videos)
   },
   fileFilter: (req, file, cb) => {
     // Allow both images and videos (all image types)
@@ -429,18 +429,36 @@ export const uploadVendorStaffImage = vendorStaffUpload.single('img');
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+      // Check if it's a video upload (has 'video' field in route)
+      const isVideoUpload = req.route?.path?.includes('video') || req.path?.includes('video');
+      const maxSize = isVideoUpload ? '500MB' : '5MB';
+      return res.status(400).json({ 
+        error: `File too large. Maximum size is ${maxSize}.`,
+        message: `File too large. Maximum size is ${maxSize}.`
+      });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Too many files. Maximum 50 gallery images allowed.' });
+      return res.status(400).json({ 
+        error: 'Too many files. Maximum 50 gallery images allowed.',
+        message: 'Too many files. Maximum 50 gallery images allowed.'
+      });
     }
     if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ error: 'Unexpected file field.' });
+      return res.status(400).json({ 
+        error: 'Unexpected file field.',
+        message: 'Unexpected file field.'
+      });
     }
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ 
+      error: err.message,
+      message: err.message
+    });
   }
   if (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ 
+      error: err.message,
+      message: err.message
+    });
   }
   next();
 };

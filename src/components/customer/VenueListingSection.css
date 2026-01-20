@@ -41,8 +41,8 @@
 
 .venue-listing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
   margin-bottom: 40px;
 }
 
@@ -52,28 +52,73 @@
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s, box-shadow 0.3s;
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
 .venue-listing-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(148, 72, 122, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .venue-listing-image-wrapper {
+  position: relative;
   width: 100%;
-  height: 220px;
+  height: 240px;
   overflow: hidden;
-  background: var(--gray-light);
+}
+
+.venue-shortlist-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.venue-shortlist-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.venue-shortlist-btn:active {
+  transform: scale(0.95);
+}
+
+.venue-shortlist-btn svg {
+  width: 20px;
+  height: 20px;
+  color: var(--gray-dark);
+  transition: color 0.3s ease;
+}
+
+.venue-shortlist-btn.liked svg {
+  color: #EC4899;
+  fill: #EC4899;
+}
+
+.venue-shortlist-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .venue-listing-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
   transition: transform 0.3s ease;
 }
 
@@ -89,57 +134,61 @@
 }
 
 .venue-listing-name {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--text-dark);
   margin: 0 0 12px 0;
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.venue-listing-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex: 1;
-}
-
-.venue-listing-location,
-.venue-listing-capacity {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--gray-medium);
-}
-
-.venue-listing-location svg,
-.venue-listing-capacity svg {
-  flex-shrink: 0;
-  color: var(--primary-purple);
 }
 
 .venue-listing-rating {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  color: var(--text-dark);
-  margin-top: auto;
+  margin-bottom: 12px;
 }
 
 .venue-listing-rating svg {
-  color: #FFB800;
-  fill: #FFB800;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
-.venue-listing-reviews {
-  color: var(--gray-medium);
+.venue-listing-rating span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.venue-listing-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--gray-dark);
+}
+
+.venue-listing-location svg {
+  width: 14px;
+  height: 14px;
+  color: var(--gray-dark);
+  flex-shrink: 0;
+}
+
+.venue-listing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.venue-listing-tag {
+  padding: 6px 12px;
+  background: var(--gray-light);
+  border-radius: 6px;
   font-size: 13px;
+  color: var(--text-dark);
+  font-weight: 500;
 }
 
 .venue-listing-view-all {
@@ -171,12 +220,12 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .venue-listing-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
   }
 
   .venue-listing-image-wrapper {
-    height: 200px;
+    height: 220px;
   }
 }
 
@@ -191,12 +240,12 @@
   }
 
   .venue-listing-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .venue-listing-image-wrapper {
-    height: 180px;
+    height: 220px;
   }
 
   .venue-listing-content {
@@ -204,7 +253,7 @@
   }
 
   .venue-listing-name {
-    font-size: 16px;
+    font-size: 18px;
   }
 }
 

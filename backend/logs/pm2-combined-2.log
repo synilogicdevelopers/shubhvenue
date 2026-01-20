@@ -1,0 +1,362 @@
+2026-01-17T15:42:21: (node:728) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:21: (node:728) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:35: (node:4488) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:35: (node:4488) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:46: (node:11128) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:46: (node:11128) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:55: (node:4792) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:55: (node:4792) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:03: (node:19672) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:03: (node:19672) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:12: (node:12688) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:12: (node:12688) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:20: (node:10876) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:20: (node:10876) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:27: (node:1112) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:27: (node:1112) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:35: (node:17716) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:35: (node:17716) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:44: (node:11368) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:44: (node:11368) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T17:12:53: (node:15296) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T17:12:53: (node:15296) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T17:12:53: API server listening on port 8030
+2026-01-17T17:12:53: Local: http://localhost:8030
+2026-01-17T17:12:53: Network: http://192.168.29.20:8030
+2026-01-17T17:12:53: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-17T17:12:54: ✅ Connected to MongoDB
+2026-01-17T17:12:54: Database connection established.
+2026-01-17T17:12:55: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:19:44: (node:10788) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:19:44: (node:10788) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:19:56: (node:18556) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:19:56: (node:18556) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:09: (node:24468) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:09: (node:24468) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:21: (node:16492) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:21: (node:16492) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:33: (node:14008) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:33: (node:14008) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:44: (node:12960) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:44: (node:12960) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:54: (node:16688) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:54: (node:16688) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:04: (node:20764) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:04: (node:20764) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:14: (node:12628) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:14: (node:12628) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:23: (node:13820) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:23: (node:13820) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:37: (node:19240) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:37: (node:19240) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:48: (node:20096) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:48: (node:20096) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:58: (node:17584) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:58: (node:17584) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:13: (node:8852) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:13: (node:8852) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:22: (node:16732) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:22: (node:16732) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:42: (node:7248) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:42: (node:7248) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:56: (node:6168) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:56: (node:6168) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:08: (node:7104) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:08: (node:7104) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:23: (node:2352) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:23: (node:2352) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:23: API server listening on port 8030
+2026-01-19T15:23:23: Local: http://localhost:8030
+2026-01-19T15:23:23: Network: http://192.168.29.20:8030
+2026-01-19T15:23:23: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:23:24: ✅ Connected to MongoDB
+2026-01-19T15:23:24: Database connection established.
+2026-01-19T15:23:24: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:41: (node:7900) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:42: (node:7900) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:42: API server listening on port 8030
+2026-01-19T15:23:42: Local: http://localhost:8030
+2026-01-19T15:23:42: Network: http://192.168.29.20:8030
+2026-01-19T15:23:42: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:23:42: ✅ Connected to MongoDB
+2026-01-19T15:23:42: Database connection established.
+2026-01-19T15:23:42: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:49: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+    at Object.trustProxy (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+    at wrappedValidations.<computed> [as trustProxy] (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+    at Object.keyGenerator (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+    at file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+  code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+}
+2026-01-19T15:23:50: [0mGET /api/vendor/venues/cities?state=Rajasthan [36m304[0m 27.634 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/faqs [36m304[0m 58.269 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/homepage-content/seo-content [36m304[0m 46.417 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=active&limit=6 [36m304[0m 116.836 ms - -[0m
+2026-01-19T15:23:50: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:23:50: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=approved&limit=6 [36m304[0m 218.546 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/categories?active=true [36m304[0m 82.557 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/categories?active=true [36m304[0m 78.375 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/categories?active=true [36m304[0m 349.963 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=active&limit=6 [36m304[0m 355.031 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/categories?active=true [36m304[0m 91.712 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/categories?active=true [36m304[0m 71.428 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/categories?active=true [36m304[0m 163.633 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/categories?active=true [36m304[0m 73.977 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/categories?active=true [36m304[0m 76.254 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=active&limit=6 [36m304[0m 101.658 ms - -[0m
+2026-01-19T15:23:52: [0mGET /uploads/videos/8442722-uhd_3840_2160_30fps%20(1)-1768635269406-154386880.mp4 [33m404[0m 2.575 ms - 21[0m
+2026-01-19T15:23:52: [0mGET /api/categories?active=true [36m304[0m 83.630 ms - -[0m
+2026-01-19T15:23:52: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_32_04%20PM-1768464206827-408879235.png [33m404[0m 4.653 ms - 21[0m
+2026-01-19T15:23:52: [0mGET /api/categories?active=true [36m304[0m 78.910 ms - -[0m
+2026-01-19T15:23:52: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:23:52: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_18_08%20PM-1768463318722-975054146.png [33m404[0m 0.864 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=approved&limit=6 [36m304[0m 757.081 ms - -[0m
+2026-01-19T15:23:53: [0mGET /api/categories?active=true [36m304[0m 662.247 ms - -[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_20_33%20PM-1768463470427-447117534.png [33m404[0m 1.372 ms - 21[0m
+2026-01-19T15:23:53: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:23:53: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=approved&limit=6 [36m304[0m 209.476 ms - -[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_29_19%20PM-1768464008895-203713668.png [33m404[0m 1.556 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_48%20PM-1768463693831-976661425.png [33m404[0m 1.823 ms - 21[0m
+2026-01-19T15:24:07: [0mGET /uploads/venues/download%20(25)-1766580715642-655291938.jpg [33m404[0m 2.498 ms - 21[0m
+2026-01-19T15:24:10: === Search venues error ===
+2026-01-19T15:24:10: Error name: ReferenceError
+2026-01-19T15:24:10: Error message: decorationCategoryId is not defined
+2026-01-19T15:24:10: Error code: undefined
+2026-01-19T15:24:10: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:24:10: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:24:10: ==========================
+2026-01-19T15:24:10: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 4.356 ms - 98[0m
+2026-01-19T15:24:10: === Search venues error ===
+2026-01-19T15:24:10: Error name: ReferenceError
+2026-01-19T15:24:10: Error message: decorationCategoryId is not defined
+2026-01-19T15:24:10: Error code: undefined
+2026-01-19T15:24:10: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:24:10: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:24:10: ==========================
+2026-01-19T15:24:10: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 2.898 ms - 98[0m
+2026-01-19T15:24:22: [0mGET /api/testimonials [36m304[0m 38.760 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/homepage-content/seo-content [36m304[0m 38.336 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/vendor/venues/cities?state=Rajasthan [36m304[0m 0.945 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/videos [36m304[0m 37.594 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/admin/vendor-categories/public [36m304[0m 39.844 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/homepage-content/city-seo [36m304[0m 35.494 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/homepage-content/city-seo [36m304[0m 36.386 ms - -[0m
+2026-01-19T15:24:22: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:22: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=active&limit=6 [36m304[0m 136.116 ms - -[0m
+2026-01-19T15:24:23: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=approved&limit=6 [36m304[0m 717.535 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?limit=20&status=approved [36m304[0m 974.968 ms - -[0m
+2026-01-19T15:24:23: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=approved&limit=6 [36m304[0m 172.736 ms - -[0m
+2026-01-19T15:24:23: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_32_04%20PM-1768464206827-408879235.png [33m404[0m 2.230 ms - 21[0m
+2026-01-19T15:24:24: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_18_08%20PM-1768463318722-975054146.png [33m404[0m 1.311 ms - 21[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=active&limit=6 [36m304[0m 450.803 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=active&limit=6 [36m304[0m 448.238 ms - -[0m
+2026-01-19T15:24:24: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:24: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=approved&limit=6 [36m304[0m 176.241 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c3e6c85041df0e4eaee6&status=approved&limit=6 [36m304[0m 182.163 ms - -[0m
+2026-01-19T15:24:25: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_03%20PM-1768463633542-837161541.png [33m404[0m 0.860 ms - 21[0m
+2026-01-19T15:24:26: [0mGET /uploads/venues/download%20(25)-1766580715642-655291938.jpg [33m404[0m 1.646 ms - 21[0m
+2026-01-19T15:25:45: [0mGET /api/vendor/venues/cities?state=Rajasthan [36m304[0m 1.709 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/videos [36m304[0m 37.922 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/testimonials [36m304[0m 36.538 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/faqs [36m304[0m 34.244 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/homepage-content/seo-content [36m304[0m 40.976 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/company [36m304[0m 39.315 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/company [36m304[0m 33.608 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/categories?active=true [36m304[0m 91.708 ms - -[0m
+2026-01-19T15:25:46: [0mGET /api/categories?active=true [36m304[0m 86.714 ms - -[0m
+2026-01-19T15:25:46: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:25:47: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 100.031 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/vendor/venues?limit=20&status=approved [36m304[0m 774.075 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/categories?active=true [36m304[0m 86.302 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=active&limit=6 [36m304[0m 122.583 ms - -[0m
+2026-01-19T15:25:48: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:25:48: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=active&limit=6 [36m304[0m 109.569 ms - -[0m
+2026-01-19T15:25:48: === Search venues error ===
+2026-01-19T15:25:48: Error name: ReferenceError
+2026-01-19T15:25:48: Error message: decorationCategoryId is not defined
+2026-01-19T15:25:48: Error code: undefined
+2026-01-19T15:25:48: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:25:48: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:25:48: ==========================
+2026-01-19T15:25:48: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 5.158 ms - 98[0m
+2026-01-19T15:25:48: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 269.537 ms - -[0m
+2026-01-19T15:25:48: === Search venues error ===
+2026-01-19T15:25:48: Error name: ReferenceError
+2026-01-19T15:25:48: Error message: decorationCategoryId is not defined
+2026-01-19T15:25:48: Error code: undefined
+2026-01-19T15:25:48: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:25:48: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:25:48: ==========================
+2026-01-19T15:25:48: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 3.082 ms - 98[0m
+2026-01-19T15:25:48: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:25:48: [0mGET /api/categories?active=true [36m304[0m 261.376 ms - -[0m
+2026-01-19T15:25:48: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=approved&limit=6 [36m304[0m 370.197 ms - -[0m
+2026-01-19T15:26:07: (node:16636) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:26:07: (node:16636) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:26:08: API server listening on port 8030
+2026-01-19T15:26:08: Local: http://localhost:8030
+2026-01-19T15:26:08: Network: http://192.168.29.20:8030
+2026-01-19T15:26:08: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:26:08: ✅ Connected to MongoDB
+2026-01-19T15:26:08: Database connection established.
+2026-01-19T15:26:08: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:32:10: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+    at Object.trustProxy (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+    at wrappedValidations.<computed> [as trustProxy] (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+    at Object.keyGenerator (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+    at file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+  code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+}
+2026-01-19T15:32:11: [0mGET /api/testimonials [36m304[0m 213.333 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/categories?active=true [36m304[0m 533.632 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/company [36m304[0m 42.926 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/categories?active=true [36m304[0m 126.686 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [32m200[0m 448.129 ms - -[0m
+2026-01-19T15:32:16: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_56_55%20PM-1768465647247-439384136.png [33m404[0m 35.446 ms - 21[0m
+2026-01-19T15:32:16: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:32:16: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=approved&limit=6 [36m304[0m 358.821 ms - -[0m
+2026-01-19T15:32:16: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_43_26%20PM-1768464896761-405562397.png [33m404[0m 1.778 ms - 21[0m
+2026-01-19T15:32:16: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [36m304[0m 146.939 ms - -[0m
+2026-01-19T15:32:17: [0mGET /api/categories?active=true [36m304[0m 83.784 ms - -[0m
+2026-01-19T15:32:17: [0mGET /api/categories?active=true [36m304[0m 85.341 ms - -[0m
+2026-01-19T15:32:18: [0mGET /api/categories?active=true [36m304[0m 86.150 ms - -[0m
+2026-01-19T15:32:18: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_20_33%20PM-1768463470427-447117534.png [33m404[0m 1.503 ms - 21[0m
+2026-01-19T15:32:18: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_29_19%20PM-1768464008895-203713668.png [33m404[0m 1.366 ms - 21[0m
+2026-01-19T15:32:18: [0mGET /api/categories?active=true [36m304[0m 82.828 ms - -[0m
+2026-01-19T15:32:18: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_48%20PM-1768463693831-976661425.png [33m404[0m 1.487 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_03%20PM-1768463633542-837161541.png [33m404[0m 5.222 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_21_48%20PM-1768463550314-507308955.png [33m404[0m 7.456 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/videos/8442722-uhd_3840_2160_30fps%20(1)-1768635269406-154386880.mp4 [33m404[0m 2.056 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_12_15%20PM-1768466561469-933900708.png [33m404[0m 1.832 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/venues/download%20(28)-1766637642531-294793918.jpg [33m404[0m 2.750 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /api/vendor/venues/cities?state=Rajasthan [36m304[0m 13.901 ms - -[0m
+2026-01-19T15:32:19: [0mGET /api/vendor/venues/states [36m304[0m 9.053 ms - -[0m
+2026-01-19T15:32:20: [0mGET /uploads/venues/download%20(25)-1766580715642-655291938.jpg [33m404[0m 1.067 ms - 21[0m
+2026-01-19T15:32:20: [0mGET /uploads/venues/2024-04-18-1766555808683-909898246.webp [33m404[0m 83.271 ms - 21[0m
+2026-01-19T15:32:21: [0mGET /api/menus?parentMenuId=693b9fb9f80b5e97c5de8ba4 [36m304[0m 139.387 ms - -[0m
+2026-01-19T15:32:21: [0mGET /api/menus?parentMenuId=693b9fb9f80b5e97c5de8b92 [36m304[0m 436.182 ms - -[0m

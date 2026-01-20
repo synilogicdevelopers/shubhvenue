@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { bookingAPI, paymentAPI, authAPI } from '../../services/customer/api'
 import toast from 'react-hot-toast'
@@ -6,6 +6,105 @@ import Footer from '../../components/customer/Footer'
 import LoginModal from '../../components/customer/LoginModal'
 import SEO from '../../components/SEO'
 import './Booking.css'
+
+// Payment Iframe Form Component - Handles PayU form submission in iframe
+function PaymentIframeForm({ formData, onPaymentComplete }) {
+  const formRef = useRef(null);
+  const iframeRef = useRef(null);
+  const checkIntervalRef = useRef(null);
+  
+  useEffect(() => {
+    if (formRef.current && formData) {
+      // Auto-submit form after a short delay to ensure iframe is ready
+      const timer = setTimeout(() => {
+        if (formRef.current) {
+          formRef.current.submit();
+        }
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData]);
+  
+  // Check iframe URL for payment completion (PayU success/failure pages)
+  useEffect(() => {
+    if (iframeRef.current && formData) {
+      checkIntervalRef.current = setInterval(() => {
+        const iframe = iframeRef.current;
+        if (iframe && iframe.contentWindow) {
+          try {
+            const iframeUrl = iframe.contentWindow.location.href;
+            // PayU success patterns
+            if (iframeUrl.includes('/success') || 
+                iframeUrl.includes('status=success') || 
+                iframeUrl.includes('status=SUCCESS') ||
+                iframeUrl.includes('payment_status=success')) {
+              if (onPaymentComplete) {
+                onPaymentComplete(true);
+              }
+              if (checkIntervalRef.current) {
+                clearInterval(checkIntervalRef.current);
+              }
+            } 
+            // PayU failure patterns
+            else if (iframeUrl.includes('/failure') || 
+                     iframeUrl.includes('status=failure') || 
+                     iframeUrl.includes('status=FAILURE') ||
+                     iframeUrl.includes('payment_status=failure')) {
+              if (onPaymentComplete) {
+                onPaymentComplete(false);
+              }
+              if (checkIntervalRef.current) {
+                clearInterval(checkIntervalRef.current);
+              }
+            }
+          } catch (e) {
+            // Cross-origin error - can't access iframe URL
+            // This is expected for payment gateways
+          }
+        }
+      }, 1000); // Check every second
+      
+      return () => {
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+        }
+      };
+    }
+  }, [formData, onPaymentComplete]);
+  
+  return (
+    <>
+      <iframe
+        ref={iframeRef}
+        name="payment-iframe"
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none'
+        }}
+        title="Payment Gateway"
+        src="about:blank"
+      />
+      <form
+        ref={formRef}
+        method="POST"
+        action={formData.action}
+        target="payment-iframe"
+        style={{ display: 'none' }}
+      >
+        {Object.keys(formData.params).map(key => (
+          <input
+            key={key}
+            type="hidden"
+            name={key}
+            value={formData.params[key]}
+          />
+        ))}
+      </form>
+    </>
+  );
+}
 
 function Booking() {
   const navigate = useNavigate()
@@ -62,6 +161,9 @@ function Booking() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentIframeUrl, setPaymentIframeUrl] = useState(null)
+  const [paymentFormData, setPaymentFormData] = useState(null)
 
   // Check authentication and load profile data on mount
   useEffect(() => {
@@ -88,7 +190,6 @@ function Booking() {
         }
       } catch (error) {
         // Silently fail - user can still fill form manually
-        console.log('Could not load profile data:', error.message)
       }
     }
 
@@ -114,7 +215,6 @@ function Booking() {
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
-        console.log('✅ Razorpay script loaded');
       };
       script.onerror = () => {
         console.error('❌ Failed to load Razorpay script');
@@ -229,8 +329,6 @@ function Booking() {
     }
 
     // Check date availability FIRST before doing anything else
-    console.log('🔍 Checking availability for venue:', venue.id, 'dates:', formData.checkIn, 'to', formData.checkOut);
-    
     try {
       setProcessingPayment(true)
       
@@ -239,8 +337,6 @@ function Booking() {
         formData.checkIn,
         formData.checkOut
       )
-      
-      console.log('🔍 Availability check result:', availabilityCheck);
       
       if (!availabilityCheck.data?.available) {
         const errorMsg = availabilityCheck.data?.message || 'Selected dates are already booked. Please choose different dates.';
@@ -257,8 +353,6 @@ function Booking() {
         setProcessingPayment(false)
         return
       }
-      
-      console.log('✅ Dates are available, proceeding with payment');
     } catch (availabilityError) {
       console.error('❌ Availability check error:', availabilityError);
       const errorMsg = availabilityError.message || 'Unable to verify date availability. Please try again.';
@@ -282,14 +376,6 @@ function Booking() {
       const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) || 1
       
       // Get venue price - handle different formats (Lakh, direct number, etc.)
-      console.log('🔍 Venue Object for Price:', {
-        venue: venue,
-        venuePrice: venue.price,
-        venuePriceType: typeof venue.price,
-        venuePriceDisplay: venue.priceDisplay,
-        venuePricingInfo: venue.pricingInfo
-      })
-      
       let venuePrice = 0
       
       // First check pricingInfo.rentalPrice (most accurate)
@@ -297,19 +383,16 @@ function Booking() {
         venuePrice = typeof venue.pricingInfo.rentalPrice === 'number' 
           ? venue.pricingInfo.rentalPrice 
           : parseFloat(venue.pricingInfo.rentalPrice) || 0
-        console.log('✅ Using pricingInfo.rentalPrice:', venuePrice)
       }
       
       // If pricingInfo not available, check venue.price
       if (venuePrice <= 0 && venue.price) {
         if (typeof venue.price === 'number') {
           venuePrice = venue.price
-          console.log('✅ Using venue.price (number):', venuePrice)
         } else if (typeof venue.price === 'string') {
           // Try to parse price string
           const priceStr = venue.price.toString().replace(' Lakh', '').replace(/[^0-9.]/g, '')
           venuePrice = parseFloat(priceStr) || 0
-          console.log('✅ Using venue.price (string):', venuePrice)
         }
       }
       
@@ -317,12 +400,10 @@ function Booking() {
       if (venuePrice <= 0 && venue.priceDisplay) {
         const priceStr = venue.priceDisplay.toString().replace(/[^0-9.]/g, '')
         venuePrice = parseFloat(priceStr) || 0
-        console.log('✅ Using venue.priceDisplay (treated as rupees):', venuePrice)
       }
       
       // If price is still 0, use default
       if (venuePrice <= 0) {
-        console.warn('⚠️ Venue price not found, using default ₹10,000')
         venuePrice = 10000 // Default fallback
       }
       
@@ -332,27 +413,13 @@ function Booking() {
       
       // Ensure minimum amount is ₹1 (100 paise)
       if (totalAmount < 100) {
-        console.warn('⚠️ Amount too low, setting minimum ₹1')
         totalAmount = 100
       }
-      
-      console.log('💰 Final Payment Calculation:', {
-        venuePrice: venuePrice,
-        nights: nights,
-        totalAmountRupees: totalAmount / 100,
-        totalAmountPaise: totalAmount
-      })
 
       // Prepare booking data
       const roomsValue = formData.rooms && formData.rooms.toString().trim() !== '' 
         ? parseInt(formData.rooms) 
         : 0
-      
-      console.log('📦 Booking Data - Rooms:', {
-        formDataRooms: formData.rooms,
-        roomsValue: roomsValue,
-        type: typeof formData.rooms
-      })
       
       const bookingData = {
         venueId: venue._id || venue.id, // Use _id if available (MongoDB ObjectId), otherwise use id
@@ -371,8 +438,6 @@ function Booking() {
         deviceId: getDeviceId(),
         specialRequests: formData.specialRequests
       }
-      
-      console.log('📤 Sending Booking Data:', bookingData)
 
       // Create payment order via central payments microservice
       let orderResponse;
@@ -430,7 +495,6 @@ function Booking() {
             script.async = true;
             
             script.onload = () => {
-              console.log('✅ Razorpay script loaded, opening checkout...');
               openRazorpayCheckout(razorpayKeyId, order, bookingData);
             };
             
@@ -445,13 +509,44 @@ function Booking() {
           
           // Razorpay is loaded, open checkout
           openRazorpayCheckout(razorpayKeyId, order, bookingData);
+        } else if (paymentMethod === 'payu' || orderResponse.data?.gateway === 'payu') {
+          // PayU via Microservice - Submit form directly (same tab, no modal)
+          const redirect = orderResponse.data?.redirect || orderResponse.data;
+          const actionUrl = redirect?.action || redirect?.action_url;
+          const params = redirect?.params || {};
+          
+          if (!actionUrl || !params || Object.keys(params).length === 0) {
+            toast.error('PayU redirect data is missing. Please contact support.')
+            setProcessingPayment(false)
+          return
+        }
+
+        // Create and submit form directly to PayU (same tab, no modal)
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = actionUrl;
+          form.target = '_self'; // Same tab
+
+          // Add all params as hidden input fields
+          Object.keys(params).forEach(key => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+          });
+
+          document.body.appendChild(form);
+          form.submit();
+          setProcessingPayment(false);
         } else {
-          // Microservice - Redirect to hosted checkout
+          // Microservice - Redirect directly to hosted checkout (no modal)
           const returnUrl = `${window.location.origin}/booking-history`
           const checkoutUrl = `https://payments.synilogic.in/pay/${order.id}?return_url=${encodeURIComponent(returnUrl)}`
-
-          console.log('🔁 Redirecting to hosted checkout:', checkoutUrl)
-          window.location.href = checkoutUrl
+          
+          // Redirect directly to payment gateway (same tab)
+          window.location.href = checkoutUrl;
+          setProcessingPayment(false);
         }
       } else {
         const errorMessage = orderResponse.data?.error || orderResponse.data?.message || 'Failed to create payment order'
@@ -933,6 +1028,120 @@ function Booking() {
         </div>
       </div>
       <Footer />
+
+      {/* Payment Modal - Opens payment gateway in iframe */}
+      {showPaymentModal && (
+        <div className="modal-overlay" onClick={() => {
+          // Close modal and redirect to booking history after payment
+          setShowPaymentModal(false);
+          setPaymentIframeUrl(null);
+          setPaymentFormData(null);
+          // Wait a bit then redirect to booking history
+          setTimeout(() => {
+            navigate('/booking-history');
+          }, 500);
+        }}>
+          <div className="payment-modal" onClick={(e) => e.stopPropagation()} style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '90%',
+            maxWidth: '600px',
+            height: '80vh',
+            maxHeight: '700px',
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div className="modal-header" style={{
+              padding: '20px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Complete Payment</h2>
+              <button 
+                className="modal-close" 
+                onClick={() => {
+                  // Close modal and redirect to booking history after payment
+                  setShowPaymentModal(false);
+                  setPaymentIframeUrl(null);
+                  setPaymentFormData(null);
+                  // Wait a bit then redirect to booking history
+                  setTimeout(() => {
+                    navigate('/booking-history');
+                  }, 500);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '5px'
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+              {paymentFormData ? (
+                // PayU - Create form that submits to iframe
+                <PaymentIframeForm 
+                  formData={paymentFormData} 
+                  onPaymentComplete={(success) => {
+                    if (success) {
+                      setShowPaymentModal(false);
+                      setPaymentFormData(null);
+                      toast.success('Payment successful! Booking confirmed.');
+                      navigate('/booking-history');
+                    }
+                  }}
+                />
+              ) : paymentIframeUrl ? (
+                // Microservice hosted checkout - Load URL in iframe
+                <iframe
+                  id="microservice-payment-iframe"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                  title="Payment Gateway"
+                  src={paymentIframeUrl}
+                  allow="payment"
+                  onLoad={() => {
+                    // Check if iframe has navigated to return URL (booking-history)
+                    const iframe = document.getElementById('microservice-payment-iframe');
+                    if (iframe && iframe.contentWindow) {
+                      try {
+                        const iframeUrl = iframe.contentWindow.location.href;
+                        // If iframe navigated to booking-history, payment is complete
+                        if (iframeUrl.includes('/booking-history') || iframeUrl.includes('booking-history')) {
+                          setShowPaymentModal(false);
+                          setPaymentIframeUrl(null);
+                          toast.success('Payment successful! Booking confirmed.');
+                          navigate('/booking-history');
+                        }
+                      } catch (e) {
+                        // Cross-origin error - can't access iframe URL
+                        // Use polling or postMessage instead
+                      }
+                    }
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
       <LoginModal 
         isOpen={showLoginModal} 
         onClose={() => {

@@ -8,6 +8,7 @@ function HeroSection({ onLoadComplete }) {
   const [videos, setVideos] = useState([])
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [videoUrl, setVideoUrl] = useState(null)
+  const [videoError, setVideoError] = useState(false)
   const videoRef = useRef(null)
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedVenueType, setSelectedVenueType] = useState('')
@@ -18,7 +19,7 @@ function HeroSection({ onLoadComplete }) {
   const hasFetched = useRef(false)
   const hasNotified = useRef(false)
   const loadingStates = useRef({
-    videos: true,
+    videos: false, // Don't wait for videos to load
     cities: true,
     categories: true
   })
@@ -128,15 +129,21 @@ function HeroSection({ onLoadComplete }) {
         // Get video URL for first video
         const firstVideo = videosData[0]
         const url = getVideoUrl(firstVideo.video)
-        setVideoUrl(url)
+        // Update video URL if we got a valid one from API
+        if (url) {
+          setVideoUrl(url)
+          setVideoError(false)
+        } else {
+          setVideoError(true)
+        }
       } else {
-        // Fallback to default video if no videos
-        setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
+        // No videos found, show logo
+        setVideoError(true)
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
-      // Fallback to default video if API fails
-      setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
+      // Show logo on error
+      setVideoError(true)
     } finally {
       loadingStates.current.videos = false
       checkAndNotify()
@@ -169,11 +176,12 @@ function HeroSection({ onLoadComplete }) {
   // Update video when videoUrl changes
   useEffect(() => {
     if (videoRef.current && videoUrl) {
-      // Preload video for smooth playback
-      videoRef.current.preload = 'auto'
+      // Use metadata preload for faster initial load
+      videoRef.current.preload = 'metadata'
       videoRef.current.load()
+      setVideoError(false)
       
-      // Play video when ready
+      // Play video when ready - use canplaythrough for better performance
       const playVideo = () => {
         if (videoRef.current) {
           videoRef.current.play().catch(err => {
@@ -182,12 +190,13 @@ function HeroSection({ onLoadComplete }) {
         }
       }
       
-      videoRef.current.addEventListener('loadeddata', playVideo)
-      videoRef.current.addEventListener('canplay', playVideo)
+      // Use canplaythrough for faster playback start
+      videoRef.current.addEventListener('canplaythrough', playVideo, { once: true })
+      videoRef.current.addEventListener('canplay', playVideo, { once: true })
       
       return () => {
         if (videoRef.current) {
-          videoRef.current.removeEventListener('loadeddata', playVideo)
+          videoRef.current.removeEventListener('canplaythrough', playVideo)
           videoRef.current.removeEventListener('canplay', playVideo)
         }
       }
@@ -196,23 +205,24 @@ function HeroSection({ onLoadComplete }) {
 
   return (
     <section className="hero-section">
-      {videoUrl ? (
+      {videoUrl && !videoError ? (
         <video 
           ref={videoRef}
           className="hero-video" 
           autoPlay 
-          loop={videos.length <= 1}
+          loop={videos.length <= 1 || videos.length === 0}
           muted 
           playsInline
-          preload="auto"
+          preload="metadata"
           // Performance optimizations
           disablePictureInPicture
           disableRemotePlayback
           onEnded={handleVideoEnd}
           onError={(e) => {
             console.error('Video load error:', e)
-            // Fallback to default video on error
-            setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')
+            // Show logo on video error
+            setVideoError(true)
+            setVideoUrl(null)
           }}
           onLoadedMetadata={(e) => {
             // Ensure video plays smoothly
@@ -225,19 +235,16 @@ function HeroSection({ onLoadComplete }) {
           Your browser does not support the video tag.
         </video>
       ) : (
-      <video 
-        className="hero-video" 
-        autoPlay 
-        loop 
-        muted 
-        playsInline
-          preload="auto"
-          disablePictureInPicture
-          disableRemotePlayback
-      >
-        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+        <div className="hero-logo-placeholder">
+          <img 
+            src="/image/logo.png" 
+            alt="ShubhVenue Logo" 
+            className="hero-logo"
+            onError={(e) => {
+              e.target.style.display = 'none'
+            }}
+          />
+        </div>
       )}
       <div className="hero-overlay"></div>
       <div className="hero-content">

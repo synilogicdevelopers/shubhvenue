@@ -355,6 +355,7 @@ const formatVenueResponse = async (venue) => {
     highlights: venueObj.highlights || [],
     areasAvailable: Array.isArray(venueObj.areasAvailable) ? venueObj.areasAvailable : [],
     services: Array.isArray(venueObj.services) ? venueObj.services.filter(service => service && service.name) : [],
+    pricingTypes: Array.isArray(venueObj.pricingTypes) ? venueObj.pricingTypes : [],
     faq: Array.isArray(venueObj.faq) ? venueObj.faq.filter(faq => faq && faq.question && faq.answer) : [],
     // Include metaTitle and metaDescription - preserve actual values (even if empty string)
     // Use explicit check to avoid converting null/undefined to empty string incorrectly
@@ -1060,12 +1061,15 @@ export const getVenueById = async (req, res) => {
     const formattedVenue = await formatVenueResponse(venue);
 
     // Debug: Log what's being sent in response
-    console.log('📤 Backend API - Formatted Venue Meta Data:', {
+    console.log('📤 Backend API - Formatted Venue Data:', {
       venueId: formattedVenue._id,
       metaTitle: formattedVenue.metaTitle,
       metaTitleType: typeof formattedVenue.metaTitle,
       metaDescription: formattedVenue.metaDescription,
-      metaDescriptionType: typeof formattedVenue.metaDescription
+      metaDescriptionType: typeof formattedVenue.metaDescription,
+      pricingTypes: formattedVenue.pricingTypes,
+      pricingTypesLength: Array.isArray(formattedVenue.pricingTypes) ? formattedVenue.pricingTypes.length : 0,
+      hasPricingTypes: Array.isArray(formattedVenue.pricingTypes) && formattedVenue.pricingTypes.length > 0
     });
 
     res.json({
@@ -1143,6 +1147,10 @@ const checkVendorAccess = (req, requiredPermission = null) => {
 // Create venue (vendor only)
 export const createVenue = async (req, res) => {
   try {
+    // Debug: Log all body fields to see what's being received
+    console.log('🔍 Backend: All req.body keys:', Object.keys(req.body));
+    console.log('🔍 Backend: req.body content:', JSON.stringify(req.body, null, 2).substring(0, 500));
+    
     const accessCheck = checkVendorAccess(req, 'vendor_create_venues');
     if (accessCheck.error) {
       return res.status(403).json({ error: accessCheck.error });
@@ -1172,6 +1180,13 @@ export const createVenue = async (req, res) => {
       }
     }
 
+    // Debug: Check if pricingTypes is in body before destructuring
+    console.log('🔍 Backend: Checking for pricingTypes in req.body:', {
+      hasPricingTypes: 'pricingTypes' in req.body,
+      pricingTypesValue: req.body.pricingTypes,
+      allBodyKeys: Object.keys(req.body).filter(k => k.includes('pric') || k.includes('Pric'))
+    });
+    
     // Destructure with let for menuId and subMenuId to allow reassignment
     let { 
       name, 
@@ -1183,6 +1198,7 @@ export const createVenue = async (req, res) => {
       price, // Legacy field
       pricePerPlate,
       pricingInfo,
+      pricingTypes, // Add pricingTypes to destructuring
       venueType,
       categoryId,
       vendorCategoryId, // Vendor category used for formConfig
@@ -1681,29 +1697,58 @@ export const createVenue = async (req, res) => {
     }
 
     // Handle pricingTypes - can be JSON string (from FormData) or array
+    // Use the destructured pricingTypes variable, or fallback to req.body.pricingTypes
+    const pricingTypesFromBody = pricingTypes !== undefined ? pricingTypes : req.body.pricingTypes;
+    
+    console.log('🔍 Backend: Received pricingTypes:', {
+      pricingTypes: pricingTypesFromBody,
+      type: typeof pricingTypesFromBody,
+      isArray: Array.isArray(pricingTypesFromBody),
+      fromDestructure: pricingTypes !== undefined,
+      fromReqBody: req.body.pricingTypes !== undefined
+    });
+    
     let pricingTypesArray = [];
-    if (req.body.pricingTypes) {
-      if (typeof req.body.pricingTypes === 'string') {
+    if (pricingTypesFromBody) {
+      if (typeof pricingTypesFromBody === 'string') {
         try {
-          pricingTypesArray = JSON.parse(req.body.pricingTypes);
+          pricingTypesArray = JSON.parse(pricingTypesFromBody);
+          console.log('✅ Backend: Parsed pricingTypes JSON:', pricingTypesArray);
         } catch (e) {
+          console.error('❌ Backend: Failed to parse pricingTypes JSON:', e.message, pricingTypesFromBody);
           pricingTypesArray = [];
         }
-      } else if (Array.isArray(req.body.pricingTypes)) {
-        pricingTypesArray = req.body.pricingTypes;
+      } else if (Array.isArray(pricingTypesFromBody)) {
+        pricingTypesArray = pricingTypesFromBody;
+        console.log('✅ Backend: pricingTypes is already an array:', pricingTypesArray);
+      } else {
+        console.log('⚠️ Backend: pricingTypes is neither string nor array:', typeof pricingTypesFromBody, pricingTypesFromBody);
       }
+    } else {
+      console.log('⚠️ Backend: pricingTypes is not in req.body or destructured');
+      console.log('⚠️ Backend: Full req.body keys:', Object.keys(req.body));
     }
+    
     // Validate and clean pricingTypes array
     if (Array.isArray(pricingTypesArray) && pricingTypesArray.length > 0) {
-      venueData.pricingTypes = pricingTypesArray
-        .filter(p => p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type))
-        .map(p => ({
-          type: p.type,
-          price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
-          vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
-          nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
-        }));
+      const filteredPricing = pricingTypesArray.filter(p => {
+        const hasType = p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type);
+        if (!hasType) {
+          console.log('⚠️ Backend: Filtered out pricing entry (invalid type):', p);
+        }
+        return hasType;
+      });
+      
+      venueData.pricingTypes = filteredPricing.map(p => ({
+        type: p.type,
+        price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
+        vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
+        nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
+      }));
+      
+      console.log('✅ Backend: Final pricingTypes to save:', venueData.pricingTypes);
     } else {
+      console.log('⚠️ Backend: No valid pricingTypes, setting to empty array');
       venueData.pricingTypes = [];
     }
 
@@ -1966,7 +2011,7 @@ export const updateVenue = async (req, res) => {
       });
     }
 
-    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, vendorCategoryId, menuId, subMenuId, decorationCategoryId, occasionSpecialId, description, metaTitle, metaDescription, availability } = req.body;
+    const { name, price, location, capacity, amenities, highlights, rooms, image, categoryId, vendorCategoryId, menuId, subMenuId, decorationCategoryId, occasionSpecialId, description, metaTitle, metaDescription, availability, pricingInfo } = req.body;
 
     // Update fields if provided
     // When updating, only name is required - all other fields are optional
@@ -1981,7 +2026,50 @@ export const updateVenue = async (req, res) => {
         return res.status(400).json({ error: 'Price must be greater than 0' });
       }
       venue.price = Number(price);
+      
+      // Auto-update pricingInfo.rentalPrice if pricingInfo is not explicitly set
+      if (pricingInfo === undefined) {
+        if (!venue.pricingInfo) {
+          venue.pricingInfo = {
+            vegPerPlate: 0,
+            nonVegPerPlate: 0,
+            rentalPrice: venue.price,
+            taxIncluded: false,
+            decorationCost: '',
+            djCost: ''
+          };
+        } else {
+          venue.pricingInfo.rentalPrice = venue.price;
+        }
+      }
     }
+    
+    // Handle pricingInfo update - can be JSON string (from FormData) or object
+    if (pricingInfo !== undefined) {
+      let pricingInfoObj = pricingInfo;
+      if (typeof pricingInfo === 'string') {
+        try {
+          pricingInfoObj = JSON.parse(pricingInfo);
+        } catch (e) {
+          pricingInfoObj = null;
+        }
+      }
+      
+      if (pricingInfoObj && typeof pricingInfoObj === 'object') {
+        venue.pricingInfo = {
+          vegPerPlate: pricingInfoObj.vegPerPlate ? Number(pricingInfoObj.vegPerPlate) : 0,
+          nonVegPerPlate: pricingInfoObj.nonVegPerPlate ? Number(pricingInfoObj.nonVegPerPlate) : 0,
+          rentalPrice: pricingInfoObj.rentalPrice ? Number(pricingInfoObj.rentalPrice) : (venue.price || 0),
+          taxIncluded: !!pricingInfoObj.taxIncluded,
+          decorationCost: pricingInfoObj.decorationCost || '',
+          djCost: pricingInfoObj.djCost || '',
+        };
+      } else if (pricingInfo === null || pricingInfo === '') {
+        // Allow clearing pricingInfo
+        venue.pricingInfo = undefined;
+      }
+    }
+    
     if (description !== undefined) venue.description = description;
     if (metaTitle !== undefined) venue.metaTitle = metaTitle ? metaTitle.trim() : '';
     if (metaDescription !== undefined) venue.metaDescription = metaDescription ? metaDescription.trim() : '';
@@ -2202,6 +2290,52 @@ export const updateVenue = async (req, res) => {
               vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
               nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
             }));
+          
+          // Auto-set price and pricingInfo.rentalPrice from per_day pricing type
+          const perDayPricing = venue.pricingTypes.find(p => p.type === 'per_day' && p.price > 0);
+          if (perDayPricing && perDayPricing.price > 0) {
+            // Update price field if not explicitly set
+            if (price === undefined) {
+              venue.price = perDayPricing.price;
+            }
+            // Update pricingInfo.rentalPrice if pricingInfo is not explicitly set
+            if (pricingInfo === undefined) {
+              if (!venue.pricingInfo) {
+                venue.pricingInfo = {
+                  vegPerPlate: 0,
+                  nonVegPerPlate: 0,
+                  rentalPrice: perDayPricing.price,
+                  taxIncluded: false,
+                  decorationCost: '',
+                  djCost: ''
+                };
+              } else {
+                venue.pricingInfo.rentalPrice = perDayPricing.price;
+              }
+            }
+          }
+          
+          // Auto-set pricingInfo.vegPerPlate and nonVegPerPlate from per_plate pricing type
+          const perPlatePricing = venue.pricingTypes.find(p => p.type === 'per_plate' && (p.vegPrice > 0 || p.nonVegPrice > 0));
+          if (perPlatePricing && pricingInfo === undefined) {
+            if (!venue.pricingInfo) {
+              venue.pricingInfo = {
+                vegPerPlate: perPlatePricing.vegPrice || 0,
+                nonVegPerPlate: perPlatePricing.nonVegPrice || 0,
+                rentalPrice: venue.price || 0,
+                taxIncluded: false,
+                decorationCost: '',
+                djCost: ''
+              };
+            } else {
+              if (perPlatePricing.vegPrice > 0) {
+                venue.pricingInfo.vegPerPlate = perPlatePricing.vegPrice;
+              }
+              if (perPlatePricing.nonVegPrice > 0) {
+                venue.pricingInfo.nonVegPerPlate = perPlatePricing.nonVegPrice;
+              }
+            }
+          }
         } else {
           venue.pricingTypes = [];
         }
@@ -2838,6 +2972,8 @@ export const searchVenues = async (req, res) => {
       categoryId,
       menuId,
       subMenuId,
+      decorationCategoryId, // Filter by decoration category
+      occasionSpecialId, // Filter by occasion special
       page = 1,
       limit = 20,
       sortBy = 'createdAt',

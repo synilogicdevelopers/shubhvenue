@@ -9,6 +9,7 @@ import ScrollToTop from './components/customer/ScrollToTop'
 import Home from './components/customer/Home'
 import VenueDetail from './components/customer/VenueDetail'
 import Venue from './pages/customer/Venue'
+import Search from './pages/customer/Search'
 import Profile from './pages/customer/Profile'
 import Booking from './pages/customer/Booking'
 import BookingHistory from './pages/customer/BookingHistory'
@@ -146,6 +147,7 @@ function CustomerRoutes() {
           <Route path="/venue/:categorySlug/:slug" element={<VenueDetail />} />
           <Route path="/venue/:slug" element={<VenueDetail />} />
           <Route path="/venues" element={<Venue />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/contact-venue" element={<ContactVenue />} />

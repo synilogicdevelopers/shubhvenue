@@ -18,11 +18,8 @@ function SEOContentSection() {
         // Load SEO content
         try {
           const seoResponse = await publicHomepageContentAPI.getByType('seo-content')
-          console.log('SEO Content API Response:', seoResponse)
           if (seoResponse.data?.success && seoResponse.data?.content) {
             setSeoContent(seoResponse.data.content)
-          } else {
-            console.warn('SEO Content API response format unexpected:', seoResponse.data)
           }
         } catch (seoError) {
           console.error('Error loading SEO content:', seoError)
@@ -31,11 +28,8 @@ function SEOContentSection() {
         // Load City SEO content
         try {
           const cityResponse = await publicHomepageContentAPI.getByType('city-seo')
-          console.log('City SEO API Response:', cityResponse)
           if (cityResponse.data?.success && cityResponse.data?.content) {
             setCitySeoContent(cityResponse.data.content)
-          } else {
-            console.warn('City SEO API response format unexpected:', cityResponse.data)
           }
         } catch (cityError) {
           console.error('Error loading City SEO content:', cityError)

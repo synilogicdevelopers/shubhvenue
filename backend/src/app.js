@@ -52,7 +52,13 @@ app.use(express.json({
     req.rawBody = buf.toString('utf8');
   }
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ 
+  extended: true,
+  limit: '500mb' // Increase limit for large form data (though videos use multipart/form-data)
+}));
+
+// Note: For multipart/form-data (file uploads), multer middleware handles parsing
+// Text fields in FormData are automatically available in req.body after multer processes the request
 app.use(compression());
 app.use(morgan('dev'));
 app.use(limiter);

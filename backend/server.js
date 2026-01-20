@@ -9,6 +9,12 @@ import { connectToDatabase } from './src/config/db.js';
 const port = process.env.PORT || 8030;
 const server = http.createServer(app);
 
+// Increase server timeout for large file uploads (videos can be large)
+// Default is 2 minutes, increase to 5 minutes for video uploads
+server.timeout = 300000; // 5 minutes in milliseconds
+server.keepAliveTimeout = 65000; // Keep connections alive longer
+server.headersTimeout = 66000; // Headers timeout slightly longer than keepAlive
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

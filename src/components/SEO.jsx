@@ -57,36 +57,6 @@ const SEO = ({
     ? keywords.trim() 
     : defaultKeywords
   
-  // Debug logging to see what values are being used
-  console.log('🎯 SEO Component - Received Props:', {
-    title: title,
-    titleType: typeof title,
-    titleExists: title !== undefined && title !== null,
-    titleLength: title?.length,
-    description: description,
-    descriptionType: typeof description,
-    descriptionExists: description !== undefined && description !== null,
-    descriptionLength: description?.length
-  })
-  
-  console.log('🎯 SEO Component - Final Values:', {
-    finalTitle: finalTitle,
-    finalTitleLength: finalTitle?.length,
-    finalDescription: finalDescription,
-    finalDescriptionLength: finalDescription?.length,
-    usingDefaultTitle: finalTitle === defaultTitle,
-    usingDefaultDescription: finalDescription === defaultDescription,
-    defaultTitle: defaultTitle,
-    defaultDescription: defaultDescription
-  })
-  
-  // Log what will be rendered in HTML
-  console.log('📝 SEO Component - HTML Output:', {
-    titleTag: `<title>${finalTitle}</title>`,
-    metaTitleTag: `<meta name="title" content="${finalTitle}" />`,
-    metaDescriptionTag: `<meta name="description" content="${finalDescription}" />`
-  })
-  
   // Generate structured data (JSON-LD) for better SEO
   const generateStructuredData = () => {
     const structuredData = {
@@ -208,11 +178,6 @@ const SEO = ({
   // Force re-render when title/description change
   useEffect(() => {
     helmetUpdateCounter++
-    console.log('🔄 Helmet Update Counter:', helmetUpdateCounter, {
-      finalTitle,
-      finalDescription,
-      timestamp: new Date().toISOString()
-    })
   }, [finalTitle, finalDescription])
   
   return (

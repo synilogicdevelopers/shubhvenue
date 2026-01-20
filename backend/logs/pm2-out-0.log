@@ -63,3 +63,65 @@
 2025-12-12T10:09:59: Access from other devices on your network using: http://192.168.29.20:8030
 2025-12-12T10:10:00: ✅ Connected to MongoDB
 2025-12-12T10:10:00: Database connection established.
+2026-01-17T16:00:11: API server listening on port 8030
+2026-01-17T16:00:11: Local: http://localhost:8030
+2026-01-17T16:00:11: Network: http://192.168.29.20:8030
+2026-01-17T16:00:11: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-17T16:00:12: ✅ Connected to MongoDB
+2026-01-17T16:00:12: Database connection established.
+2026-01-17T16:00:12: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-17T17:12:54: API server listening on port 8030
+2026-01-17T17:12:54: Local: http://localhost:8030
+2026-01-17T17:12:54: Network: http://192.168.29.20:8030
+2026-01-17T17:12:54: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-17T17:12:54: ✅ Connected to MongoDB
+2026-01-17T17:12:54: Database connection established.
+2026-01-17T17:12:54: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:40: API server listening on port 8030
+2026-01-19T15:23:40: Local: http://localhost:8030
+2026-01-19T15:23:40: Network: http://192.168.29.20:8030
+2026-01-19T15:23:40: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:23:41: ✅ Connected to MongoDB
+2026-01-19T15:23:41: Database connection established.
+2026-01-19T15:23:41: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:50: [0mGET /api/categories?active=true [36m304[0m 383.413 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/categories?active=true [36m304[0m 79.486 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/categories?active=true [36m304[0m 79.395 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?categoryId=6915c3e6c85041df0e4eaee6&status=active&limit=6 [36m304[0m 118.078 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?categoryId=6915c3e6c85041df0e4eaee6&status=approved&limit=6 [36m304[0m 260.181 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=active&limit=6 [36m304[0m 103.920 ms - -[0m
+2026-01-19T15:23:53: [0mGET /api/vendor/venues?categoryId=6915c3e6c85041df0e4eaee6&status=approved&limit=6 [36m304[0m 763.161 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/faqs [36m304[0m 39.645 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/vendor/venues?limit=6&status=active [36m304[0m 108.317 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=active&limit=6 [36m304[0m 106.332 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=approved&limit=6 [36m304[0m 736.306 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=active&limit=6 [36m304[0m 106.335 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 453.308 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=approved&limit=6 [36m304[0m 208.904 ms - -[0m
+2026-01-19T15:24:25: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 6.511 ms - 98[0m
+2026-01-19T15:24:25: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&limit=100 [31m500[0m 2.858 ms - 98[0m
+2026-01-19T15:24:25: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_48%20PM-1768463693831-976661425.png [33m404[0m 4.831 ms - 21[0m
+2026-01-19T15:24:26: [0mGET /uploads/venues/download%20(28)-1766637642531-294793918.jpg [33m404[0m 1.250 ms - 21[0m
+2026-01-19T15:26:02: API server listening on port 8030
+2026-01-19T15:26:02: Local: http://localhost:8030
+2026-01-19T15:26:02: Network: http://192.168.29.20:8030
+2026-01-19T15:26:02: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:26:03: [0mGET /uploads/venues/2024-04-18-1766555808683-909898246.webp [33m404[0m 25.742 ms - 21[0m
+2026-01-19T15:26:03: ✅ Connected to MongoDB
+2026-01-19T15:26:03: Database connection established.
+2026-01-19T15:26:04: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:32:11: [0mGET /api/admin/vendor-categories/public [36m304[0m 89.710 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/homepage-content/seo-content [36m304[0m 46.415 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/homepage-content/city-seo [36m304[0m 37.571 ms - -[0m
+2026-01-19T15:32:12: [0mGET /api/homepage-content/city-seo [36m304[0m 36.265 ms - -[0m
+2026-01-19T15:32:14: [0mGET /api/categories?active=true [36m304[0m 87.866 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/vendor/venues?categoryId=6915c4af22c5df79298efc2a&status=active&limit=6 [36m304[0m 155.714 ms - -[0m
+2026-01-19T15:32:15: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_01_16%20PM-1768465908876-531923577.png [33m404[0m 4.176 ms - 21[0m
+2026-01-19T15:32:15: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_02_44%20PM-1768466012207-776828062.png [33m404[0m 7.695 ms - 21[0m
+2026-01-19T15:32:16: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_09_35%20PM-1768466400558-728511740.png [33m404[0m 167.105 ms - 21[0m
+2026-01-19T15:32:17: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_07_24%20PM-1768466272098-104626997.png [33m404[0m 2.103 ms - 21[0m
+2026-01-19T15:32:18: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_18_08%20PM-1768463318722-975054146.png [33m404[0m 5.475 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_16_36%20PM-1768463269178-193253047.png [33m404[0m 208.092 ms - 21[0m
+2026-01-19T15:32:20: [0mGET /uploads/venues/5U8A0674-1766555412194-691026724.jpg [33m404[0m 10.373 ms - 21[0m
+2026-01-19T15:32:21: [0mGET /api/menus?parentMenuId=695e18762c0e69e0fc3d002f [36m304[0m 53.700 ms - -[0m
+2026-01-19T15:32:21: [0mGET /uploads/venues/images-1768302621877-171737271.jpg [33m404[0m 1.322 ms - 21[0m

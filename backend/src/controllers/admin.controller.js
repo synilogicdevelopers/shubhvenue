@@ -867,7 +867,106 @@ export const updateVenueByAdmin = async (req, res) => {
     // Price
     if (body.price !== undefined && body.price !== null && body.price !== '') {
       const price = Number(body.price);
-      if (!Number.isNaN(price)) venue.price = price;
+      if (!Number.isNaN(price)) {
+        venue.price = price;
+        
+        // Auto-update pricingInfo.rentalPrice if pricingInfo is not explicitly set
+        const pricingInfo = parseMaybeJson(body.pricingInfo);
+        if (pricingInfo === undefined) {
+          if (!venue.pricingInfo) {
+            venue.pricingInfo = {
+              vegPerPlate: 0,
+              nonVegPerPlate: 0,
+              rentalPrice: venue.price,
+              taxIncluded: false,
+              decorationCost: '',
+              djCost: ''
+            };
+          } else {
+            venue.pricingInfo.rentalPrice = venue.price;
+          }
+        }
+      }
+    }
+
+    // Handle pricingTypes update - can be JSON string (from FormData) or array
+    if (body.pricingTypes !== undefined) {
+      let pricingTypesArray = [];
+      if (typeof body.pricingTypes === 'string') {
+        try {
+          pricingTypesArray = JSON.parse(body.pricingTypes);
+        } catch (e) {
+          pricingTypesArray = [];
+        }
+      } else if (Array.isArray(body.pricingTypes)) {
+        pricingTypesArray = body.pricingTypes;
+      }
+      if (Array.isArray(pricingTypesArray)) {
+        if (pricingTypesArray.length > 0) {
+          venue.pricingTypes = pricingTypesArray
+            .filter(p => p && p.type && ['per_day', 'per_plate', 'per_km', 'hours_price'].includes(p.type))
+            .map(p => ({
+              type: p.type,
+              price: p.type === 'per_plate' ? 0 : (p.price ? Number(p.price) : 0),
+              vegPrice: p.type === 'per_plate' ? (p.vegPrice ? Number(p.vegPrice) : 0) : 0,
+              nonVegPrice: p.type === 'per_plate' ? (p.nonVegPrice ? Number(p.nonVegPrice) : 0) : 0
+            }));
+          
+          // Auto-set price and pricingInfo.rentalPrice from per_day pricing type
+          const perDayPricing = venue.pricingTypes.find(p => p.type === 'per_day' && p.price > 0);
+          if (perDayPricing && perDayPricing.price > 0) {
+            // Update price field if not explicitly set
+            if (body.price === undefined || body.price === null || body.price === '') {
+              venue.price = perDayPricing.price;
+            }
+            // Update pricingInfo.rentalPrice if pricingInfo is not explicitly set
+            const pricingInfo = parseMaybeJson(body.pricingInfo);
+            if (pricingInfo === undefined) {
+              if (!venue.pricingInfo) {
+                venue.pricingInfo = {
+                  vegPerPlate: 0,
+                  nonVegPerPlate: 0,
+                  rentalPrice: perDayPricing.price,
+                  taxIncluded: false,
+                  decorationCost: '',
+                  djCost: ''
+                };
+              } else {
+                venue.pricingInfo.rentalPrice = perDayPricing.price;
+              }
+            }
+          }
+          
+          // Auto-set pricingInfo.vegPerPlate and nonVegPerPlate from per_plate pricing type
+          const perPlatePricing = venue.pricingTypes.find(p => p.type === 'per_plate' && (p.vegPrice > 0 || p.nonVegPrice > 0));
+          if (perPlatePricing) {
+            const pricingInfo = parseMaybeJson(body.pricingInfo);
+            if (pricingInfo === undefined) {
+              if (!venue.pricingInfo) {
+                venue.pricingInfo = {
+                  vegPerPlate: perPlatePricing.vegPrice || 0,
+                  nonVegPerPlate: perPlatePricing.nonVegPrice || 0,
+                  rentalPrice: venue.price || 0,
+                  taxIncluded: false,
+                  decorationCost: '',
+                  djCost: ''
+                };
+              } else {
+                if (perPlatePricing.vegPrice > 0) {
+                  venue.pricingInfo.vegPerPlate = perPlatePricing.vegPrice;
+                }
+                if (perPlatePricing.nonVegPrice > 0) {
+                  venue.pricingInfo.nonVegPerPlate = perPlatePricing.nonVegPrice;
+                }
+              }
+            }
+          }
+        } else {
+          venue.pricingTypes = [];
+        }
+      } else {
+        venue.pricingTypes = [];
+      }
     }
 
     // Pricing info & price per plate (accept JSON strings from FormData)

@@ -1,0 +1,130 @@
+2026-01-17T17:12:54: API server listening on port 8030
+2026-01-17T17:12:54: Local: http://localhost:8030
+2026-01-17T17:12:54: Network: http://192.168.29.20:8030
+2026-01-17T17:12:54: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-17T17:12:54: ✅ Connected to MongoDB
+2026-01-17T17:12:54: Database connection established.
+2026-01-17T17:12:55: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:19: API server listening on port 8030
+2026-01-19T15:23:19: Local: http://localhost:8030
+2026-01-19T15:23:19: Network: http://192.168.29.20:8030
+2026-01-19T15:23:19: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:23:20: ✅ Connected to MongoDB
+2026-01-19T15:23:20: Database connection established.
+2026-01-19T15:23:20: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:42: API server listening on port 8030
+2026-01-19T15:23:42: Local: http://localhost:8030
+2026-01-19T15:23:42: Network: http://192.168.29.20:8030
+2026-01-19T15:23:42: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:23:42: ✅ Connected to MongoDB
+2026-01-19T15:23:42: Database connection established.
+2026-01-19T15:23:42: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:23:50: [0mGET /api/videos [36m304[0m 62.225 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/testimonials [36m304[0m 47.991 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/company [36m304[0m 91.294 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/vendor/venues?limit=6&status=active [36m304[0m 154.939 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/homepage-content/seo-content [36m304[0m 35.447 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/homepage-content/city-seo [36m304[0m 37.196 ms - -[0m
+2026-01-19T15:23:50: [0mGET /api/homepage-content/city-seo [36m304[0m 34.748 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 106.131 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?limit=20&status=approved [36m304[0m 738.372 ms - -[0m
+2026-01-19T15:23:51: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 228.040 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 98.778 ms - -[0m
+2026-01-19T15:23:52: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=active&limit=6 [36m304[0m 98.072 ms - -[0m
+2026-01-19T15:23:53: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=approved&limit=6 [36m304[0m 757.600 ms - -[0m
+2026-01-19T15:23:53: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 789.919 ms - -[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_23_03%20PM-1768463633542-837161541.png [33m404[0m 3.513 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_21_48%20PM-1768463550314-507308955.png [33m404[0m 3.944 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_20_15%20PM-1768463433964-469112772.png [33m404[0m 1.073 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_16_36%20PM-1768463269178-193253047.png [33m404[0m 1.308 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/venues/2024-04-18-1766555808683-909898246.webp [33m404[0m 1.311 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_07_24%20PM-1768466272098-104626997.png [33m404[0m 1.018 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_05_21%20PM-1768466146900-907892455.png [33m404[0m 0.857 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_02_44%20PM-1768466012207-776828062.png [33m404[0m 1.870 ms - 21[0m
+2026-01-19T15:23:53: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_01_16%20PM-1768465908876-531923577.png [33m404[0m 2.291 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_09_35%20PM-1768466400558-728511740.png [33m404[0m 0.935 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_48_58%20PM-1768465162413-933557276.png [33m404[0m 1.380 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_56_55%20PM-1768465647247-439384136.png [33m404[0m 1.538 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/venues/WhatsApp%20Image%202022-02-13%20at%2020.22.59%20(1)-1766554322952-570953757.jpeg [33m404[0m 1.154 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/venues/banquet-hall-1.jpg [33m404[0m 1.430 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/venues/images-1768302621877-171737271.jpg [33m404[0m 1.615 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/venues/5U8A0674-1766555412194-691026724.jpg [33m404[0m 1.228 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_54_09%20PM-1768465511892-501770956.png [33m404[0m 3.651 ms - 21[0m
+2026-01-19T15:23:54: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_43_26%20PM-1768464896761-405562397.png [33m404[0m 2.935 ms - 21[0m
+2026-01-19T15:23:55: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_12_15%20PM-1768466561469-933900708.png [33m404[0m 0.803 ms - 21[0m
+2026-01-19T15:23:55: [0mGET /uploads/venues/unnamed%20(1)-1766554782218-625787547.webp [33m404[0m 0.718 ms - 21[0m
+2026-01-19T15:24:07: [0mGET /uploads/venues/download%20(28)-1766637642531-294793918.jpg [33m404[0m 1.286 ms - 21[0m
+2026-01-19T15:24:10: [0mGET /api/company [36m304[0m 33.656 ms - -[0m
+2026-01-19T15:24:10: [0mGET /api/company [36m304[0m 32.428 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/admin/vendor-categories/public [36m304[0m 51.082 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/categories?active=true [36m304[0m 88.797 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/homepage-content/seo-content [36m304[0m 35.100 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/categories?active=true [36m304[0m 81.021 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/categories?active=true [36m304[0m 79.311 ms - -[0m
+2026-01-19T15:24:22: [0mGET /api/categories?active=true [36m304[0m 75.321 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/categories?active=true [36m304[0m 631.647 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 654.026 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/categories?active=true [36m304[0m 76.890 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/categories?active=true [36m304[0m 75.621 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/categories?active=true [36m304[0m 69.645 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 209.976 ms - -[0m
+2026-01-19T15:24:23: [0mGET /api/categories?active=true [36m304[0m 76.182 ms - -[0m
+2026-01-19T15:24:24: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_20_33%20PM-1768463470427-447117534.png [33m404[0m 1.287 ms - 21[0m
+2026-01-19T15:24:24: [0mGET /api/categories?active=true [36m304[0m 698.220 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c3e6c85041df0e4eaee6&status=active&limit=6 [36m304[0m 458.037 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/categories?active=true [36m304[0m 83.077 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/categories?active=true [36m304[0m 76.537 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/vendor/venues?categoryId=6915c4e422c5df79298efc32&status=approved&limit=6 [36m304[0m 181.340 ms - -[0m
+2026-01-19T15:24:24: [0mGET /api/categories?active=true [36m304[0m 77.361 ms - -[0m
+2026-01-19T15:24:24: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_56_55%20PM-1768465647247-439384136.png [33m404[0m 1.775 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_07_24%20PM-1768466272098-104626997.png [33m404[0m 1.043 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_05_21%20PM-1768466146900-907892455.png [33m404[0m 2.509 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_54_09%20PM-1768465511892-501770956.png [33m404[0m 2.347 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_02_44%20PM-1768466012207-776828062.png [33m404[0m 2.438 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_01_16%20PM-1768465908876-531923577.png [33m404[0m 1.456 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_48_58%20PM-1768465162413-933557276.png [33m404[0m 1.728 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2002_09_35%20PM-1768466400558-728511740.png [33m404[0m 1.780 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_43_26%20PM-1768464896761-405562397.png [33m404[0m 0.745 ms - 21[0m
+2026-01-19T15:24:25: [0mGET /api/categories?active=true [36m304[0m 715.287 ms - -[0m
+2026-01-19T15:24:26: [0mGET /uploads/venues/unnamed%20(1)-1766554782218-625787547.webp [33m404[0m 1.420 ms - 21[0m
+2026-01-19T15:24:26: [0mGET /uploads/venues/WhatsApp%20Image%202022-02-13%20at%2020.22.59%20(1)-1766554322952-570953757.jpeg [33m404[0m 1.095 ms - 21[0m
+2026-01-19T15:25:45: [0mGET /api/admin/vendor-categories/public [36m304[0m 43.890 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/categories?active=true [36m304[0m 80.447 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/vendor/venues?limit=6&status=active [36m304[0m 116.941 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/admin/vendor-categories/public [36m304[0m 38.518 ms - -[0m
+2026-01-19T15:25:45: [0mGET /api/homepage-content/seo-content [36m304[0m 34.760 ms - -[0m
+2026-01-19T15:25:46: [0mGET /api/homepage-content/city-seo [36m304[0m 36.593 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/homepage-content/city-seo [36m304[0m 52.358 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/categories?active=true [36m304[0m 87.535 ms - -[0m
+2026-01-19T15:25:47: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 119.143 ms - -[0m
+2026-01-19T15:25:48: [0mGET /api/company [36m304[0m 34.172 ms - -[0m
+2026-01-19T15:25:48: [0mGET /api/categories?active=true [36m304[0m 88.659 ms - -[0m
+2026-01-19T15:25:48: [0mGET /api/company [36m304[0m 37.435 ms - -[0m
+2026-01-19T15:25:48: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 239.533 ms - -[0m
+2026-01-19T15:25:49: [0mGET /api/vendor/venues?categoryId=6915c52522c5df79298efc3e&status=approved&limit=6 [36m304[0m 221.397 ms - -[0m
+2026-01-19T15:26:08: API server listening on port 8030
+2026-01-19T15:26:08: Local: http://localhost:8030
+2026-01-19T15:26:08: Network: http://192.168.29.20:8030
+2026-01-19T15:26:08: Access from other devices on your network using: http://192.168.29.20:8030
+2026-01-19T15:26:09: ✅ Connected to MongoDB
+2026-01-19T15:26:09: Database connection established.
+2026-01-19T15:26:09: ✅ Monthly revenue email cron job scheduled (runs on 1st of every month at 9:00 AM IST)
+2026-01-19T15:32:11: [0mGET /api/vendor/venues/cities?state=Rajasthan [36m304[0m 28.948 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/videos [36m304[0m 92.750 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/vendor/venues?limit=6&status=active [36m304[0m 131.512 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/admin/vendor-categories/public [36m304[0m 44.971 ms - -[0m
+2026-01-19T15:32:11: [0mGET /api/homepage-content/seo-content [36m304[0m 65.472 ms - -[0m
+2026-01-19T15:32:12: [0mGET /api/vendor/venues?limit=20&status=approved [36m304[0m 1224.006 ms - -[0m
+2026-01-19T15:32:13: [0mGET /api/categories?active=true [36m304[0m 94.697 ms - -[0m
+2026-01-19T15:32:14: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=active&limit=6 [36m304[0m 100.663 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/company [36m304[0m 35.305 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/vendor/venues?categoryId=6915c54022c5df79298efc48&status=approved&limit=6 [36m304[0m 245.014 ms - -[0m
+2026-01-19T15:32:15: [0mGET /api/company [36m304[0m 31.668 ms - -[0m
+2026-01-19T15:32:15: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_48_58%20PM-1768465162413-933557276.png [33m404[0m 4.885 ms - 21[0m
+2026-01-19T15:32:16: [0mGET /uploads/categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_54_09%20PM-1768465511892-501770956.png [33m404[0m 8.419 ms - 21[0m
+2026-01-19T15:32:18: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_32_04%20PM-1768464206827-408879235.png [33m404[0m 2.181 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /uploads/vendor-categories/ChatGPT%20Image%20Jan%2015%2C%202026%2C%2001_20_15%20PM-1768463433964-469112772.png [33m404[0m 212.736 ms - 21[0m
+2026-01-19T15:32:19: [0mGET /api/vendor/venues/search/suggestions?q=5%20Flowers%20Ananta%20Elite%20123&limit=8 [31m500[0m 70.549 ms - 33[0m
+2026-01-19T15:32:20: [0mGET /uploads/venues/banquet-hall-1.jpg [33m404[0m 1.798 ms - 21[0m
+2026-01-19T15:32:21: [0mGET /api/vendor/venues/search?q=5+Flowers+Ananta+Elite+123&city=Kota&state=Rajasthan&status=active&limit=50 [32m200[0m 1002.485 ms - -[0m
+2026-01-19T15:32:21: [0mGET /api/menus?parentMenuId=693b9fb6f80b5e97c5de8b1e [36m304[0m 1114.835 ms - -[0m

@@ -1394,6 +1394,12 @@
   margin-bottom: 24px;
 }
 
+.reviews-count {
+  font-weight: 500;
+  color: var(--gray-dark);
+  font-size: 18px;
+}
+
 .review-card {
   padding: 24px;
   background: var(--white);

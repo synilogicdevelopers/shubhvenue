@@ -25,18 +25,40 @@ const Shotlist = () => {
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
-    if (!images || images.length === 0) {
+    if (!images || (Array.isArray(images) && images.length === 0)) {
       return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
     }
-    const image = Array.isArray(images) ? images[0] : images
-    if (image.startsWith('/uploads/')) {
-      const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
-      return `${baseUrl}${image}`
+    
+    let image = Array.isArray(images) ? images[0] : images
+    
+    // Handle if image is an object (e.g., {url: "...", ...})
+    if (image && typeof image === 'object') {
+      image = image.url || image.path || image.src || image.image || null
     }
+    
+    // Ensure image is a string
+    if (!image || typeof image !== 'string') {
+      return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+    }
+    
+    // Trim whitespace
+    image = image.trim()
+    
+    if (!image) {
+      return 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+    }
+    
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image
     }
-    return `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'}/uploads/venues/${image}`
+    
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://shubhvenue.com'
+    
+    if (image.startsWith('/uploads/')) {
+      return `${baseUrl}${image}`
+    }
+    
+    return `${baseUrl}/uploads/venues/${image}`
   }
 
   // Helper function to format price
@@ -164,104 +186,99 @@ const Shotlist = () => {
               </button>
             </div>
           ) : (
-            <div className="shotlist-grid">
-              {venues.map((venue) => (
-                <div key={venue.id} className="shotlist-card">
+            <div className="venues-grid">
+              {venues.map((venue) => {
+                const locationText = venue.location?.city || (typeof venue.location === 'string' ? venue.location.split(',')[0] : 'Location not specified')
+                const locationState = venue.location?.state ? `, ${venue.location.state}` : (typeof venue.location === 'string' && venue.location.includes(',') ? venue.location.split(',')[1] : '')
+                const typeText = venue.categoryId?.name || venue.category?.name || venue.venueType || 'Venue'
+                const ratingValue = venue.ratingInfo?.average || venue.rating?.average || (typeof venue.rating === 'number' ? venue.rating : 0)
+                const reviewsCount = venue.ratingInfo?.totalReviews || venue.rating?.totalReviews || venue.reviews || 0
+                
+                return (
                   <div 
-                    className="shotlist-card-image"
+                    key={venue.id} 
+                    className="venue-card"
                     onClick={() => handleVenueClick(venue)}
                   >
-                    <img 
-                      src={getVenueImageUrl(venue.images)} 
-                      alt={venue.name}
-                      loading="lazy"
-                    />
-                    <button
-                      className="shotlist-remove-btn"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleRemoveFromShotlist(venue.id)
-                      }}
-                      disabled={removingVenueId === venue.id}
-                      title="Remove from shotlist"
-                    >
-                      <svg 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="currentColor" 
-                        stroke="currentColor" 
-                        strokeWidth="2"
+                    <div className="venue-image-wrapper">
+                      <img 
+                        src={getVenueImageUrl(venue.images)} 
+                        alt={venue.name}
+                        className="venue-image"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
+                        }}
+                      />
+                      <button
+                        className="venue-shortlist-btn liked"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveFromShotlist(venue.id)
+                        }}
+                        disabled={removingVenueId === venue.id}
+                        title="Remove from shortlist"
                       >
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                      </svg>
-                    </button>
-                    {venue.ratingInfo?.average > 0 && (
-                      <div className="venue-rating-badge">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="currentColor" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                        >
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                         </svg>
-                        <span>{venue.ratingInfo.average.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="shotlist-card-content">
-                    <h3 
-                      className="shotlist-card-title"
-                      onClick={() => handleVenueClick(venue)}
-                    >
-                      {venue.name}
-                    </h3>
-                    <div className="shotlist-card-info">
-                      <div className="info-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      </button>
+                    </div>
+                    <div className="venue-content">
+                      <h3 className="venue-name">{venue.name}</h3>
+                      {ratingValue > 0 && reviewsCount > 0 && (
+                        <div className="venue-rating">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="#FFB800"
+                            stroke="#FFB800"
+                            strokeWidth="2"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                          </svg>
+                          <span className="rating-value">{ratingValue.toFixed(1)}</span>
+                        </div>
+                      )}
+                      <div className="venue-location">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                           <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        <span>{formatLocation(venue.location)}</span>
-                      </div>
-                      <div className="info-item">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        <span>{locationText}{locationState}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="9" y1="3" x2="9" y2="21"></line>
+                          <line x1="15" y1="3" x2="15" y2="21"></line>
+                          <line x1="3" y1="9" x2="21" y2="9"></line>
+                          <line x1="3" y1="15" x2="21" y2="15"></line>
                         </svg>
-                        <span>{formatCapacity(venue.capacity)}</span>
+                        <span>{typeText}</span>
                       </div>
-                      {venue.pricingInfo?.vegPerPlate > 0 || venue.pricingInfo?.nonVegPerPlate > 0 ? (
-                        <div className="info-item">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="12" y1="1" x2="12" y2="23"></line>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                          </svg>
-                          <span>
-                            {venue.pricingInfo.vegPerPlate > 0 && `₹${venue.pricingInfo.vegPerPlate}/plate (Veg)`}
-                            {venue.pricingInfo.vegPerPlate > 0 && venue.pricingInfo.nonVegPerPlate > 0 && ' • '}
-                            {venue.pricingInfo.nonVegPerPlate > 0 && `₹${venue.pricingInfo.nonVegPerPlate}/plate (Non-Veg)`}
+                      {venue.capacity && (
+                        <div className="venue-tags">
+                          <span className="venue-tag">
+                            {typeof venue.capacity === 'object' && venue.capacity.minGuests && venue.capacity.maxGuests
+                              ? `${venue.capacity.minGuests} - ${venue.capacity.maxGuests} Guests`
+                              : typeof venue.capacity === 'number'
+                              ? `Up to ${venue.capacity} Guests`
+                              : formatCapacity(venue.capacity)}
                           </span>
                         </div>
-                      ) : venue.price > 0 ? (
-                        <div className="info-item">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="12" y1="1" x2="12" y2="23"></line>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                          </svg>
-                          <span>{formatPrice(venue.price)}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="shotlist-card-actions">
-                      <button 
-                        className="btn-primary"
-                        onClick={() => handleVenueClick(venue)}
-                      >
-                        View Details
-                      </button>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

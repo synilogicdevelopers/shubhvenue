@@ -6,9 +6,11 @@ import PaymentConfig from '../models/PaymentConfig.js';
  * Load microservice configuration (api url, project id, secret) from PaymentConfig.
  *
  * We reuse the existing PaymentConfig collection but interpret its fields as:
- * - razorpayKeyId     => microservice project code
- * - razorpayKeySecret => microservice project secret
+ * - razorpayKeyId     => microservice project code (works for PayU, Razorpay, etc.)
+ * - razorpayKeySecret => microservice project secret (works for PayU, Razorpay, etc.)
  * - MICROSERVICE_API_URL (env) => microservice base URL
+ * 
+ * Note: Microservice supports multiple payment gateways (PayU, Razorpay, etc.)
  */
 export async function getMicroserviceConfig() {
   // For microservice, we only need the API URL
@@ -17,9 +19,31 @@ export async function getMicroserviceConfig() {
 
   const apiUrl = (process.env.MICROSERVICE_API_URL || '').trim();
   
-  // Optional: Get project code/secret if configured (for authenticated microservices)
-  const projectId = (config?.razorpayKeyId || '').trim();
-  const projectSecret = (config?.razorpayKeySecret || '').trim();
+  // Get project code/secret from environment variables first, then fall back to database
+  // Environment variables: PROJECT_CODE (or RAZORPAY_KEY_ID) and PROJECT_SECRET (or RAZORPAY_KEY_SECRET)
+  const projectId = (
+    process.env.PROJECT_CODE || 
+    process.env.MICROSERVICE_PROJECT_CODE || 
+    process.env.RAZORPAY_KEY_ID || 
+    config?.razorpayKeyId || 
+    ''
+  ).trim();
+  
+  const projectSecret = (
+    process.env.PROJECT_SECRET || 
+    process.env.MICROSERVICE_PROJECT_SECRET || 
+    process.env.RAZORPAY_KEY_SECRET || 
+    config?.razorpayKeySecret || 
+    ''
+  ).trim();
+
+  // Determine source of project credentials
+  const projectIdSource = process.env.PROJECT_CODE || process.env.MICROSERVICE_PROJECT_CODE || process.env.RAZORPAY_KEY_ID 
+    ? 'Environment Variables' 
+    : (config?.razorpayKeyId ? 'Database (PaymentConfig)' : 'Not Set');
+  const projectSecretSource = process.env.PROJECT_SECRET || process.env.MICROSERVICE_PROJECT_SECRET || process.env.RAZORPAY_KEY_SECRET 
+    ? 'Environment Variables' 
+    : (config?.razorpayKeySecret ? 'Database (PaymentConfig)' : 'Not Set');
 
   console.log('🔍 Microservice Config Check:', {
     hasApiUrl: !!apiUrl,
@@ -27,8 +51,10 @@ export async function getMicroserviceConfig() {
     hasProjectId: !!projectId,
     projectIdLength: projectId ? projectId.length : 0,
     projectIdPreview: projectId ? (projectId.substring(0, 10) + '...' + projectId.substring(projectId.length - 5)) : 'NOT SET',
+    projectIdSource,
     hasProjectSecret: !!projectSecret,
     projectSecretLength: projectSecret ? projectSecret.length : 0,
+    projectSecretSource,
     authMode: (projectId && projectSecret) ? 'With Auth' : 'URL Only (No Auth)',
   });
 
@@ -42,8 +68,12 @@ export async function getMicroserviceConfig() {
   // Microservice requires authentication (project code and secret)
   // If not provided, show helpful error
   if (!projectId || !projectSecret) {
+    const envHint = process.env.PROJECT_CODE || process.env.PROJECT_SECRET 
+      ? '\n\nAlternatively, you can set these in backend environment variables (.env file):\n  PROJECT_CODE=your_project_code\n  PROJECT_SECRET=your_project_secret'
+      : '';
+    
     throw new Error(
-      'Microservice requires authentication. Please configure Project Code (Key ID) and Project Secret (Key Secret) in admin settings → Payment Configuration. These are your microservice project credentials from payments.synilogic.in admin panel.'
+      'Microservice requires authentication. Please configure Project Code (Key ID) and Project Secret (Key Secret) in admin settings → Payment Configuration. These are your microservice project credentials from payments.synilogic.in admin panel.' + envHint
     );
   }
 
@@ -95,9 +125,24 @@ export async function callMicroservice(endpoint, method = 'GET', payload = null)
     console.log('📤 Microservice Request:', {
       url,
       method,
-      projectId: projectId.substring(0, 10) + '...',
+      projectId: projectId, // Show full project ID for debugging
+      projectIdLength: projectId.length,
+      projectSecretLength: projectSecret.length,
       hasSignature: !!signature,
+      signatureLength: signature ? signature.length : 0,
       payloadKeys: Object.keys(payload || {}),
+      headers: {
+        'X-Project-Id': projectId,
+        'X-Project-Signature': signature ? signature.substring(0, 20) + '...' : 'none',
+      },
+    });
+  } else {
+    // For GET requests, still log the project ID
+    console.log('📤 Microservice Request (GET):', {
+      url,
+      method,
+      projectId: projectId,
+      projectIdLength: projectId.length,
     });
   }
 
@@ -112,19 +157,45 @@ export async function callMicroservice(endpoint, method = 'GET', payload = null)
 
     const data = response.data;
 
+    // Log full response for debugging
+    console.log('📥 Microservice Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      data: data,
+      headers: response.headers,
+    });
+
     if (!response.status || response.status >= 500) {
+      const errorMsg = data?.message || data?.error || data?.data?.message || JSON.stringify(data) || 'Unexpected server error';
+      console.error('❌ Microservice 500 Error Details:', {
+        status: response.status,
+        url,
+        responseData: data,
+        errorMessage: errorMsg,
+      });
       throw new Error(
-        `Microservice error (${response.status || 'no status'}): ${
-          data?.message || data?.error || 'Unexpected server error'
-        }`
+        `Microservice error (${response.status || 'no status'}): ${errorMsg}`
       );
     }
 
     // Laravel ApiResponse::success uses { success: true, data, message }
     if (data && data.success === false) {
-      throw new Error(data.message || data.error || 'Microservice request failed');
+      const errorMsg = data.message || data.error || data.data?.message || 'Microservice request failed';
+      console.error('❌ Microservice Request Failed:', {
+        url,
+        success: data.success,
+        message: errorMsg,
+        data: data,
+      });
+      throw new Error(errorMsg);
     }
 
+    // Check if response has data field (Laravel ApiResponse format)
+    if (data && data.data) {
+      return data;
+    }
+
+    // Return response as-is if it's already in expected format
     return data;
   } catch (error) {
     if (error.response) {

@@ -34,6 +34,8 @@ export const Videos = () => {
   });
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Helper function to get video URL
   const getVideoUrl = (video) => {
@@ -142,6 +144,7 @@ export const Videos = () => {
   };
 
   const handleCloseModal = () => {
+    if (submitting) return; // Prevent closing modal while submitting
     setIsModalOpen(false);
     setEditingVideo(null);
     setFormData({
@@ -157,6 +160,8 @@ export const Videos = () => {
     });
     setVideoFile(null);
     setVideoPreview(null);
+    setSubmitting(false); // Reset submitting state
+    setUploadProgress(0); // Reset upload progress
   };
 
   const handleVideoChange = (e) => {
@@ -172,6 +177,8 @@ export const Videos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (submitting) return; // Prevent multiple submissions
+    
     if (!formData.title.trim()) {
       toast.error('Video title is required');
       return;
@@ -184,6 +191,9 @@ export const Videos = () => {
     }
 
     try {
+      setSubmitting(true);
+      setUploadProgress(0);
+      
       // Create FormData for file upload
       const submitData = new FormData();
       submitData.append('title', formData.title);
@@ -210,18 +220,38 @@ export const Videos = () => {
         submitData.append('video', formData.video.trim());
       }
 
+      // Upload progress callback (only for file uploads)
+      const handleUploadProgress = (percentCompleted) => {
+        setUploadProgress(percentCompleted);
+      };
+
       if (editingVideo) {
-        await videosAPI.update(editingVideo._id, submitData);
+        await videosAPI.update(editingVideo._id, submitData, videoFile ? handleUploadProgress : undefined);
         toast.success('Video updated successfully');
       } else {
-        await videosAPI.create(submitData);
+        await videosAPI.create(submitData, videoFile ? handleUploadProgress : undefined);
         toast.success('Video created successfully');
       }
+      setUploadProgress(0);
       handleCloseModal();
       fetchVideos();
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to save video';
-      toast.error(errorMessage);
+      console.error('Video upload error:', error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error('Upload timeout. The video file might be too large or the connection is slow. Please try again.');
+      } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        toast.error('Network error. Please check your internet connection and try again.');
+      } else if (error.response?.status === 413) {
+        toast.error('Video file is too large. Maximum size is 500MB.');
+      } else {
+        const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save video';
+        toast.error(errorMessage);
+      }
+    } finally {
+      setSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -533,7 +563,7 @@ export const Videos = () => {
                     hover:file:bg-primary/90
                     cursor-pointer"
                 />
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload a video file (MP4, WebM, MOV, AVI, MKV - Max 100MB)</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload a video file (MP4, WebM, MOV, AVI, MKV - Max 500MB)</p>
               </div>
               
               {/* Video Preview */}
@@ -547,6 +577,23 @@ export const Videos = () => {
                   >
                     Your browser does not support the video tag.
                   </video>
+                </div>
+              )}
+              
+              {/* Upload Progress */}
+              {submitting && uploadProgress > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Uploading: {uploadProgress}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
                 </div>
               )}
             </div>
@@ -605,10 +652,22 @@ export const Videos = () => {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1">
-              {editingVideo ? 'Update Video' : 'Create Video'}
+            <Button type="submit" className="flex-1" disabled={submitting}>
+              {submitting 
+                ? (uploadProgress > 0 
+                    ? `Uploading... ${uploadProgress}%` 
+                    : (editingVideo ? 'Updating...' : 'Uploading Video...')
+                  ) 
+                : (editingVideo ? 'Update Video' : 'Create Video')
+              }
             </Button>
-            <Button type="button" variant="ghost" onClick={handleCloseModal} className="flex-1">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={handleCloseModal} 
+              className="flex-1"
+              disabled={submitting}
+            >
               Cancel
             </Button>
           </div>

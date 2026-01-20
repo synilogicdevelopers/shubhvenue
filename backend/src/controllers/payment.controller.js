@@ -7,6 +7,21 @@ import Lead from '../models/Lead.js';
 import { callMicroservice } from '../utils/microserviceClient.js';
 import { generateCustomBookingId } from '../utils/bookingIdGenerator.js';
 
+// Temporary storage for booking data by order_id (for callback retrieval)
+// This is needed because microservice callback doesn't always forward booking_data
+export const orderBookingDataCache = new Map();
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+// Clean up old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [orderId, data] of orderBookingDataCache.entries()) {
+    if (now - data.timestamp > CACHE_TTL) {
+      orderBookingDataCache.delete(orderId);
+    }
+  }
+}, 60 * 60 * 1000); // Clean every hour
+
 // Create Payment Order
 export const createPaymentOrder = async (req, res) => {
   try {
@@ -232,23 +247,156 @@ export const createPaymentOrder = async (req, res) => {
         booking_id: bookingId || null,
         booking_data: bookingData || null,
       };
+      
+      // For PayU, also add booking data to udf fields (as JSON string) for callback
+      // PayU supports udf1-udf5 fields that are returned in callback
+      const udfBookingData = bookingData ? JSON.stringify(bookingData) : null;
 
       const payload = {
         amount: Math.round(Number(amount)), // already in paise
         currency,
         customer,
         notes,
+        // Add booking data to udf1 for PayU callback (PayU returns udf fields in callback)
+        udf1: udfBookingData || undefined,
       };
 
       let orderData;
       try {
         const microserviceResponse = await callMicroservice('/api/payment/order', 'POST', payload);
-        orderData = microserviceResponse?.data || {};
+        
+        console.log('📥 Microservice Response Received:', {
+          hasResponse: !!microserviceResponse,
+          responseKeys: microserviceResponse ? Object.keys(microserviceResponse) : [],
+          hasData: !!microserviceResponse?.data,
+          dataKeys: microserviceResponse?.data ? Object.keys(microserviceResponse.data) : [],
+          fullResponse: JSON.stringify(microserviceResponse).substring(0, 500),
+        });
+        
+        // Handle different response formats:
+        // 1. Laravel ApiResponse: { success: true, data: { ... } }
+        // 2. PayU format: { success: true, data: { gateway: 'payu', type: 'redirect', payload: { action, params: { txnid, ... } } } }
+        // 3. Direct format: { order_id, key_id, ... }
+        
+        let extractedData = {};
+        if (microserviceResponse?.data && typeof microserviceResponse.data === 'object') {
+          extractedData = microserviceResponse.data;
+        } else if (microserviceResponse && typeof microserviceResponse === 'object') {
+          extractedData = microserviceResponse;
+        }
 
-        if (!orderData.order_id || !orderData.key_id) {
+        console.log('📦 Extracted Data Structure:', {
+          hasGateway: !!extractedData.gateway,
+          gateway: extractedData.gateway,
+          type: extractedData.type,
+          hasPayload: !!extractedData.payload,
+          payloadKeys: extractedData.payload ? Object.keys(extractedData.payload) : [],
+          hasParams: !!extractedData.payload?.params,
+          paramsKeys: extractedData.payload?.params ? Object.keys(extractedData.payload.params) : [],
+        });
+
+        // Check if microservice response has order_id at top level (separate from PayU txnid)
+        const microserviceOrderId = microserviceResponse?.order_id || microserviceResponse?.data?.order_id;
+        
+        // Handle PayU response format
+        if (extractedData.gateway === 'payu' && extractedData.type === 'redirect' && extractedData.payload) {
+          // PayU format: Extract txnid from payload.params
+          const payuParams = extractedData.payload.params || {};
+          // Use microservice order_id if available, otherwise use PayU txnid
+          const finalOrderId = microserviceOrderId || payuParams.txnid || payuParams.order_id || extractedData.order_id;
+          
+          orderData = {
+            gateway: 'payu',
+            type: 'redirect',
+            order_id: finalOrderId, // Use microservice order_id for cache lookup
+            microservice_order_id: microserviceOrderId, // Store separately
+            txnid: payuParams.txnid, // PayU transaction ID
+            amount: payuParams.amount,
+            currency: payuParams.currency || 'INR',
+            hash: payuParams.hash,
+            merchant_key: payuParams.key,
+            action_url: extractedData.payload.action,
+            redirect_params: payuParams,
+          };
+          
+          console.log('✅ PayU Order Data Extracted:', {
+            order_id: orderData.order_id,
+            microservice_order_id: orderData.microservice_order_id,
+            txnid: orderData.txnid,
+            amount: orderData.amount,
+            hasHash: !!orderData.hash,
+            hasActionUrl: !!orderData.action_url,
+          });
+        } else {
+          // Razorpay or standard format
+          orderData = extractedData;
+          
+          // Try to extract order_id from various possible fields
+          const orderId = orderData.order_id || orderData.payu_order_id || orderData.txnid || orderData.orderId || orderData.id;
+          const keyId = orderData.key_id || orderData.merchant_key || orderData.merchantKey || orderData.keyId;
+          
+          if (orderId) {
+            orderData.order_id = orderId;
+          }
+          if (keyId) {
+            orderData.key_id = keyId;
+          }
+        }
+
+        // Validate that we have at least an order ID or transaction ID
+        if (!orderData.order_id && !orderData.txnid) {
+          console.error('❌ Invalid Order Response - Missing Order/Txn ID:', {
+            orderData,
+            microserviceResponse,
+            availableKeys: Object.keys(extractedData),
+          });
           return res.status(500).json({
             error: 'Payment configuration error',
-            message: 'Microservice did not return a valid order. Please contact support.',
+            message: 'Microservice did not return a valid order ID or transaction ID. Please contact support.',
+            details: {
+              received: {
+                gateway: extractedData.gateway,
+                type: extractedData.type,
+                keys: Object.keys(extractedData),
+              }
+            }
+          });
+        }
+
+        // Store booking data temporarily by order_id/txnid for callback retrieval
+        // This is needed because microservice callback might not forward booking_data
+        // Store with multiple keys because callback might use different key
+        if (bookingData) {
+          const storageData = {
+            bookingData,
+            timestamp: Date.now(),
+          };
+          
+          // Store with order_id (this is what callback will likely use)
+          if (orderData.order_id) {
+            orderBookingDataCache.set(orderData.order_id, storageData);
+            console.log('💾 Stored booking data for order_id:', orderData.order_id.substring(0, 10) + '...');
+          }
+          
+          // Also store with microservice_order_id if different (for PayU)
+          if (orderData.microservice_order_id && orderData.microservice_order_id !== orderData.order_id) {
+            orderBookingDataCache.set(orderData.microservice_order_id, storageData);
+            console.log('💾 Stored booking data for microservice_order_id:', orderData.microservice_order_id.substring(0, 10) + '...');
+          }
+          
+          // Also store with txnid if it's different (for PayU direct callback)
+          if (orderData.txnid && orderData.txnid !== orderData.order_id && orderData.txnid !== orderData.microservice_order_id) {
+            orderBookingDataCache.set(orderData.txnid, storageData);
+            console.log('💾 Stored booking data for txnid:', orderData.txnid.substring(0, 10) + '...');
+          }
+          
+          console.log('💾 Cache Storage Complete:', {
+            orderId: orderData.order_id?.substring(0, 10) + '...',
+            microserviceOrderId: orderData.microservice_order_id?.substring(0, 10) + '...',
+            txnid: orderData.txnid?.substring(0, 10) + '...',
+            hasVenueId: !!bookingData.venueId,
+            hasDate: !!bookingData.date,
+            cacheSize: orderBookingDataCache.size,
           });
         }
       } catch (microserviceError) {
@@ -298,16 +446,39 @@ export const createPaymentOrder = async (req, res) => {
         });
       }
       
-      // Return order in the same shape the frontend expects
-      return res.json({
-        success: true,
-        paymentMethod: 'microservice',
-        order: {
-          id: orderData.order_id,
-          amount: orderData.amount,
-          currency: orderData.currency,
-        },
-      });
+      // Return order in the format frontend expects
+      // For PayU, return redirect data; for Razorpay, return order ID
+      if (orderData.gateway === 'payu' && orderData.type === 'redirect') {
+        // PayU redirect format
+        return res.json({
+          success: true,
+          paymentMethod: 'payu',
+          gateway: 'payu',
+          type: 'redirect',
+          order: {
+            id: orderData.order_id || orderData.txnid,
+            txnid: orderData.txnid,
+            amount: orderData.amount,
+            currency: orderData.currency || 'INR',
+          },
+          redirect: {
+            action: orderData.action_url,
+            params: orderData.redirect_params,
+          },
+        });
+      } else {
+        // Razorpay or standard format
+        return res.json({
+          success: true,
+          paymentMethod: 'microservice',
+          order: {
+            id: orderData.order_id,
+            amount: orderData.amount,
+            currency: orderData.currency || 'INR',
+          },
+          razorpayKeyId: orderData.key_id || undefined,
+        });
+      }
     }
   } catch (error) {
     console.error('Create payment order error (microservice):', error);

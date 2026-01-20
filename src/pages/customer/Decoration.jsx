@@ -41,6 +41,8 @@ function Decoration() {
   const [corporateBannerLoading, setCorporateBannerLoading] = useState(true)
   const [corporateVenuesLoading, setCorporateVenuesLoading] = useState(true)
   const swiperRef = useRef(null)
+  const [showContent, setShowContent] = useState(false)
+  const hasShownContent = useRef(false)
 
   // Helper function to get banner image URL
   const getBannerImageUrl = (image) => {
@@ -380,8 +382,6 @@ function Decoration() {
         
         if (birthdayBanner) {
           setBirthdayBanner(birthdayBanner)
-        } else {
-          console.log('No birthday banner found')
         }
       } catch (error) {
         console.error('Error fetching birthday banner:', error)
@@ -707,10 +707,6 @@ function Decoration() {
       try {
         setBirthdayVenuesLoading(true)
         
-        console.log('🔍 Fetching birthday venues...')
-        console.log('Decoration Categories:', decorationCategories)
-        console.log('Occasion Specials:', occasionSpecials)
-        
         // Find decoration categories with "birthday" in name
         const birthdayDecorationCategories = decorationCategories.filter(cat => 
           cat.name && cat.name.toLowerCase().includes('birthday')
@@ -721,9 +717,6 @@ function Decoration() {
           special.name && special.name.toLowerCase().includes('birthday')
         )
         
-        console.log('🎂 Birthday Decoration Categories:', birthdayDecorationCategories)
-        console.log('🎂 Birthday Occasion Specials:', birthdayOccasionSpecials)
-        
         // Collect all venue IDs to avoid duplicates
         const venueIds = new Set()
         const allVenues = []
@@ -732,16 +725,14 @@ function Decoration() {
         for (const category of birthdayDecorationCategories) {
           try {
             const categoryId = category._id || category.id
-            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
             
             // Try active status first, then fallback to approved
+            // Reduced limit for faster loading
             let venuesResponse = await publicVenuesAPI.getAll({ 
               decorationCategoryId: categoryId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
-            
-            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
             
             // Parse venues data
             let venuesData = []
@@ -757,14 +748,11 @@ function Decoration() {
             
             // If no venues found with active status, try approved status
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 decorationCategoryId: categoryId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
-              
-              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
               
               // Parse venues data again
               if (venuesResponse.data) {
@@ -778,7 +766,6 @@ function Decoration() {
               }
             }
             
-            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -796,13 +783,12 @@ function Decoration() {
         for (const special of birthdayOccasionSpecials) {
           try {
             const specialId = special._id || special.id
-            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
             
             // Try active status first, then fallback to approved
             let venuesResponse = await publicVenuesAPI.getAll({ 
               occasionSpecialId: specialId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
             // If no venues found with active status, try approved status
@@ -818,11 +804,10 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 occasionSpecialId: specialId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
               // Parse venues data again
@@ -837,9 +822,7 @@ function Decoration() {
               }
             }
             
-            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
             
-            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -852,8 +835,6 @@ function Decoration() {
             console.error(`❌ Error fetching venues for occasion special ${special.name}:`, error)
           }
         }
-        
-        console.log(`🎉 Total unique venues found: ${allVenues.length}`)
         
         // Format venues for display (limit to 5)
         const formattedVenues = allVenues.slice(0, 5).map(venue => {
@@ -894,9 +875,6 @@ function Decoration() {
           }
         })
         
-        console.log(`✨ Formatted ${formattedVenues.length} venues for display`)
-        console.log('Formatted Venues:', formattedVenues)
-        
         setBirthdayVenues(formattedVenues)
       } catch (error) {
         console.error('❌ Error fetching birthday venues:', error)
@@ -907,15 +885,7 @@ function Decoration() {
 
     // Only fetch if decoration categories and occasion specials are loaded
     if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
-      console.log('🚀 Starting birthday venues fetch...')
       fetchBirthdayVenues()
-    } else {
-      console.log('⏳ Waiting for categories/specials to load...', {
-        categoriesLoading,
-        occasionSpecialsLoading,
-        decorationCategoriesCount: decorationCategories.length,
-        occasionSpecialsCount: occasionSpecials.length
-      })
     }
   }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
 
@@ -925,7 +895,6 @@ function Decoration() {
       try {
         setBabyVenuesLoading(true)
         
-        console.log('🔍 Fetching baby venues...')
         
         // Find decoration categories with "baby shower" or "baby welcome" in name
         const babyDecorationCategories = decorationCategories.filter(cat => 
@@ -943,8 +912,6 @@ function Decoration() {
           )
         )
         
-        console.log('👶 Baby Decoration Categories:', babyDecorationCategories)
-        console.log('👶 Baby Occasion Specials:', babyOccasionSpecials)
         
         // Collect all venue IDs to avoid duplicates
         const venueIds = new Set()
@@ -954,15 +921,13 @@ function Decoration() {
         for (const category of babyDecorationCategories) {
           try {
             const categoryId = category._id || category.id
-            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               decorationCategoryId: categoryId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
-            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
             
             let venuesData = []
             if (venuesResponse.data) {
@@ -976,14 +941,12 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 decorationCategoryId: categoryId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
-              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
               
               if (venuesResponse.data) {
                 if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
@@ -996,7 +959,6 @@ function Decoration() {
               }
             }
             
-            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1014,12 +976,11 @@ function Decoration() {
         for (const special of babyOccasionSpecials) {
           try {
             const specialId = special._id || special.id
-            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               occasionSpecialId: specialId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
             let venuesData = []
@@ -1034,11 +995,10 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 occasionSpecialId: specialId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
               if (venuesResponse.data) {
@@ -1052,9 +1012,7 @@ function Decoration() {
               }
             }
             
-            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
             
-            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1068,7 +1026,6 @@ function Decoration() {
           }
         }
         
-        console.log(`🎉 Total unique baby venues found: ${allVenues.length}`)
         
         // Format venues for display (limit to 5)
         const formattedVenues = allVenues.slice(0, 5).map(venue => {
@@ -1103,8 +1060,6 @@ function Decoration() {
           }
         })
         
-        console.log(`✨ Formatted ${formattedVenues.length} baby venues for display`)
-        console.log('Formatted Baby Venues:', formattedVenues)
         
         setBabyVenues(formattedVenues)
       } catch (error) {
@@ -1116,7 +1071,6 @@ function Decoration() {
 
     // Only fetch if decoration categories and occasion specials are loaded
     if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
-      console.log('🚀 Starting baby venues fetch...')
       fetchBabyVenues()
     }
   }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
@@ -1127,7 +1081,6 @@ function Decoration() {
       try {
         setRomanticVenuesLoading(true)
         
-        console.log('🔍 Fetching romantic venues...')
         
         // Find decoration categories with romantic keywords
         const romanticDecorationCategories = decorationCategories.filter(cat => 
@@ -1147,8 +1100,6 @@ function Decoration() {
           )
         )
         
-        console.log('💕 Romantic Decoration Categories:', romanticDecorationCategories)
-        console.log('💕 Romantic Occasion Specials:', romanticOccasionSpecials)
         
         // Collect all venue IDs to avoid duplicates
         const venueIds = new Set()
@@ -1158,15 +1109,13 @@ function Decoration() {
         for (const category of romanticDecorationCategories) {
           try {
             const categoryId = category._id || category.id
-            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               decorationCategoryId: categoryId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
-            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
             
             let venuesData = []
             if (venuesResponse.data) {
@@ -1180,14 +1129,12 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 decorationCategoryId: categoryId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
-              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
               
               if (venuesResponse.data) {
                 if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
@@ -1200,7 +1147,6 @@ function Decoration() {
               }
             }
             
-            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1218,12 +1164,11 @@ function Decoration() {
         for (const special of romanticOccasionSpecials) {
           try {
             const specialId = special._id || special.id
-            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               occasionSpecialId: specialId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
             let venuesData = []
@@ -1238,11 +1183,10 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 occasionSpecialId: specialId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
               if (venuesResponse.data) {
@@ -1256,9 +1200,7 @@ function Decoration() {
               }
             }
             
-            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
             
-            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1272,7 +1214,6 @@ function Decoration() {
           }
         }
         
-        console.log(`🎉 Total unique romantic venues found: ${allVenues.length}`)
         
         // Format venues for display (limit to 5)
         const formattedVenues = allVenues.slice(0, 5).map(venue => {
@@ -1307,8 +1248,6 @@ function Decoration() {
           }
         })
         
-        console.log(`✨ Formatted ${formattedVenues.length} romantic venues for display`)
-        console.log('Formatted Romantic Venues:', formattedVenues)
         
         setRomanticVenues(formattedVenues)
       } catch (error) {
@@ -1320,7 +1259,6 @@ function Decoration() {
 
     // Only fetch if decoration categories and occasion specials are loaded
     if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
-      console.log('🚀 Starting romantic venues fetch...')
       fetchRomanticVenues()
     }
   }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
@@ -1331,7 +1269,6 @@ function Decoration() {
       try {
         setSameDayVenuesLoading(true)
         
-        console.log('🔍 Fetching same day venues...')
         
         // Find decoration categories with same day keywords
         const sameDayDecorationCategories = decorationCategories.filter(cat => {
@@ -1361,8 +1298,6 @@ function Decoration() {
           )
         })
         
-        console.log('⚡ Same Day Decoration Categories:', sameDayDecorationCategories)
-        console.log('⚡ Same Day Occasion Specials:', sameDayOccasionSpecials)
         
         // Collect all venue IDs to avoid duplicates
         const venueIds = new Set()
@@ -1372,15 +1307,13 @@ function Decoration() {
         for (const category of sameDayDecorationCategories) {
           try {
             const categoryId = category._id || category.id
-            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               decorationCategoryId: categoryId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
-            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
             
             let venuesData = []
             if (venuesResponse.data) {
@@ -1394,14 +1327,12 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 decorationCategoryId: categoryId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
-              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
               
               if (venuesResponse.data) {
                 if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
@@ -1414,7 +1345,6 @@ function Decoration() {
               }
             }
             
-            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1432,12 +1362,11 @@ function Decoration() {
         for (const special of sameDayOccasionSpecials) {
           try {
             const specialId = special._id || special.id
-            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               occasionSpecialId: specialId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
             let venuesData = []
@@ -1452,11 +1381,10 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 occasionSpecialId: specialId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
               if (venuesResponse.data) {
@@ -1470,9 +1398,7 @@ function Decoration() {
               }
             }
             
-            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
             
-            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1486,7 +1412,6 @@ function Decoration() {
           }
         }
         
-        console.log(`🎉 Total unique same day venues found: ${allVenues.length}`)
         
         // Format venues for display (limit to 5)
         const formattedVenues = allVenues.slice(0, 5).map(venue => {
@@ -1521,8 +1446,6 @@ function Decoration() {
           }
         })
         
-        console.log(`✨ Formatted ${formattedVenues.length} same day venues for display`)
-        console.log('Formatted Same Day Venues:', formattedVenues)
         
         setSameDayVenues(formattedVenues)
       } catch (error) {
@@ -1534,7 +1457,6 @@ function Decoration() {
 
     // Only fetch if decoration categories and occasion specials are loaded
     if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
-      console.log('🚀 Starting same day venues fetch...')
       fetchSameDayVenues()
     }
   }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
@@ -1545,7 +1467,6 @@ function Decoration() {
       try {
         setCorporateVenuesLoading(true)
         
-        console.log('🔍 Fetching corporate venues...')
         
         // Find decoration categories with corporate events keywords
         const corporateDecorationCategories = decorationCategories.filter(cat => {
@@ -1569,8 +1490,6 @@ function Decoration() {
           )
         })
         
-        console.log('💼 Corporate Decoration Categories:', corporateDecorationCategories)
-        console.log('💼 Corporate Occasion Specials:', corporateOccasionSpecials)
         
         // Collect all venue IDs to avoid duplicates
         const venueIds = new Set()
@@ -1580,15 +1499,13 @@ function Decoration() {
         for (const category of corporateDecorationCategories) {
           try {
             const categoryId = category._id || category.id
-            console.log(`📋 Fetching venues for decoration category: ${category.name} (ID: ${categoryId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               decorationCategoryId: categoryId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
-            console.log(`✅ Venues response for ${category.name}:`, venuesResponse.data)
             
             let venuesData = []
             if (venuesResponse.data) {
@@ -1602,14 +1519,12 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${category.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 decorationCategoryId: categoryId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
-              console.log(`✅ Approved venues response for ${category.name}:`, venuesResponse.data)
               
               if (venuesResponse.data) {
                 if (venuesResponse.data.venues && Array.isArray(venuesResponse.data.venues)) {
@@ -1622,7 +1537,6 @@ function Decoration() {
               }
             }
             
-            console.log(`📊 Found ${venuesData.length} venues for decoration category ${category.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1640,12 +1554,11 @@ function Decoration() {
         for (const special of corporateOccasionSpecials) {
           try {
             const specialId = special._id || special.id
-            console.log(`📋 Fetching venues for occasion special: ${special.name} (ID: ${specialId})`)
             
             let venuesResponse = await publicVenuesAPI.getAll({ 
               occasionSpecialId: specialId,
               status: 'active',
-              limit: '50'
+              limit: '12'
             })
             
             let venuesData = []
@@ -1660,11 +1573,10 @@ function Decoration() {
             }
             
             if (venuesData.length === 0) {
-              console.log(`⚠️ No active venues found, trying approved status for ${special.name}`)
               venuesResponse = await publicVenuesAPI.getAll({ 
                 occasionSpecialId: specialId,
                 status: 'approved',
-                limit: '50'
+                limit: '12'
               })
               
               if (venuesResponse.data) {
@@ -1678,9 +1590,7 @@ function Decoration() {
               }
             }
             
-            console.log(`✅ Venues response for ${special.name}:`, venuesResponse.data)
             
-            console.log(`📊 Found ${venuesData.length} venues for occasion special ${special.name}`)
             
             venuesData.forEach(venue => {
               const venueId = venue._id || venue.id
@@ -1694,7 +1604,6 @@ function Decoration() {
           }
         }
         
-        console.log(`🎉 Total unique corporate venues found: ${allVenues.length}`)
         
         // Format venues for display (limit to 5)
         const formattedVenues = allVenues.slice(0, 5).map(venue => {
@@ -1729,8 +1638,6 @@ function Decoration() {
           }
         })
         
-        console.log(`✨ Formatted ${formattedVenues.length} corporate venues for display`)
-        console.log('Formatted Corporate Venues:', formattedVenues)
         
         setCorporateVenues(formattedVenues)
       } catch (error) {
@@ -1742,7 +1649,6 @@ function Decoration() {
 
     // Only fetch if decoration categories and occasion specials are loaded
     if (!categoriesLoading && !occasionSpecialsLoading && (decorationCategories.length > 0 || occasionSpecials.length > 0)) {
-      console.log('🚀 Starting corporate venues fetch...')
       fetchCorporateVenues()
     }
   }, [decorationCategories, occasionSpecials, categoriesLoading, occasionSpecialsLoading])
@@ -1757,7 +1663,31 @@ function Decoration() {
     }
   }
 
-  // Check if any data is still loading - wait for all sections to load
+  // Progressive loading: Show content after critical data loads or 3 seconds timeout
+  useEffect(() => {
+    // Check if critical data is loaded (banners and categories)
+    const criticalDataLoaded = !loading && !categoriesLoading
+    
+    // Show content if critical data is loaded OR after 3 seconds
+    if (criticalDataLoaded || hasShownContent.current) {
+      if (!hasShownContent.current) {
+        hasShownContent.current = true
+        setShowContent(true)
+      }
+    }
+    
+    // Fallback: Show content after 3 seconds regardless
+    const timeout = setTimeout(() => {
+      if (!hasShownContent.current) {
+        hasShownContent.current = true
+        setShowContent(true)
+      }
+    }, 3000)
+    
+    return () => clearTimeout(timeout)
+  }, [loading, categoriesLoading])
+
+  // Check if any data is still loading - but don't block showing content
   const isMainDataLoading = loading || categoriesLoading || occasionSpecialsLoading ||
     birthdayBannerLoading || birthdayVenuesLoading ||
     babyBannerLoading || babyVenuesLoading ||
@@ -1765,7 +1695,8 @@ function Decoration() {
     sameDayBannerLoading || sameDayVenuesLoading ||
     corporateBannerLoading || corporateVenuesLoading
 
-  if (isMainDataLoading) {
+  // Show shimmer only if critical data is loading AND we haven't shown content yet
+  if (isMainDataLoading && !showContent) {
     return (
       <div className="decoration-page">
         <SEO 
@@ -1882,13 +1813,18 @@ function Decoration() {
           ) : null}
 
           {/* Decoration Categories Section */}
-          {decorationCategories.length > 0 && (
+          {(decorationCategories.length > 0 || categoriesLoading) && (
             <div className="decoration-categories-section">
               {categoriesLoading ? (
-                <div style={{ padding: '20px', textAlign: 'center', width: '100%' }}>
-                  Loading categories...
+                <div className="decoration-categories-skeleton">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="decoration-category-skeleton-item">
+                      <div className="decoration-category-skeleton-icon"></div>
+                      <div className="decoration-category-skeleton-label"></div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
+              ) : decorationCategories.length > 0 ? (
                 <>
                   {/* Desktop: Full Width List */}
                   <div className="decoration-categories-list decoration-categories-desktop">
@@ -1990,7 +1926,7 @@ function Decoration() {
                     </button>
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -2056,10 +1992,21 @@ function Decoration() {
               </div>
               
               {/* Birthday Venues Section */}
-              {birthdayVenuesLoading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
-                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading birthday venues...</p>
+              {birthdayVenuesLoading && birthdayVenues.length === 0 ? (
+                <div className="venues-skeleton-grid">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="venue-skeleton-card">
+                      <div className="venue-skeleton-image"></div>
+                      <div className="venue-skeleton-content">
+                        <div className="venue-skeleton-title"></div>
+                        <div className="venue-skeleton-text"></div>
+                        <div className="venue-skeleton-row">
+                          <div className="venue-skeleton-rating"></div>
+                          <div className="venue-skeleton-price"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : birthdayVenues.length > 0 ? (
                 <div className="birthday-venues-section">
@@ -2179,10 +2126,21 @@ function Decoration() {
               </div>
               
               {/* Baby Venues Section */}
-              {babyVenuesLoading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
-                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading baby venues...</p>
+              {babyVenuesLoading && babyVenues.length === 0 ? (
+                <div className="venues-skeleton-grid">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="venue-skeleton-card">
+                      <div className="venue-skeleton-image"></div>
+                      <div className="venue-skeleton-content">
+                        <div className="venue-skeleton-title"></div>
+                        <div className="venue-skeleton-text"></div>
+                        <div className="venue-skeleton-row">
+                          <div className="venue-skeleton-rating"></div>
+                          <div className="venue-skeleton-price"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : babyVenues.length > 0 ? (
                 <div className="baby-venues-section">
@@ -2302,10 +2260,21 @@ function Decoration() {
               </div>
               
               {/* Romantic Venues Section */}
-              {romanticVenuesLoading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
-                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading romantic venues...</p>
+              {romanticVenuesLoading && romanticVenues.length === 0 ? (
+                <div className="venues-skeleton-grid">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="venue-skeleton-card">
+                      <div className="venue-skeleton-image"></div>
+                      <div className="venue-skeleton-content">
+                        <div className="venue-skeleton-title"></div>
+                        <div className="venue-skeleton-text"></div>
+                        <div className="venue-skeleton-row">
+                          <div className="venue-skeleton-rating"></div>
+                          <div className="venue-skeleton-price"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : romanticVenues.length > 0 ? (
                 <div className="romantic-venues-section">
@@ -2427,10 +2396,21 @@ function Decoration() {
               )}
               
               {/* Same Day Venues Section */}
-              {sameDayVenuesLoading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
-                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading same day venues...</p>
+              {sameDayVenuesLoading && sameDayVenues.length === 0 ? (
+                <div className="venues-skeleton-grid">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="venue-skeleton-card">
+                      <div className="venue-skeleton-image"></div>
+                      <div className="venue-skeleton-content">
+                        <div className="venue-skeleton-title"></div>
+                        <div className="venue-skeleton-text"></div>
+                        <div className="venue-skeleton-row">
+                          <div className="venue-skeleton-rating"></div>
+                          <div className="venue-skeleton-price"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : sameDayVenues.length > 0 ? (
                 <div className="same-day-venues-section">
@@ -2556,10 +2536,21 @@ function Decoration() {
               )}
               
               {/* Corporate Venues Section */}
-              {corporateVenuesLoading ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', width: '100%' }}>
-                  <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-                  <p style={{ marginTop: '20px', color: 'var(--gray-medium)' }}>Loading corporate venues...</p>
+              {corporateVenuesLoading && corporateVenues.length === 0 ? (
+                <div className="venues-skeleton-grid">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="venue-skeleton-card">
+                      <div className="venue-skeleton-image"></div>
+                      <div className="venue-skeleton-content">
+                        <div className="venue-skeleton-title"></div>
+                        <div className="venue-skeleton-text"></div>
+                        <div className="venue-skeleton-row">
+                          <div className="venue-skeleton-rating"></div>
+                          <div className="venue-skeleton-price"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : corporateVenues.length > 0 ? (
                 <div className="corporate-venues-section">

@@ -102,8 +102,6 @@ function BookingHistory() {
       // Fetch all bookings without any status filter, include deviceId
       const response = await bookingAPI.getBookings({ deviceId })
       
-      console.log('📥 Full API Response:', response.data)
-      
       // Handle different response formats
       let bookingsData = []
       if (response.data?.success) {
@@ -111,9 +109,6 @@ function BookingHistory() {
       } else if (Array.isArray(response.data)) {
         bookingsData = response.data
       }
-      
-      console.log('📦 Extracted Bookings Data:', bookingsData)
-      console.log('📊 Total Bookings Count:', bookingsData.length)
 
         // Transform API response to component format
         const transformedBookings = bookingsData.map((booking) => {
@@ -137,31 +132,8 @@ function BookingHistory() {
             paymentStatus = 'pending'
           }
           
-          console.log('📥 Booking from API:', {
-            id: booking._id || booking.id,
-            rooms: booking.rooms,
-            roomsType: typeof booking.rooms,
-            status: booking.status,
-            extractedStatus: bookingStatus,
-            paymentStatus: booking.paymentStatus,
-            extractedPaymentStatus: paymentStatus,
-            type: booking.type,
-            deviceId: booking.deviceId,
-            fullBooking: booking
-          })
-          
           // Extract image from multiple possible locations
           const venueImage = venue.images?.[0] || venue.coverImage || venue.image || null
-          
-          console.log('🖼️ Venue Image Debug:', {
-            venueId: venue._id || venue.id,
-            venueName: venue.name,
-            images: venue.images,
-            coverImage: venue.coverImage,
-            image: venue.image,
-            extractedImage: venueImage,
-            formattedImage: getImageUrl(venueImage)
-          })
           
           return {
             id: booking._id || booking.id,
@@ -184,13 +156,6 @@ function BookingHistory() {
             bookingDate: booking.createdAt || booking.bookingDate || new Date().toISOString()
           }
         })
-
-        console.log('✅ Transformed Bookings:', transformedBookings)
-        console.log('📈 Transformed Count:', transformedBookings.length)
-        console.log('📋 Status Breakdown:', transformedBookings.reduce((acc, b) => {
-          acc[b.status] = (acc[b.status] || 0) + 1
-          return acc
-        }, {}))
 
         setBookings(transformedBookings)
       } catch (error) {
@@ -230,12 +195,6 @@ function BookingHistory() {
 
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
-    console.log('🔍 Filtering bookings:', {
-      totalBookings: bookings.length,
-      statusFilter: statusFilter,
-      searchQuery: searchQuery
-    })
-    
     let filtered = bookings.filter(booking => {
       const matchesSearch = searchQuery === '' || 
         booking.venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -247,20 +206,9 @@ function BookingHistory() {
       const normalizedFilterStatus = statusFilter ? statusFilter.toString().toLowerCase().trim() : 'all'
       
       const matchesStatus = normalizedFilterStatus === 'all' || normalizedBookingStatus === normalizedFilterStatus
-      
-      console.log('🔍 Booking filter check:', {
-        id: booking.id,
-        status: booking.status,
-        normalizedStatus: normalizedBookingStatus,
-        filterStatus: normalizedFilterStatus,
-        matchesStatus: matchesStatus,
-        matchesSearch: matchesSearch
-      })
 
       return matchesSearch && matchesStatus
     })
-    
-    console.log('✅ Filtered bookings count:', filtered.length)
 
     // Sort bookings
     if (sortBy === 'newest') {

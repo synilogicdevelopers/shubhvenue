@@ -469,10 +469,9 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
       params.state = selectedState.trim()
     }
     
-    // Navigate to venues page with search params
-    navigate('/venues', { 
-      state: { searchParams: params }
-    })
+    // Navigate to search page with search params
+    const searchParams = new URLSearchParams(params)
+    navigate(`/search?${searchParams.toString()}`)
   }
 
   // Handle suggestion click
@@ -506,9 +505,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
       if (selectedState && selectedState.trim()) {
         params.state = selectedState.trim()
       }
-      navigate('/venues', { 
-        state: { searchParams: params }
-      })
+      const searchParams = new URLSearchParams(params)
+      navigate(`/search?${searchParams.toString()}`)
     }, 100)
   }
 
@@ -517,10 +515,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     e.preventDefault()
     e.stopPropagation()
     
-    console.log('Submenu clicked:', submenu)
     const submenuId = submenu._id || submenu.id
     const submenuName = submenu.name
-    console.log('Navigating with submenuId:', submenuId, 'submenuName:', submenuName)
     
     // Navigate immediately with URL params
     navigate(`/venues?submenuId=${submenuId}&submenuName=${encodeURIComponent(submenuName)}`, {
@@ -541,11 +537,8 @@ function Navbar({ isSidebarOpen, toggleSidebar }) {
     e.preventDefault()
     e.stopPropagation()
     
-    console.log('Menu clicked:', menu)
     const menuId = menu._id || menu.id
     const menuName = menu.name
-    
-    console.log('Navigating with menuId:', menuId, 'menuName:', menuName)
     
     // Check if menu is "Decoration" - open in new tab
     if (menuName && menuName.toLowerCase() === 'decoration') {

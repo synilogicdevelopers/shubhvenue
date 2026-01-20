@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Footer from '../../components/customer/Footer'
 import SEO from '../../components/SEO'
 import './Venue.css'
-import { publicVenuesAPI, publicDecorationCategoriesAPI } from '../../services/customer/api'
+import { publicVenuesAPI, publicDecorationCategoriesAPI, shotlistAPI } from '../../services/customer/api'
 import { createSlug } from '../../utils/customer/slug'
 import toast from 'react-hot-toast'
 
@@ -23,6 +23,18 @@ const Venue = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(9) // 9 venues per page
   const [decorationCategoryBanner, setDecorationCategoryBanner] = useState(null)
+  const [likedVenues, setLikedVenues] = useState(new Set())
+  const [togglingVenueId, setTogglingVenueId] = useState(null)
+
+  // Generate device ID for tracking
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('deviceId')
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      localStorage.setItem('deviceId', deviceId)
+    }
+    return deviceId
+  }
 
   // Helper function to get venue image URL
   const getVenueImageUrl = (images) => {
@@ -132,15 +144,6 @@ const Venue = () => {
   const occasionSpecialId = location.state?.occasionSpecialId || urlParams.get('occasionSpecialId')
   const occasionSpecialName = location.state?.occasionSpecialName || urlParams.get('occasionSpecialName')
   
-  // Debug logging
-  useEffect(() => {
-    if (submenuId) {
-      console.log('Venue page - submenuId:', submenuId, 'submenuName:', submenuName)
-    }
-    if (menuId) {
-      console.log('Venue page - menuId:', menuId, 'menuName:', menuName)
-    }
-  }, [submenuId, submenuName, menuId, menuName])
 
   // Update URL when filters change (but only if coming from state, not from URL)
   useEffect(() => {
@@ -250,8 +253,6 @@ const Venue = () => {
           status: 'active'
         }
         
-        console.log('Fetching venues with filters - submenuId:', submenuId, 'menuId:', menuId, 'categoryId:', categoryId, 'vendorCategoryId:', vendorCategoryId)
-        console.log('Location state:', location.state)
         
         // Add category filter if categoryId is provided
         if (categoryId) {
@@ -277,25 +278,19 @@ const Venue = () => {
           // Normalize submenuId to string (handle both string and object IDs)
           const normalizedSubmenuId = String(submenuId).trim()
           apiParams.subMenuId = normalizedSubmenuId
-          console.log('Adding subMenuId filter:', normalizedSubmenuId, '(original:', submenuId, ')')
         }
         // Add menu filter if menuId is provided (backend will filter for venues directly assigned to menu, not submenus)
         if (menuId) {
           apiParams.menuId = menuId
-          console.log('Adding menuId filter:', menuId)
         }
         // Add decoration category filter if decorationCategoryId is provided
         if (decorationCategoryId) {
           apiParams.decorationCategoryId = decorationCategoryId
-          console.log('Adding decorationCategoryId filter:', decorationCategoryId)
         }
         // Add occasion special filter if occasionSpecialId is provided
         if (occasionSpecialId) {
           apiParams.occasionSpecialId = occasionSpecialId
-          console.log('Adding occasionSpecialId filter:', occasionSpecialId)
         }
-        
-        console.log('API Params:', apiParams)
         
         // Use search API if search query is provided, otherwise use getAll
         let response
@@ -331,9 +326,6 @@ const Venue = () => {
             ])
           }
         
-        console.log('Full API Response:', response)
-        console.log('Response Data:', response.data)
-        
         if (response.data) {
           let venuesData = []
           
@@ -350,12 +342,8 @@ const Venue = () => {
             venuesData = response.data.results
           }
           
-          console.log('Extracted Venues Data:', venuesData)
-          console.log('Venues Count:', venuesData.length)
-          
           // If no active venues found, try fetching approved venues as fallback
           if (venuesData.length === 0) {
-            console.warn('No active venues found. Trying approved venues as fallback...')
             try {
               let fallbackResponse
               if (searchParams.q || searchParams.city || searchParams.state) {
@@ -397,7 +385,6 @@ const Venue = () => {
                 } else if (Array.isArray(fallbackResponse.data)) {
                   venuesData = fallbackResponse.data
                 }
-                console.log('Fallback approved venues count:', venuesData.length)
               }
             } catch (fallbackError) {
               console.error('Error fetching fallback venues:', fallbackError)
@@ -406,7 +393,6 @@ const Venue = () => {
           
           // If still no venues found, log the full response for debugging
           if (venuesData.length === 0) {
-            console.warn('No venues found after fallback. Full response:', JSON.stringify(response.data, null, 2))
           }
           
           // Client-side guard: hide vendor deactivated venues (vendorActive === false)
@@ -433,14 +419,6 @@ const Venue = () => {
                 `${venue.capacity}`) : 
               null;
             
-            if (venue.name === 'test' || venue._id) {
-              console.log('Venue capacity debug:', {
-                name: venue.name,
-                capacity: venue.capacity,
-                capacityValue,
-                rooms: venue.rooms
-              });
-            }
             
             // Extract rating - handle both object and number formats
             let ratingValue = 0
@@ -489,17 +467,12 @@ const Venue = () => {
             };
           })
           
-          console.log('Formatted Venues:', formattedVenues)
-          console.log('Formatted Venues Count:', formattedVenues.length)
-          
           if (formattedVenues.length > 0) {
             setAllVenues(formattedVenues)
           } else {
-            console.warn('No venues found in response')
             setAllVenues([])
           }
         } else {
-          console.error('Invalid API response:', response.data)
           toast.error('Failed to load venues')
           setAllVenues([])
         }
@@ -518,6 +491,73 @@ const Venue = () => {
 
     fetchVenues()
   }, [categoryId, submenuId, menuId, decorationCategoryId, occasionSpecialId, searchParams.q, searchParams.city, searchParams.state])
+
+  // Check shortlist status for all venues
+  useEffect(() => {
+    const checkShortlistStatus = async () => {
+      if (allVenues.length === 0) return
+      
+      try {
+        const deviceId = getDeviceId()
+        const statusPromises = allVenues.map(async (venue) => {
+          try {
+            const venueId = venue._id || venue.id
+            const response = await shotlistAPI.checkStatus(venueId, deviceId)
+            return { venueId, isLiked: response.data?.isLiked || false }
+          } catch (error) {
+            return { venueId: venue._id || venue.id, isLiked: false }
+          }
+        })
+        
+        const statuses = await Promise.all(statusPromises)
+        const likedSet = new Set()
+        statuses.forEach(({ venueId, isLiked }) => {
+          if (isLiked) likedSet.add(venueId)
+        })
+        setLikedVenues(likedSet)
+      } catch (error) {
+        console.error('Error checking shortlist status:', error)
+      }
+    }
+
+    checkShortlistStatus()
+  }, [allVenues])
+
+  // Handle toggle like/unlike
+  const handleToggleLike = async (e, venueId) => {
+    e.stopPropagation() // Prevent card click
+    
+    try {
+      setTogglingVenueId(venueId)
+      const deviceId = getDeviceId()
+      const response = await shotlistAPI.toggleLike(venueId, deviceId)
+      
+      if (response.data?.success) {
+        const isLiked = response.data.isLiked
+        setLikedVenues(prev => {
+          const newSet = new Set(prev)
+          if (isLiked) {
+            newSet.add(venueId)
+          } else {
+            newSet.delete(venueId)
+          }
+          return newSet
+        })
+        if (isLiked) {
+          toast.success('Venue added to shortlist')
+        } else {
+          toast.success('Venue removed from shortlist')
+        }
+      } else {
+        toast.error(response.data?.error || 'Failed to update shortlist')
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      toast.error(error.message || 'Failed to update shortlist')
+    } finally {
+      setTogglingVenueId(null)
+    }
+  }
 
   // Get unique locations and types from API data
   const locations = useMemo(() => {
@@ -550,11 +590,6 @@ const Venue = () => {
 
   // Filter and sort venues
   const filteredVenues = useMemo(() => {
-    console.log('=== FILTERING VENUES ===')
-    console.log('Total venues in allVenues:', allVenues.length)
-    console.log('All venues:', allVenues)
-    console.log('Filters - Search:', searchQuery, 'Location:', selectedLocation, 'Type:', selectedType, 'Rating:', selectedRating, 'Price:', priceRange)
-    
     let filtered = allVenues.filter(venue => {
       // Search query filter
       const matchesSearch = searchQuery === '' || 
@@ -585,21 +620,6 @@ const Venue = () => {
 
       const matches = matchesSearch && matchesLocation && matchesType && matchesRating && matchesPrice
       
-      // Debug individual venue filtering
-      if (!matches && allVenues.length <= 5) {
-        console.log(`Venue "${venue.name}" filtered out:`, {
-          matchesSearch,
-          matchesLocation,
-          matchesType,
-          matchesRating,
-          matchesPrice,
-          venueLocation: venue.location,
-          venueType: venue.type,
-          venueRating: venue.rating,
-          venuePrice: venue.price
-        })
-      }
-      
       return matches
     })
 
@@ -614,9 +634,6 @@ const Venue = () => {
       filtered.sort((a, b) => b.reviews - a.reviews)
     }
 
-    console.log('Filtered venues count:', filtered.length)
-    console.log('Filtered venues:', filtered)
-    console.log('=== END FILTERING ===')
     return filtered
   }, [allVenues, searchQuery, selectedLocation, selectedType, selectedRating, priceRange, sortBy])
 
@@ -1108,15 +1125,11 @@ const Venue = () => {
                   const categoryName = venue.categoryId?.name || venue.category?.name || venue.type
                   const venueCategorySlug = categoryName ? createSlug(categoryName) : null
                   
-                  console.log('Navigation - Venue:', venue.name)
-                  console.log('Navigation - Category Name:', categoryName)
-                  console.log('Navigation - Category Slug:', venueCategorySlug)
                   
                   const url = venueCategorySlug 
                     ? `/venue/${venueCategorySlug}/${venueSlug}`
                     : `/venue/${venueSlug}`
                   
-                  console.log('Navigation - Final URL:', url)
                   navigate(url)
                 }}
               >
@@ -1129,18 +1142,56 @@ const Venue = () => {
                       e.target.src = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop'
                     }}
                   />
+                  <button
+                    className={`venue-shortlist-btn ${likedVenues.has(venue._id || venue.id) ? 'liked' : ''}`}
+                    onClick={(e) => handleToggleLike(e, venue._id || venue.id)}
+                    disabled={togglingVenueId === (venue._id || venue.id)}
+                    title={likedVenues.has(venue._id || venue.id) ? 'Remove from shortlist' : 'Add to shortlist'}
+                  >
+                    <svg 
+                      width="20" 
+                      height="20" 
+                      viewBox="0 0 24 24" 
+                      fill={likedVenues.has(venue._id || venue.id) ? "currentColor" : "none"} 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                  </button>
                 </div>
                 <div className="venue-content">
                   <h3 className="venue-name">{venue.name}</h3>
-                  <div className="venue-rating">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                    <span className="rating-value">
-                      {typeof venue.rating === 'number' && venue.rating > 0 ? venue.rating.toFixed(1) : 'N/A'}
-                    </span>
-                    <span className="rating-reviews">({venue.reviews} reviews)</span>
-                  </div>
+                  {(() => {
+                    // Get rating value
+                    const ratingValue = typeof venue.rating === 'number' 
+                      ? venue.rating 
+                      : (venue.rating?.average || 0);
+                    
+                    // Get reviews count
+                    const reviewsCount = venue.reviews || venue.rating?.totalReviews || 0;
+                    
+                    // Only show if rating > 0 AND reviews > 0
+                    if (ratingValue > 0 && reviewsCount > 0) {
+                      return (
+                        <div className="venue-rating">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="#FFB800"
+                            stroke="#FFB800"
+                            strokeWidth="2"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                          </svg>
+                          <span className="rating-value">{ratingValue.toFixed(1)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                    <div className="venue-location">
                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>

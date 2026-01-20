@@ -27,6 +27,18 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '/api'),
+        // Increase timeout for large file uploads
+        timeout: 300000, // 5 minutes
+        // Configure for large uploads
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Handle large uploads
+            if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+              // Don't set Content-Length header, let it be set automatically
+              delete proxyReq.headers['content-length'];
+            }
+          });
+        },
       }
     }
   },

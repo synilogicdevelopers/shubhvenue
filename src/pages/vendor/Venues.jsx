@@ -118,6 +118,33 @@ export default function Venues() {
     return `${hour24.toString().padStart(2, '0')}:${minute}`
   }
   
+  // Helper function to get display price from venue (checks pricingTypes first, then legacy fields)
+  const getDisplayPrice = (venue) => {
+    // First check pricingTypes array
+    if (venue.pricingTypes && Array.isArray(venue.pricingTypes) && venue.pricingTypes.length > 0) {
+      // Find per_day pricing first (most common)
+      const perDayPricing = venue.pricingTypes.find(p => p.type === 'per_day' && p.price > 0)
+      if (perDayPricing && perDayPricing.price > 0) {
+        return perDayPricing.price
+      }
+      // If no per_day, get first pricing with price > 0
+      const firstPricing = venue.pricingTypes.find(p => p.price > 0)
+      if (firstPricing && firstPricing.price > 0) {
+        return firstPricing.price
+      }
+    }
+    
+    // Fallback to legacy fields
+    if (venue.price && venue.price > 0) {
+      return venue.price
+    }
+    if (venue.pricingInfo?.rentalPrice && venue.pricingInfo.rentalPrice > 0) {
+      return venue.pricingInfo.rentalPrice
+    }
+    
+    return 0
+  }
+
   // Helper function to check if a field is enabled in formConfig
   // Works for both Add and Edit mode - formConfig applies in both cases
   const isFieldEnabled = (fieldPath) => {
@@ -185,6 +212,7 @@ export default function Venues() {
   // Removed step-based navigation - using single step form
   // const [currentStep, setCurrentStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [states, setStates] = useState([])
   const [cities, setCities] = useState([])
   const [loadingCities, setLoadingCities] = useState(false)
@@ -868,6 +896,7 @@ export default function Venues() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
+    setUploadProgress(0)
 
     try {
       // isFieldEnabled function is now defined at component level
@@ -876,6 +905,7 @@ export default function Venues() {
         if (!formData.name || !formData.name.trim()) {
           alert('Venue name is required')
           setSubmitting(false)
+          setUploadProgress(0)
           return
         }
       
@@ -898,6 +928,7 @@ export default function Venues() {
             })
           alert('Capacity is required and must be greater than 0')
           setSubmitting(false)
+          setUploadProgress(0)
           return
         }
         } else {
@@ -910,6 +941,7 @@ export default function Venues() {
           if (!formData.state || !formData.state.trim()) {
             alert('State is required')
             setSubmitting(false)
+            setUploadProgress(0)
             return
           }
         }
@@ -917,6 +949,7 @@ export default function Venues() {
           if (!formData.city || !formData.city.trim()) {
             alert('City is required')
             setSubmitting(false)
+            setUploadProgress(0)
             return
             }
           }
@@ -930,6 +963,7 @@ export default function Venues() {
       if (!venueName) {
         alert('Venue name is required')
         setSubmitting(false)
+        setUploadProgress(0)
         return
       }
       formDataToSend.append('name', venueName)
@@ -978,11 +1012,62 @@ export default function Venues() {
         }
       }
       
-      // Pricing Types
-      if (isFieldEnabled('price')) {
-        if (formData.pricingTypes && formData.pricingTypes.length > 0) {
-          formDataToSend.append('pricingTypes', JSON.stringify(formData.pricingTypes))
+      // Pricing Types - Always send if it has data (both create and edit)
+      // When editing, always send to preserve/update pricing
+      // When creating, send if data exists
+      console.log('🔍 Checking pricingTypes before sending:', {
+        pricingTypes: formData.pricingTypes,
+        length: formData.pricingTypes?.length || 0,
+        isArray: Array.isArray(formData.pricingTypes)
+      })
+      
+      if (formData.pricingTypes && formData.pricingTypes.length > 0) {
+        // Filter out empty/invalid pricing entries
+        const validPricing = formData.pricingTypes.filter(p => {
+          if (!p) {
+            console.log('⚠️ Empty pricing entry found')
+            return false
+          }
+          
+          if (!p.type || p.type.trim() === '') {
+            console.log('⚠️ Pricing entry without type:', p)
+            return false
+          }
+          
+          // For per_plate, need at least vegPrice or nonVegPrice > 0
+          if (p.type === 'per_plate') {
+            const hasVeg = p.vegPrice && Number(p.vegPrice) > 0
+            const hasNonVeg = p.nonVegPrice && Number(p.nonVegPrice) > 0
+            const isValid = hasVeg || hasNonVeg
+            if (!isValid) {
+              console.log('⚠️ per_plate pricing missing both vegPrice and nonVegPrice:', p)
+            }
+            return isValid
+          }
+          
+          // For other types, need price > 0
+          const price = p.price ? Number(p.price) : 0
+          const isValid = price > 0
+          if (!isValid) {
+            console.log('⚠️ Pricing entry with invalid price:', p)
+          }
+          return isValid
+        })
+        
+        console.log('✅ Valid pricing entries:', validPricing)
+        
+        if (validPricing.length > 0) {
+          const pricingJson = JSON.stringify(validPricing)
+          console.log('📤 Sending pricingTypes:', pricingJson)
+          console.log('📤 FormData entries before append:', Array.from(formDataToSend.entries()).map(([k, v]) => [k, typeof v === 'string' && v.length > 100 ? v.substring(0, 100) + '...' : v]))
+          formDataToSend.append('pricingTypes', pricingJson)
+          console.log('📤 FormData entries after append:', Array.from(formDataToSend.entries()).map(([k, v]) => [k, typeof v === 'string' && v.length > 100 ? v.substring(0, 100) + '...' : v]))
+        } else {
+          console.log('⚠️ No valid pricingTypes to send (all entries are empty or invalid)')
+          console.log('📋 All pricing entries:', formData.pricingTypes)
         }
+      } else {
+        console.log('⚠️ pricingTypes is empty or not set')
       }
       
       // FAQ
@@ -1186,6 +1271,7 @@ export default function Venues() {
         if (!venueId) {
           alert('Venue ID not found. Please try again.')
           setSubmitting(false)
+          setUploadProgress(0)
           return
         }
         
@@ -1195,21 +1281,60 @@ export default function Venues() {
         if (!token) {
           alert('Please login to update venue')
           setSubmitting(false)
+          setUploadProgress(0)
           return
         }
         
+        // Check if there are files to upload (for progress tracking)
+        const hasFiles = selectedImage || (galleryImages && galleryImages.length > 0) || (videoFiles && videoFiles.length > 0)
+        
         try {
-          await vendorAPI.updateVenue(venueId, formDataToSend)
+          // Upload progress callback
+          const handleUploadProgress = (percentCompleted) => {
+            setUploadProgress(percentCompleted)
+          }
+          
+          const response = await vendorAPI.updateVenue(
+            venueId, 
+            formDataToSend,
+            hasFiles ? handleUploadProgress : undefined
+          )
+          
+          // Verify response is successful
+          if (!response || !response.data) {
+            throw new Error('Invalid response from server')
+          }
+          
+          setUploadProgress(100)
           setFeedbackModal({
             title: 'Venue Updated',
             message: 'Venue updated successfully!',
             status: 'success'
           })
         } catch (updateError) {
+          setUploadProgress(0)
           throw updateError // Re-throw to be caught by outer catch
         }
       } else {
-        await vendorAPI.createVenue(formDataToSend)
+        // Check if there are files to upload (for progress tracking)
+        const hasFiles = selectedImage || (galleryImages && galleryImages.length > 0) || (videoFiles && videoFiles.length > 0)
+        
+        // Upload progress callback
+        const handleUploadProgress = (percentCompleted) => {
+          setUploadProgress(percentCompleted)
+        }
+        
+        const response = await vendorAPI.createVenue(
+          formDataToSend,
+          hasFiles ? handleUploadProgress : undefined
+        )
+        
+        // Verify response is successful
+        if (!response || !response.data) {
+          throw new Error('Invalid response from server')
+        }
+        
+        setUploadProgress(100)
         setFeedbackModal({
           title: 'Venue Added',
           message: 'Venue added successfully!',
@@ -1217,10 +1342,14 @@ export default function Venues() {
         })
       }
 
-      // Close modal and reset form immediately for better UX
+      // Wait a moment to show success message, then close modal and reset form
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Close modal and reset form after successful submission
       setShowAddModal(false)
       setEditingVenue(null)
       resetForm()
+      setUploadProgress(0)
       
       // Navigate first if needed
       if (isAddPage) {
@@ -1231,6 +1360,30 @@ export default function Venues() {
       loadVenues().catch(err => console.error('Failed to reload venues:', err))
     } catch (error) {
       console.error('Save venue error:', error)
+      setUploadProgress(0)
+      
+      // Check for network/timeout errors
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        setFeedbackModal({
+          title: 'Upload Timeout',
+          message: 'The upload is taking too long. This might be due to large file sizes. Please try:\n\n1. Compressing images/videos before uploading\n2. Uploading fewer files at once\n3. Checking your internet connection',
+          status: 'error'
+        })
+        setSubmitting(false)
+        return
+      }
+      
+      // Check for network errors
+      if (!error.response && error.message) {
+        setFeedbackModal({
+          title: 'Network Error',
+          message: `Unable to connect to server: ${error.message}\n\nPlease check your internet connection and try again.`,
+          status: 'error'
+        })
+        setSubmitting(false)
+        return
+      }
+      
       const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save venue'
       const errorDetails = error.response?.data?.details
       
@@ -1263,6 +1416,12 @@ export default function Venues() {
         localStorage.removeItem('vendor_user')
         window.location.href = '/vendor/login'
         return
+      } else if (error.response?.status === 413) {
+        modalTitle = 'File Too Large'
+        fullErrorMessage = 'One or more files are too large. Please compress images/videos before uploading.\n\nMaximum file size: 500MB for videos, 5MB for images.'
+      } else if (error.response?.status >= 500) {
+        modalTitle = 'Server Error'
+        fullErrorMessage = 'Server error occurred. Please try again in a moment. If the problem persists, contact support.'
       } else {
         modalTitle = 'Unable to Save'
       }
@@ -1275,6 +1434,7 @@ export default function Venues() {
       })
     } finally {
       setSubmitting(false)
+      setUploadProgress(0)
     }
   }
 
@@ -1407,6 +1567,13 @@ export default function Venues() {
               fullVenueData = response.data
             }
           }
+          
+          // Debug: Log pricingTypes from API response
+          console.log('📥 Venue data from API:', {
+            pricingTypes: fullVenueData.pricingTypes,
+            pricingInfo: fullVenueData.pricingInfo,
+            hasPricingTypes: Array.isArray(fullVenueData.pricingTypes) && fullVenueData.pricingTypes.length > 0
+          })
         } catch (error) {
           console.warn('Could not fetch full venue details, using provided data:', error)
           // Continue with provided venue data
@@ -1643,14 +1810,50 @@ export default function Venues() {
               };
             })
           : [],
-        pricingTypes: Array.isArray(fullVenueData.pricingTypes) 
-          ? fullVenueData.pricingTypes.map(p => ({
+        pricingTypes: (() => {
+          // Try multiple possible locations for pricingTypes
+          let pricingData = null
+          
+          if (Array.isArray(fullVenueData.pricingTypes) && fullVenueData.pricingTypes.length > 0) {
+            pricingData = fullVenueData.pricingTypes
+          } else if (fullVenueData.pricingInfo && typeof fullVenueData.pricingInfo === 'object') {
+            // Convert legacy pricingInfo to pricingTypes format
+            const pricingInfo = fullVenueData.pricingInfo
+            pricingData = []
+            
+            if (pricingInfo.rentalPrice && pricingInfo.rentalPrice > 0) {
+              pricingData.push({
+                type: 'per_day',
+                price: Number(pricingInfo.rentalPrice),
+                vegPrice: 0,
+                nonVegPrice: 0
+              })
+            }
+            
+            if ((pricingInfo.vegPerPlate && pricingInfo.vegPerPlate > 0) || 
+                (pricingInfo.nonVegPerPlate && pricingInfo.nonVegPerPlate > 0)) {
+              pricingData.push({
+                type: 'per_plate',
+                price: 0,
+                vegPrice: Number(pricingInfo.vegPerPlate || 0),
+                nonVegPrice: Number(pricingInfo.nonVegPerPlate || 0)
+              })
+            }
+          }
+          
+          if (pricingData && pricingData.length > 0) {
+            console.log('📥 Loaded pricingTypes from venue:', pricingData)
+            return pricingData.map(p => ({
               type: p.type || '',
-              price: p.price || 0,
-              vegPrice: p.vegPrice || 0,
-              nonVegPrice: p.nonVegPrice || 0
+              price: p.price ? Number(p.price) : 0,
+              vegPrice: p.vegPrice ? Number(p.vegPrice) : 0,
+              nonVegPrice: p.nonVegPrice ? Number(p.nonVegPrice) : 0
             }))
-          : [],
+          }
+          
+          console.log('⚠️ No pricingTypes found in venue data')
+          return []
+        })(),
         faq: Array.isArray(fullVenueData.faq) ? fullVenueData.faq : [],
       })
 
@@ -1776,6 +1979,7 @@ export default function Venues() {
     setVideoFiles([])
     setVideoUrls([])
     setPlayingVideo(null)
+    setUploadProgress(0)
     // setCurrentStep(0) // Removed step navigation
     setEditingVenue(null)
     setSubmenus([])
@@ -1937,7 +2141,12 @@ export default function Venues() {
                         <span className="text-sm">{formatCapacity(venue.capacity)} guests</span>
                       </div>
                       <div className="flex items-center text-primary-600 font-semibold">
-                        <span>₹{((venue.price || venue.pricingInfo?.rentalPrice || 0) > 0) ? (venue.price || venue.pricingInfo?.rentalPrice || 0).toLocaleString() : 'N/A'}</span>
+                        {(() => {
+                          const displayPrice = getDisplayPrice(venue)
+                          return (
+                            <span>₹{displayPrice > 0 ? displayPrice.toLocaleString() : 'N/A'}</span>
+                          )
+                        })()}
                       </div>
                     </div>
                     {venue.description && (
@@ -2233,9 +2442,8 @@ export default function Venues() {
                     ) : null}
                   </div>
 
-                  {/* Multiple Pricing Types */}
-                  {isFieldEnabled('price') && (
-                    <div className="space-y-4 pt-4 border-t">
+                  {/* Multiple Pricing Types - Always show pricing form */}
+                  <div className="space-y-4 pt-4 border-t">
                       <h3 className="text-lg font-semibold mb-4">Pricing</h3>
                       <div className="space-y-4">
                         {(formData.pricingTypes || []).map((pricing, index) => (
@@ -2351,7 +2559,6 @@ export default function Venues() {
                         </button>
                       </div>
                     </div>
-                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                     <textarea
@@ -3633,26 +3840,58 @@ export default function Venues() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-4 mt-6 pt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isAddPage) navigate('/vendor/venues')
-                    else setShowAddModal(false)
-                    resetForm()
-                  }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Submitting...' : editingVenue ? 'Update Venue' : 'Submit Venue'}
-                </button>
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                {/* Upload Progress Bar */}
+                {submitting && uploadProgress > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        {uploadProgress < 100 ? `Uploading... ${uploadProgress}%` : 'Processing...'}
+                      </span>
+                      <span className="text-xs text-gray-500">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    {uploadProgress < 100 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Please wait, uploading large files may take some time...
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAddPage) navigate('/vendor/venues')
+                      else setShowAddModal(false)
+                      resetForm()
+                      setUploadProgress(0)
+                    }}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting 
+                      ? (uploadProgress > 0 
+                          ? `Uploading... ${uploadProgress}%` 
+                          : 'Submitting...') 
+                      : editingVenue 
+                        ? 'Update Venue' 
+                        : 'Submit Venue'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

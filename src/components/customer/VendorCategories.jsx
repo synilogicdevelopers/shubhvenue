@@ -27,7 +27,6 @@ function VendorCategories({ onLoadComplete }) {
   const fetchVendorCategories = async () => {
     try {
       const response = await publicVendorCategoriesAPI.getAll()
-      console.log('Vendor Categories API Response:', response)
       // Handle different response structures
       let categoriesData = []
       if (response.data) {
@@ -39,9 +38,7 @@ function VendorCategories({ onLoadComplete }) {
           categoriesData = response.data.data
         }
       }
-      console.log('Parsed Categories:', categoriesData)
       const activeCategories = categoriesData.filter(cat => cat.isActive !== false)
-      console.log('Active Categories:', activeCategories)
       setCategories(activeCategories)
       setLoading(false)
       if (onLoadComplete) {
@@ -71,11 +68,8 @@ function VendorCategories({ onLoadComplete }) {
   }
 
   if (categories.length === 0) {
-    console.log('No categories to display - returning null')
     return null
   }
-
-  console.log('Rendering', categories.length, 'categories')
 
   return (
     <section className="vendor-categories">

@@ -10,6 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 300000, // 5 minutes timeout for large file uploads
 })
 
 // Request interceptor to add auth token
@@ -94,13 +95,23 @@ export const vendorAPI = {
   getVenueById: (id) => api.get(`/vendor/venues/${id}`),
   getStates: () => api.get('/vendor/venues/states'),
   getCities: (state) => api.get('/vendor/venues/cities', { params: { state } }),
-  createVenue: (formData) => {
+  createVenue: (formData, onUploadProgress) => {
     // Don't set Content-Type manually - axios will set it with boundary for FormData
-    return api.post('/vendor/venues', formData)
+    return api.post('/vendor/venues', formData, {
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+        onUploadProgress(percentCompleted);
+      } : undefined,
+    })
   },
-  updateVenue: (id, formData) => {
+  updateVenue: (id, formData, onUploadProgress) => {
     // Don't set Content-Type manually - axios will set it with boundary for FormData
-    return api.put(`/vendor/venues/${id}`, formData)
+    return api.put(`/vendor/venues/${id}`, formData, {
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+        onUploadProgress(percentCompleted);
+      } : undefined,
+    })
   },
   toggleVenueStatus: (id) => api.patch(`/vendor/venues/${id}/toggle-status`),
   deleteVenue: (id) => api.delete(`/vendor/venues/${id}`),
@@ -190,25 +201,11 @@ export const videosAPI = {
   getAll: (params) => api.get('/admin/videos', { params }),
   getById: (id) => api.get(`/admin/videos/${id}`),
   create: (data) => {
-    // Check if data is FormData (file upload)
-    if (data instanceof FormData) {
-      return api.post('/admin/videos', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
+    // FormData handling is now done in the interceptor - no need to set headers manually
     return api.post('/admin/videos', data);
   },
   update: (id, data) => {
-    // Check if data is FormData (file upload)
-    if (data instanceof FormData) {
-      return api.put(`/admin/videos/${id}`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
+    // FormData handling is now done in the interceptor - no need to set headers manually
     return api.put(`/admin/videos/${id}`, data);
   },
   delete: (id) => api.delete(`/admin/videos/${id}`),

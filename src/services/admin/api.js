@@ -11,6 +11,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 300000, // 5 minutes timeout for large file uploads
+  maxContentLength: Infinity, // Allow unlimited content length for large file uploads
+  maxBodyLength: Infinity, // Allow unlimited body length for large file uploads
 });
 
 // Request interceptor to add token
@@ -19,6 +22,14 @@ api.interceptors.request.use(
     const token = localStorage.getItem('admin_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Don't override Content-Type for FormData - let axios set it with boundary
+    // This prevents HTTP/2 protocol errors
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      // Ensure maxContentLength and maxBodyLength are set for file uploads
+      config.maxContentLength = Infinity;
+      config.maxBodyLength = Infinity;
     }
     return config;
   },
@@ -359,27 +370,23 @@ export const bannersAPI = {
 export const videosAPI = {
   getAll: (params) => api.get('/admin/videos', { params }),
   getById: (id) => api.get(`/admin/videos/${id}`),
-  create: (data) => {
-    // Check if data is FormData (file upload)
-    if (data instanceof FormData) {
-      return api.post('/admin/videos', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.post('/admin/videos', data);
+  create: (data, onUploadProgress) => {
+    // FormData handling is now done in the interceptor - no need to set headers manually
+    return api.post('/admin/videos', data, {
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+        onUploadProgress(percentCompleted);
+      } : undefined,
+    });
   },
-  update: (id, data) => {
-    // Check if data is FormData (file upload)
-    if (data instanceof FormData) {
-      return api.put(`/admin/videos/${id}`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return api.put(`/admin/videos/${id}`, data);
+  update: (id, data, onUploadProgress) => {
+    // FormData handling is now done in the interceptor - no need to set headers manually
+    return api.put(`/admin/videos/${id}`, data, {
+      onUploadProgress: onUploadProgress ? (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+        onUploadProgress(percentCompleted);
+      } : undefined,
+    });
   },
   delete: (id) => api.delete(`/admin/videos/${id}`),
   toggleActive: (id) => api.put(`/admin/videos/${id}/toggle-active`),

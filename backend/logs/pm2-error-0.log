@@ -76,3 +76,175 @@
 2025-11-21T15:20:03:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
 2025-12-12T10:09:59: (node:7316) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
 2025-12-12T10:09:59: (Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:21: (node:23120) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:21: (node:23120) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:35: (node:6764) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:35: (node:6764) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:46: (node:11532) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:46: (node:11532) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:42:55: (node:15176) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:42:55: (node:15176) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:03: (node:24364) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:03: (node:24364) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:12: (node:15576) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:12: (node:15576) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:20: (node:12936) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:20: (node:12936) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:27: (node:23012) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:27: (node:23012) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:35: (node:23120) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:35: (node:23120) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T15:43:44: (node:22788) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T15:43:44: (node:22788) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T16:00:11: (node:616) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T16:00:11: (node:616) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-17T17:12:53: (node:24436) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-17T17:12:53: (node:24436) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:19:44: (node:1604) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:19:44: (node:1604) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:19:56: (node:20500) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:19:56: (node:20500) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:09: (node:5272) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:09: (node:5272) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:21: (node:4776) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:21: (node:4776) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:33: (node:10852) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:33: (node:10852) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:43: (node:1144) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:43: (node:1144) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:20:54: (node:23708) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:20:54: (node:23708) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:04: (node:21732) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:04: (node:21732) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:14: (node:6352) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:14: (node:6352) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:23: (node:19444) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:23: (node:19444) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:38: (node:11456) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:38: (node:11456) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:21:51: (node:24524) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:21:51: (node:24524) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:03: (node:4276) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:03: (node:4276) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:17: (node:23536) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:17: (node:23536) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:29: (node:17936) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:29: (node:17936) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:22:52: (node:14276) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:22:52: (node:14276) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:03: (node:4968) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:03: (node:4968) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:15: (node:19780) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:15: (node:19780) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:40: (node:24300) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:23:40: (node:24300) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:23:50: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+    at Object.trustProxy (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+    at wrappedValidations.<computed> [as trustProxy] (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+    at Object.keyGenerator (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+    at file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+  code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+}
+2026-01-19T15:23:51: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:23:52: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:22: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:24: Error fetching review counts: TypeError: Review.aggregate(...).maxTimeMS is not a function
+    at getVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:794:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2026-01-19T15:24:25: === Search venues error ===
+2026-01-19T15:24:25: Error name: ReferenceError
+2026-01-19T15:24:25: Error message: decorationCategoryId is not defined
+2026-01-19T15:24:25: Error code: undefined
+2026-01-19T15:24:25: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:24:25: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:24:25: ==========================
+2026-01-19T15:24:25: === Search venues error ===
+2026-01-19T15:24:25: Error name: ReferenceError
+2026-01-19T15:24:25: Error message: decorationCategoryId is not defined
+2026-01-19T15:24:25: Error code: undefined
+2026-01-19T15:24:25: Request query: {
+  q: '5 Flowers Ananta Elite 123',
+  city: 'Kota',
+  state: 'Rajasthan',
+  limit: '100'
+}
+2026-01-19T15:24:25: Error stack: ReferenceError: decorationCategoryId is not defined
+    at searchVenues (file:///E:/project-syni/shubhvenue/shubhvenue/backend/src/controllers/vendor.venues.controller.js:3085:5)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\layer.js:95:5)
+    at E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:280:10)
+    at Function.handle (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\project-syni\shubhvenue\shubhvenue\backend\node_modules\express\lib\router\index.js:47:12)
+2026-01-19T15:24:25: ==========================
+2026-01-19T15:26:02: (node:12576) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-19T15:26:02: (node:12576) [MONGOOSE] Warning: Duplicate schema index on {"name":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-19T15:26:03: ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting. See https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/ for more information.
+    at Object.trustProxy (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:139:13)
+    at wrappedValidations.<computed> [as trustProxy] (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:369:22)
+    at Object.keyGenerator (file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:629:20)
+    at file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:682:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///E:/project-syni/shubhvenue/shubhvenue/backend/node_modules/express-rate-limit/dist/index.mjs:663:5 {
+  code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY',
+  help: 'https://express-rate-limit.github.io/ERR_ERL_PERMISSIVE_TRUST_PROXY/'
+}
